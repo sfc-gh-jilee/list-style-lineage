@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lineage List</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <script>
+      // Disable browser's automatic scroll restoration on reload
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+      
+      document.addEventListener('DOMContentLoaded', () => {
+        const HEADER_HEIGHT = 28;
+        const headers = Array.from(document.querySelectorAll('.depth-header'));
+        
+        // Store original positions and create placeholders
+        const headerData = headers.map((header, index) => {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'depth-header-placeholder';
+          placeholder.style.height = HEADER_HEIGHT + 'px';
+          placeholder.style.display = 'none';
+          header.parentNode.insertBefore(placeholder, header);
+          
+          return {
+            el: header,
+            placeholder: placeholder,
+            order: index,
+            stickState: 'none' // 'top', 'bottom', or 'none'
+          };
+        });
+
+        function updateStickyHeaders() {
+          const viewportTop = window.scrollY;
+          const viewportBottom = viewportTop + window.innerHeight;
+          
+          // First, reset all to get accurate natural positions
+          headerData.forEach(data => {
+            data.el.style.position = '';
+            data.el.style.top = '';
+            data.el.style.bottom = '';
+            data.el.style.left = '';
+            data.el.style.right = '';
+            data.el.style.zIndex = '';
+            data.placeholder.style.display = 'none';
+          });
+          
+          // Force reflow to get accurate measurements
+          void document.body.offsetHeight;
+          
+          // Calculate natural positions for all headers
+          headerData.forEach(data => {
+            const rect = data.el.getBoundingClientRect();
+            data.naturalTop = rect.top + window.scrollY;
+          });
+          
+          // First pass: determine top-sticky headers
+          let topStickCount = 0;
+          headerData.forEach((data) => {
+            const topThreshold = viewportTop + (topStickCount * HEADER_HEIGHT);
+            if (data.naturalTop < topThreshold) {
+              data.newStickState = 'top';
+              topStickCount++;
+            } else {
+              data.newStickState = 'none';
+            }
+          });
+          
+          // Second pass: determine bottom-sticky headers (from bottom up)
+          // Calculate available viewport space after top sticky headers
+          const availableTop = viewportTop + (topStickCount * HEADER_HEIGHT);
+          let bottomStickCount = 0;
+          
+          for (let i = headerData.length - 1; i >= 0; i--) {
+            const data = headerData[i];
+            if (data.newStickState === 'top') continue; // Already top-sticky
+            
+            // Bottom threshold: where this header's slot would be
+            const bottomThreshold = viewportBottom - ((bottomStickCount + 1) * HEADER_HEIGHT);
+            
+            // If header's natural position overlaps with bottom sticky zone, make it sticky
+            if (data.naturalTop >= bottomThreshold) {
+              data.newStickState = 'bottom';
+              bottomStickCount++;
+            }
+          }
+          
+          // Apply positions
+          let currentTopOffset = 0;
+          let currentBottomOffset = 0;
+          
+          // Apply top sticky headers (in order)
+          headerData.forEach((data) => {
+            if (data.newStickState === 'top') {
+              data.el.style.position = 'fixed';
+              data.el.style.top = currentTopOffset + 'px';
+              data.el.style.bottom = 'auto';
+              data.el.style.left = '0';
+              data.el.style.right = '0';
+              data.el.style.zIndex = 100 - data.order;
+              data.placeholder.style.display = 'block';
+              currentTopOffset += HEADER_HEIGHT;
+            }
+          });
+          
+          // Apply bottom sticky headers (in reverse order for stacking)
+          for (let i = headerData.length - 1; i >= 0; i--) {
+            const data = headerData[i];
+            if (data.newStickState === 'bottom') {
+              data.el.style.position = 'fixed';
+              data.el.style.top = 'auto';
+              data.el.style.bottom = currentBottomOffset + 'px';
+              data.el.style.left = '0';
+              data.el.style.right = '0';
+              data.el.style.zIndex = 100 - (headerData.length - 1 - i);
+              data.placeholder.style.display = 'block';
+              currentBottomOffset += HEADER_HEIGHT;
+            }
+          }
+        }
+
+        // Run on scroll and resize
+        window.addEventListener('scroll', updateStickyHeaders, { passive: true });
+        window.addEventListener('resize', updateStickyHeaders, { passive: true });
+        
+        // Initial calls - ensure layout is computed after images load
+        updateStickyHeaders();
+        requestAnimationFrame(updateStickyHeaders);
+        
+        // Also run after all resources (images) are loaded
+        window.addEventListener('load', () => {
+          // Scroll to center the focus section
+          const focalHeader = document.querySelector('.depth-header--focal');
+          if (focalHeader) {
+            const focalRect = focalHeader.getBoundingClientRect();
+            const focalTop = focalRect.top + window.scrollY;
+            const viewportHeight = window.innerHeight;
+            const targetScroll = focalTop - (viewportHeight / 2) + (HEADER_HEIGHT / 2);
+            window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'instant' });
+          }
+          
+          // Update sticky headers after scroll
+          setTimeout(updateStickyHeaders, 10);
+          setTimeout(updateStickyHeaders, 50);
+          setTimeout(updateStickyHeaders, 100);
+        });
+
+        // Depth header click to scroll
+        headers.forEach((header, index) => {
+          header.addEventListener('click', () => {
+            const topOffset = index * HEADER_HEIGHT;
+            const section = header.nextElementSibling;
+            if (section && section.classList.contains('depth-content')) {
+              const sectionRect = section.getBoundingClientRect();
+              const targetPosition = sectionRect.top + window.scrollY - topOffset - HEADER_HEIGHT;
+              window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+            }
+          });
+        });
+
+        // Group collapse toggle
+        document.querySelectorAll('.group-header').forEach(groupHeader => {
+          groupHeader.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const group = groupHeader.closest('.object-group');
+            group.classList.toggle('collapsed');
+            // Update sticky headers after collapse animation
+            setTimeout(updateStickyHeaders, 50);
+            setTimeout(updateStickyHeaders, 150);
+            setTimeout(updateStickyHeaders, 300);
+          });
+        });
+
+        // Hover highlighting for connected objects
+        const allItems = document.querySelectorAll('.group-list li');
+        
+        // Build a map of object names to their elements
+        const objectMap = new Map();
+        allItems.forEach(item => {
+          const nameEl = item.querySelector('.object-name');
+          if (nameEl) {
+            const name = nameEl.textContent.trim().toLowerCase();
+            if (!objectMap.has(name)) {
+              objectMap.set(name, []);
+            }
+            objectMap.get(name).push(item);
+          }
+        });
+
+        // Get depth level of an item
+        function getDepthRow(item) {
+          const depthContent = item.closest('.depth-content');
+          return depthContent ? parseInt(depthContent.dataset.row) : null;
+        }
+
+        // Find connected objects with direction
+        function getConnectedObjects(item) {
+          const upstream = []; // -1 level (connection tags highlight)
+          const downstream = []; // +1 level (object name highlights)
+          const currentRow = getDepthRow(item);
+          const currentName = item.querySelector('.object-name')?.textContent.trim().toLowerCase();
+          
+          // Get objects referenced in this item's connection tags
+          const connectionTags = item.querySelectorAll('.connection-tag');
+          connectionTags.forEach(tag => {
+            const refName = tag.textContent.trim().toLowerCase();
+            const refItems = objectMap.get(refName) || [];
+            refItems.forEach(refItem => {
+              const refRow = getDepthRow(refItem);
+              if (refRow === currentRow - 1) {
+                upstream.push(refItem);
+              } else if (refRow === currentRow + 1) {
+                downstream.push(refItem);
+              }
+            });
+          });
+          
+          // Find objects that reference this item
+          allItems.forEach(otherItem => {
+            const otherRow = getDepthRow(otherItem);
+            const otherTags = otherItem.querySelectorAll('.connection-tag');
+            otherTags.forEach(tag => {
+              if (tag.textContent.trim().toLowerCase() === currentName) {
+                if (otherRow === currentRow - 1) {
+                  upstream.push(otherItem);
+                } else if (otherRow === currentRow + 1) {
+                  downstream.push(otherItem);
+                }
+              }
+            });
+          });
+          
+          return { upstream, downstream };
+        }
+
+        // Add hover listeners
+        allItems.forEach(item => {
+          item.addEventListener('mouseenter', () => {
+            // Highlight current row's connection tags
+            item.classList.add('highlight-current');
+            
+            // Get connected objects
+            const { upstream, downstream } = getConnectedObjects(item);
+            
+            // Highlight upstream (-1) objects - their connection tags
+            upstream.forEach(upItem => {
+              upItem.classList.add('highlight-upstream');
+            });
+            
+            // Highlight downstream (+1) objects - their object names
+            downstream.forEach(downItem => {
+              downItem.classList.add('highlight-downstream');
+            });
+          });
+          
+          item.addEventListener('mouseleave', () => {
+            item.classList.remove('highlight-current');
+            document.querySelectorAll('.highlight-upstream').forEach(el => {
+              el.classList.remove('highlight-upstream');
+            });
+            document.querySelectorAll('.highlight-downstream').forEach(el => {
+              el.classList.remove('highlight-downstream');
+            });
+          });
+        });
+
+        // Click on connection-tag to scroll to corresponding node
+        document.querySelectorAll('.connection-tag').forEach(tag => {
+          tag.style.cursor = 'pointer';
+          tag.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const refName = tag.textContent.trim().toLowerCase();
+            const refItems = objectMap.get(refName) || [];
+            
+            if (refItems.length > 0) {
+              const targetItem = refItems[0];
+              
+              // Expand parent group if collapsed
+              const parentGroup = targetItem.closest('.object-group');
+              if (parentGroup && parentGroup.classList.contains('collapsed')) {
+                parentGroup.classList.toggle('collapsed');
+                setTimeout(() => scrollToItem(targetItem), 100);
+              } else {
+                scrollToItem(targetItem);
+              }
+            }
+          });
+        });
+
+        function scrollToItem(targetItem) {
+          // Calculate scroll position accounting for sticky headers
+          const rect = targetItem.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          const targetScroll = rect.top + window.scrollY - (viewportHeight / 2) + 16;
+          
+          window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+          
+          // Briefly highlight the target
+          targetItem.style.transition = 'background 0.3s';
+          targetItem.style.background = 'hsla(217, 13%, 94%, 1)';
+          setTimeout(() => {
+            targetItem.style.background = '';
+            setTimeout(() => {
+              targetItem.style.transition = '';
+            }, 300);
+          }, 1000);
+        }
+      });
+    </script>
+
+    <section class="lineage-table" aria-label="Lineage list">
+      <!-- Upstream Level 3 (furthest) - Row 1 -->
+      <div class="depth-header" data-row="1" data-order="0">
+        <span class="depth-badge depth-badge--upstream">−3</span>
+        
+      </div>
+      <div class="depth-content" data-row="1">
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/api.svg" alt="API">
+            <span class="group-name">External APIs</span>
+            <span class="group-count">6</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="API">
+                <span class="object-name">Shopify Orders API</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">orders</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="API">
+                <span class="object-name">Stripe Payments API</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">payments</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="API">
+                <span class="object-name">Salesforce CRM</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">customers</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="API">
+                <span class="object-name">Google Analytics 4</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">ga_sessions</span>
+                <span class="connection-tag">ga_events</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="API">
+                <span class="object-name">Facebook Ads API</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">ad_spend</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="API">
+                <span class="object-name">Mixpanel Events</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">product_events</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Upstream Level 2 - Row 2 -->
+      <div class="depth-header" data-row="2" data-order="1">
+        <span class="depth-badge depth-badge--upstream">−2</span>
+        
+      </div>
+      <div class="depth-content" data-row="2">
+        <!-- Snowflake: RAW_ECOMMERCE -->
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
+            <span class="group-name">ACME_PROD / RAW_DB / RAW_ECOMMERCE</span>
+            <span class="group-count">3</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">orders</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">stg_orders</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">payments</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">stg_payments</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">customers</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">stg_customers</span>
+                <span class="connection-tag">stg_orders</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Snowflake: RAW_MARKETING -->
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
+            <span class="group-name">ACME_PROD / RAW_DB / RAW_MARKETING</span>
+            <span class="group-count">4</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">ga_sessions</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">stg_sessions</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">ga_events</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">stg_web_events</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">ad_spend</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">stg_ad_spend</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">product_events</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">stg_web_events</span>
+                <span class="connection-tag">stg_sessions</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Upstream Level 1 - Row 3 -->
+      <div class="depth-header" data-row="3" data-order="2">
+        <span class="depth-badge depth-badge--upstream">−1</span>
+        
+      </div>
+      <div class="depth-content" data-row="3">
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
+            <span class="group-name">ACME_PROD / TRANSFORM_DB / STAGING</span>
+            <span class="group-count">6</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/view.svg" alt="View">
+                <span class="object-name">stg_orders</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--blue">orders</span>
+                <span class="connection-tag tag--blue">customers</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/view.svg" alt="View">
+                <span class="object-name">stg_payments</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--blue">payments</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/view.svg" alt="View">
+                <span class="object-name">stg_customers</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--blue">customers</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/view.svg" alt="View">
+                <span class="object-name">stg_sessions</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--green">ga_sessions</span>
+                <span class="connection-tag tag--green">product_events</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/view.svg" alt="View">
+                <span class="object-name">stg_web_events</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--green">ga_events</span>
+                <span class="connection-tag tag--green">product_events</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/view.svg" alt="View">
+                <span class="object-name">stg_ad_spend</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--green">ad_spend</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Focal object - Row 4 -->
+      <div class="depth-header depth-header--focal" data-row="4" data-order="3">
+        <span class="depth-badge depth-badge--focal">0</span>
+        
+      </div>
+      <div class="depth-content depth-content--focal" data-row="4">
+        <div class="object-group">
+          <div class="group-header group-header--focal">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
+            <span class="group-name">ACME_ANALYTICS / ANALYTICS_DB / ANALYTICS</span>
+            <span class="group-count">1</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/dataset.svg" alt="Dataset">
+                <span class="object-name">fct_customer_orders</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--gray">stg_orders</span>
+                <span class="connection-tag tag--gray">stg_payments</span>
+                <span class="connection-tag tag--gray">stg_customers</span>
+                <span class="connection-tag tag--gray">stg_sessions</span>
+                <span class="connection-tag tag--gray">stg_web_events</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Downstream Level 1 - Row 5 -->
+      <div class="depth-header" data-row="5" data-order="4">
+        <span class="depth-badge depth-badge--downstream">+1</span>
+        
+      </div>
+      <div class="depth-content" data-row="5">
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
+            <span class="group-name">ACME_ANALYTICS / ANALYTICS_DB / MARTS</span>
+            <span class="group-count">4</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">dim_customers</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">Customer 360</span>
+                <span class="connection-tag">churn_model</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">fct_daily_revenue</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">Exec Dashboard</span>
+                <span class="connection-tag">Finance Report</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">fct_attribution</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">Marketing ROI</span>
+                <span class="connection-tag">attribution_model</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/table.svg" alt="Table">
+                <span class="object-name">user_journey_agg</span>
+              </div>
+              <div class="connections connections--downstream">
+                <span class="connection-tag">Product Analytics</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Downstream Level 2 - Row 6 -->
+      <div class="depth-header" data-row="6" data-order="5">
+        <span class="depth-badge depth-badge--downstream">+2</span>
+        
+      </div>
+      <div class="depth-content" data-row="6">
+        <!-- Tableau -->
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/logo-tableau.svg" alt="Tableau">
+            <span class="group-name">Tableau</span>
+            <span class="group-count">1</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/dashboard.svg" alt="Dashboard">
+                <span class="object-name">Exec Revenue Dashboard</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--purple">fct_daily_revenue</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Looker -->
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/logo-looker.svg" alt="Looker">
+            <span class="group-name">Looker</span>
+            <span class="group-count">2</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/dashboard.svg" alt="Dashboard">
+                <span class="object-name">Customer 360 Dashboard</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--purple">dim_customers</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/dashboard.svg" alt="Dashboard">
+                <span class="object-name">Marketing ROI Dashboard</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--purple">fct_attribution</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- ML Models -->
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/model.svg" alt="Model">
+            <span class="group-name">ML Models</span>
+            <span class="group-count">2</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/model.svg" alt="Model">
+                <span class="object-name">churn_prediction_model</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--purple">dim_customers</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/model.svg" alt="Model">
+                <span class="object-name">attribution_model</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag tag--purple">fct_attribution</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Downstream Level 3 - Row 7 -->
+      <div class="depth-header" data-row="7" data-order="6">
+        <span class="depth-badge depth-badge--downstream">+3</span>
+        
+      </div>
+      <div class="depth-content" data-row="7">
+        <div class="object-group">
+          <div class="group-header">
+            <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+            <img class="group-icon" src="./img/api.svg" alt="Export">
+            <span class="group-name">Exports</span>
+            <span class="group-count">2</span>
+          </div>
+          <ul class="group-list">
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="Email">
+                <span class="object-name">Finance Weekly Report</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag">Exec Dashboard</span>
+              </div>
+            </li>
+            <li>
+              <div class="object-info">
+                <img class="object-icon" src="./img/api.svg" alt="Export">
+                <span class="object-name">Investor Data Room</span>
+              </div>
+              <div class="connections connections--upstream">
+                <span class="connection-tag">Exec Dashboard</span>
+                <span class="connection-tag">Customer 360</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

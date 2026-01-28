@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Explorer - Lineage View</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+      background: #e2e8f0;
+    }
+
+    /* Icon Bar (Left) */
+    .icon-bar {
+      width: 56px;
+      background: #ffffff;
+      /* border-right: 1px solid #e2e8f0; */
+      flex-shrink: 0;
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+      width: 320px;
+      background: #ffffff;
+      border-right: 1px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+
+    /* Main Content Area */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      /* gap: 1px; */
+      background: #fff;
+      padding: 24px
+    }
+
+    .main-header {
+      background: #ffffff;
+      height: 100px;
+      flex-shrink: 0;
+    }
+
+    .tabs {
+      background: #ffffff;
+      height: 44px;
+      flex-shrink: 0;
+    }
+
+    .toolbar {
+      background: #ffffff;
+      height: 48px;
+      flex-shrink: 0;
+    }
+
+    .content-area {
+      flex: 1;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .content-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* Right Panel */
+    .right-panel {
+      width: 300px;
+      background: #ffffff;
+      border-left: 1px solid #e2e8f0;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Icon Bar -->
+  <div class="icon-bar"></div>
+
+  <!-- Left Sidebar -->
+  <div class="sidebar"></div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="main-header"></div>
+    <div class="tabs"></div>
+    <div class="toolbar"></div>
+    <div class="content-area">
+      <iframe class="content-iframe" src="./index.html"></iframe>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel"></div>
+</body>
+</html>

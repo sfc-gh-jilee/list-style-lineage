@@ -1,0 +1,519 @@
+/* ===========================================
+   Lineage List - Funnel UI Prototype
+   All styles in a single file
+   =========================================== */
+
+/* Base Reset */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: #1f2937;
+  background: #ffffff;
+}
+
+/* ===========================================
+   Main Container
+   =========================================== */
+.lineage-table {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===========================================
+   Sticky Positioning (handled by JavaScript)
+   =========================================== */
+
+/* Placeholder for sticky headers */
+.depth-header-placeholder {
+  flex-shrink: 0;
+}
+
+/* Sticky header state (applied via JS) */
+.depth-header[style*="position: fixed"] {
+  width: 100%;
+  border-bottom: 1px solid #e2e8f0;
+  /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
+}
+
+/* Border for sticky headers */
+.depth-header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* ===========================================
+   Depth Headers (Layer Bars)
+   =========================================== */
+.depth-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px;
+  height: 28px;
+  background: #fff;
+  flex-shrink: 0;
+  cursor: pointer;
+  /* transition: background 0.15s; */
+  box-sizing: border-box;
+}
+
+.depth-header:hover {
+  background: hsla(217, 13%, 94%, 1);
+}
+
+/* Row-based indentation */
+/* .depth-header[data-row="1"] { padding-left: 16px; }
+.depth-header[data-row="2"] { padding-left: 40px; }
+.depth-header[data-row="3"] { padding-left: 64px; }
+.depth-header[data-row="4"] { padding-left: 88px; }
+.depth-header[data-row="5"] { padding-left: 112px; }
+.depth-header[data-row="6"] { padding-left: 136px; }
+.depth-header[data-row="7"] { padding-left: 160px; } */
+
+/* Depth Badge (Number) */
+.depth-badge {
+  font-size: 12px;
+  line-height: 16px;
+  height: 16px;
+  font-weight: 400;
+  /* font-family: "SF Mono", "Consolas", monospace; */
+  padding: 0 6px;
+  border-radius: 4px;
+  /* min-width: 32px; */
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.depth-badge--upstream {
+  /* background: #dbeafe; */
+  /* color: #1d4ed8; */
+  /* background: #e2e8f0; */
+  color: hsla(221, 18%, 44%, 1);
+}
+
+.depth-badge--downstream {
+  /* background: #f5d0fe; */
+  /* color: #a21caf; */
+  /* background: #e2e8f0; */
+  color: hsla(221, 18%, 44%, 1);
+}
+
+.depth-badge--focal {
+  /* background: #3b82f6; */
+  /* color: #ffffff; */
+  background: hsla(216, 93%, 44%, 1);
+  color: #ffffff;
+}
+
+/* Focal Header */
+.depth-header--focal {
+  /* background: hsla(217, 100%, 92%, 1); */
+  border-top-color: #e2e8f0;
+}
+
+.depth-header--focal:hover {
+  background: hsla(217, 13%, 94%, 1);
+}
+
+/* ===========================================
+   Depth Content Container
+   =========================================== */
+.depth-content {
+  background: #ffffff;
+  margin-bottom: 8px;
+}
+
+.depth-content--focal {
+  background: #ffffff;
+}
+
+/* Row-based indentation */
+.depth-content[data-row="1"] { padding-left: 0px; }
+.depth-content[data-row="2"] { padding-left: 20px; }
+.depth-content[data-row="3"] { padding-left: 40px; }
+.depth-content[data-row="4"] { padding-left: 60px; }
+.depth-content[data-row="5"] { padding-left: 80px; }
+.depth-content[data-row="6"] { padding-left: 100px; }
+.depth-content[data-row="7"] { padding-left: 120px; }
+
+/* ===========================================
+   Collapsible Object Groups
+   =========================================== */
+.object-group {
+  /* border-top: 1px solid #e2e8f0; */
+  position: relative;
+}
+
+.depth-content--focal .object-group {
+  border-top-color: #334155;
+}
+
+/* Group Header */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  height: 32px;
+  cursor: pointer;
+  /* transition: background 0.15s; */
+  user-select: none;
+}
+
+.group-header:hover {
+  background: hsla(217, 13%, 94%, 1);
+}
+
+.group-header--focal {
+  /* background: #fafbfc; */
+}
+
+.group-header--focal:hover {
+  background: hsla(217, 13%, 94%, 1);
+}
+
+/* Chevron Toggle */
+.chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  object-fit: contain;
+  filter: invert(43%) sepia(12%) saturate(749%) hue-rotate(186deg) brightness(93%) contrast(89%);
+}
+
+.object-group.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+.object-group:not(.collapsed) .chevron {
+  transform: rotate(0deg);
+}
+
+/* Group Icon */
+.group-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* Non-logo icons use gray color */
+img.group-icon:not([src*="logo-"]) {
+  filter: invert(43%) sepia(12%) saturate(749%) hue-rotate(186deg) brightness(93%) contrast(89%);
+}
+
+/* Group Name */
+.group-name {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+.group-header--focal .group-name {
+  color: hsla(221, 18%, 44%, 1);
+}
+
+/* Group Count Badge */
+.group-count {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: hsla(221, 18%, 44%, 1);
+  background: #eff1f4;
+  padding: 0 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  height: 16px;
+}
+
+.group-header--focal .group-count {
+  background: #e2e8f0;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+/* ===========================================
+   Group List (Items)
+   =========================================== */
+.group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  padding-left: 20px;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.2s;
+  position: relative;
+}
+
+/* Vertical line */
+.group-list::before {
+  content: '';
+  position: absolute;
+  left: 19px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #e2e8f0;
+}
+
+.object-group.collapsed .group-list {
+  max-height: 0;
+  opacity: 0;
+}
+
+.object-group:not(.collapsed) .group-list {
+  max-height: 2000px;
+  opacity: 1;
+}
+
+.group-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  padding-left: 12px;
+  height: 32px;
+  /* border-top: 1px solid #f1f5f9; */
+  background: #ffffff;
+  /* transition: background 0.15s; */
+}
+
+.group-list li:hover {
+  background: hsla(217, 13%, 94%, 1);
+}
+
+/* Connected object highlight (on hover) */
+/* Highlight connection tags in upstream (-1) nodes */
+.group-list li.highlight-upstream .connection-tag {
+  color: #1A6CE7;
+}
+.group-list li.highlight-upstream .connections::before {
+  filter: invert(35%) sepia(98%) saturate(1500%) hue-rotate(200deg) brightness(95%) contrast(95%);
+}
+
+/* Highlight object name in downstream (+1) nodes */
+.group-list li.highlight-downstream .object-name {
+  color: #1A6CE7;
+}
+
+/* Highlight connection tags in the hovered row */
+.group-list li.highlight-current .connection-tag {
+  color: #1A6CE7;
+}
+.group-list li.highlight-current .connections::before {
+  filter: invert(35%) sepia(98%) saturate(1500%) hue-rotate(200deg) brightness(95%) contrast(95%);
+}
+
+/* Focal List */
+.depth-content--focal .group-list::before {
+  background: #e2e8f0;
+}
+
+/* Selected object highlight (neutralized) */
+.depth-content--focal .group-list li {
+  /* background: #eff6ff; */
+  /* border-top-color: #dbeafe; */
+  background: hsla(217, 100%, 92%, 1);
+  border-top-color: #e2e8f0;
+}
+
+.depth-content--focal .group-list li:hover {
+  /* background: #dbeafe; */
+  background: hsla(217, 13%, 94%, 1);
+}
+
+.depth-content--focal .object-name {
+  /* color: #1e40af; */
+  color: hsla(215, 22%, 15%, 1);
+}
+
+/* ===========================================
+   Object Info
+   =========================================== */
+.object-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.object-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: invert(43%) sepia(12%) saturate(749%) hue-rotate(186deg) brightness(93%) contrast(89%);
+}
+
+.object-name {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: #1e293b;
+  text-transform: uppercase;
+}
+
+/* ===========================================
+   Connections (Lineage References)
+   =========================================== */
+.connections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  max-width: 288px;
+  overflow: hidden;
+  height: 16px;
+  justify-content: end;
+}
+
+/* Arrow indicators */
+.connections::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: invert(43%) sepia(12%) saturate(749%) hue-rotate(186deg) brightness(93%) contrast(89%);
+}
+
+.connections--downstream::before {
+  background-image: url('./img/arrow-right.svg');
+}
+
+.connections--upstream::before {
+  background-image: url('./img/arrow-left.svg');
+}
+
+.connection-tag {
+  font-size: 12px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 4px;
+  /* background: #f1f5f9; */
+  color: hsla(221, 18%, 44%, 1);
+  /* border: 1px solid #e2e8f0; */
+  text-transform: uppercase;
+}
+
+.connections--upstream .connection-tag {
+  /* background: #eff6ff; */
+  /* border-color: #dbeafe; */
+  /* color: #1d4ed8; */
+  /* background: #f1f5f9; */
+  border-color: #e2e8f0;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+.connections--downstream .connection-tag {
+  /* background: #fdf4ff; */
+  /* border-color: #f5d0fe; */
+  /* color: #a21caf; */
+  /* background: #f1f5f9; */
+  border-color: #e2e8f0;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+/* Schema-colored Tags (neutralized) */
+.connection-tag.tag--blue {
+  /* background: #dbeafe; */
+  /* border-color: #bfdbfe; */
+  /* color: #1e40af; */
+  /* background: #f1f5f9; */
+  border-color: #e2e8f0;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+.connection-tag.tag--green {
+  /* background: #dcfce7; */
+  /* border-color: #bbf7d0; */
+  /* color: #166534; */
+  /* background: #f1f5f9; */
+  border-color: #e2e8f0;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+.connection-tag.tag--purple {
+  /* background: #f3e8ff; */
+  /* border-color: #e9d5ff; */
+  /* color: #6b21a8; */
+  /* background: #f1f5f9; */
+  border-color: #e2e8f0;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+.connection-tag.tag--gray {
+  /* background: #f1f5f9; */
+  border-color: #e2e8f0;
+  color: hsla(221, 18%, 44%, 1);
+}
+
+/* ===========================================
+   Responsive - Tablet
+   =========================================== */
+@media (max-width: 600px) {
+  .group-list li {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .connections {
+    grid-column: 1;
+  }
+
+  /* Reduce indentation */
+  /* .depth-header[data-row="1"] { padding-left: 8px; }
+  .depth-header[data-row="2"] { padding-left: 24px; }
+  .depth-header[data-row="3"] { padding-left: 40px; }
+  .depth-header[data-row="4"] { padding-left: 56px; }
+  .depth-header[data-row="5"] { padding-left: 72px; }
+  .depth-header[data-row="6"] { padding-left: 88px; }
+  .depth-header[data-row="7"] { padding-left: 104px; } */
+
+  .depth-content[data-row="1"] { padding-left: 0px; }
+  .depth-content[data-row="2"] { padding-left: 16px; }
+  .depth-content[data-row="3"] { padding-left: 32px; }
+  .depth-content[data-row="4"] { padding-left: 48px; }
+  .depth-content[data-row="5"] { padding-left: 64px; }
+  .depth-content[data-row="6"] { padding-left: 80px; }
+  .depth-content[data-row="7"] { padding-left: 96px; }
+
+  .depth-header {
+    flex-wrap: wrap;
+  }
+}
+
+/* ===========================================
+   Responsive - Mobile
+   =========================================== */
+@media (max-width: 600px) {
+  /* Minimal indentation */
+  /* .depth-header[data-row="1"] { padding-left: 12px; }
+  .depth-header[data-row="2"] { padding-left: 20px; }
+  .depth-header[data-row="3"] { padding-left: 28px; }
+  .depth-header[data-row="4"] { padding-left: 36px; }
+  .depth-header[data-row="5"] { padding-left: 44px; }
+  .depth-header[data-row="6"] { padding-left: 52px; }
+  .depth-header[data-row="7"] { padding-left: 60px; } */
+
+  .depth-content[data-row="1"] { padding-left: 0px; }
+  .depth-content[data-row="2"] { padding-left: 8px; }
+  .depth-content[data-row="3"] { padding-left: 16px; }
+  .depth-content[data-row="4"] { padding-left: 24px; }
+  .depth-content[data-row="5"] { padding-left: 32px; }
+  .depth-content[data-row="6"] { padding-left: 40px; }
+  .depth-content[data-row="7"] { padding-left: 48px; }
+}
