@@ -262,24 +262,45 @@
           });
         });
 
-        function scrollToItem(targetItem) {
-          if (!scrollContainer) return;
+        function scrollToItem(targetItem, highlight = true) {
+          if (!scrollContainer || !targetItem) return;
           const targetTop = getOffsetInContainer(targetItem);
           const containerHeight = scrollContainer.clientHeight;
           const targetScroll = targetTop - (containerHeight / 2) + 16;
           
           scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
           
-          // Briefly highlight the target
-          targetItem.style.transition = 'background 0.3s';
-          targetItem.style.background = 'hsla(217, 13%, 94%, 1)';
-          setTimeout(() => {
-            targetItem.style.background = '';
+          // Briefly highlight the target (optional)
+          if (highlight) {
+            targetItem.style.transition = 'background 0.3s';
+            targetItem.style.background = 'hsla(217, 13%, 94%, 1)';
             setTimeout(() => {
-              targetItem.style.transition = '';
-            }, 300);
-          }, 1000);
+              targetItem.style.background = '';
+              setTimeout(() => {
+                targetItem.style.transition = '';
+              }, 300);
+            }, 1000);
+          }
         }
+
+        // Global function to center list view on focused/selected item
+        window.centerListOnSelected = function() {
+          // First try to find selected item
+          const selectedItem = document.querySelector('.group-list li.selected');
+          if (selectedItem) {
+            scrollToItem(selectedItem, false);
+            return;
+          }
+          
+          // Fall back to focal item (in the focal depth section)
+          const focalSection = document.querySelector('.depth-content--focal');
+          if (focalSection) {
+            const focalItem = focalSection.querySelector('.group-list li');
+            if (focalItem) {
+              scrollToItem(focalItem, false);
+            }
+          }
+        };
 
         // Object selection and side panel
         const sidePanel = document.getElementById('sidePanel');
@@ -389,6 +410,39 @@
           });
         });
 
+        // Listen for selection changes from graph view to update list view
+        window.sharedSelection.addListener((itemId, itemData) => {
+          if (!itemId) {
+            // Clear selection in list view
+            if (selectedListItem) {
+              selectedListItem.classList.remove('selected');
+              selectedListItem = null;
+            }
+            return;
+          }
+          
+          // Find and select the item in the list view
+          const listItems = document.querySelectorAll('.group-list li');
+          listItems.forEach(li => {
+            const nameSpan = li.querySelector('.object-name');
+            if (nameSpan && itemData && nameSpan.textContent.toLowerCase() === itemData.name?.toLowerCase()) {
+              // Deselect previous
+              if (selectedListItem) {
+                selectedListItem.classList.remove('selected');
+              }
+              // Select new
+              li.classList.add('selected');
+              selectedListItem = li;
+              
+              // Scroll to the selected item if list view is visible
+              const lineageScroll = document.querySelector('.lineage-scroll');
+              if (lineageScroll && lineageScroll.style.display !== 'none') {
+                scrollToItem(li, false);
+              }
+            }
+          });
+        });
+
         // Close panel
         panelClose.addEventListener('click', () => {
           window.sharedSelection.clearSelection();
@@ -434,6 +488,13 @@
               viewPanel.classList.remove('graph-mode');
               lineageScroll.style.display = 'block';
               lineageGraph.style.display = 'none';
+              
+              // Center on selected/focal item when switching to list view
+              setTimeout(() => {
+                if (window.centerListOnSelected) {
+                  window.centerListOnSelected();
+                }
+              }, 100);
             }
           });
         });
@@ -442,13 +503,13 @@
 
     <div class="main-layout">
 
-      <div class="view-panel">
+      <div class="view-panel graph-mode">
 
         <div class="tool-bar">
           <div class="toolbar-left">
             <div class="view-toggle">
-              <button class="toggle-btn">Graph</button>
-              <button class="toggle-btn active">List</button>
+              <button class="toggle-btn active">Graph</button>
+              <button class="toggle-btn">List</button>
             </div>
             <button class="toolbar-btn">
               <img src="./img/filter.svg" alt="" width="16" height="16">
@@ -469,7 +530,7 @@
           </div>
         </div>
 
-        <div class="lineage-scroll">
+        <div class="lineage-scroll" style="display: none;">
           <section class="lineage-table" aria-label="Lineage list">
             <!-- Upstream Level 3 (furthest) - Row 1 -->
             <div class="depth-header" data-row="1" data-order="0">
@@ -930,7 +991,7 @@
           </section>    
         </div>
 
-        <div class="lineage-graph" id="lineage-graph-container">
+        <div class="lineage-graph" id="lineage-graph-container" style="display: block;">
         </div>
       
       </div>
@@ -1647,6 +1708,28 @@
             }
           }
         }, [reactFlowInstance]);
+
+        // Center on focal node when ReactFlow initializes
+        const onInit = useCallback((instance) => {
+          console.log('ReactFlow onInit called');
+          setTimeout(() => {
+            const allNodes = instance.getNodes();
+            const focalNode = allNodes.find(n => 
+              n.data.isFocal || 
+              n.data.hasFocal || 
+              n.data.items?.some(item => item.isFocal)
+            );
+            
+            console.log('onInit - focalNode:', focalNode);
+            
+            if (focalNode) {
+              const x = focalNode.position.x + (focalNode.data.width || 304) / 2;
+              const y = focalNode.position.y + (focalNode.data.height || 100) / 2;
+              console.log('onInit - centering to:', { x, y });
+              instance.setCenter(x, y, { zoom: 0.9, duration: 0 });
+            }
+          }, 100);
+        }, []);
         
         // Listen for selection changes from list view
         useEffect(() => {
@@ -1704,24 +1787,6 @@
               setNodes(layoutedNodes);
               setEdges(initialEdges);
               
-              // Center on focal node after rendering
-              setTimeout(() => {
-                const focalNode = layoutedNodes.find(n => n.data.isFocal);
-                if (focalNode && reactFlowInstance) {
-                  // Get container dimensions
-                  const rfWrapper = document.querySelector('.react-flow');
-                  const containerWidth = rfWrapper?.clientWidth || 800;
-                  const containerHeight = rfWrapper?.clientHeight || 600;
-                  
-                  // Calculate center viewport
-                  const nodeWidth = focalNode.data.width || 304;
-                  const nodeHeight = focalNode.data.height || 60;
-                  const x = -(focalNode.position.x) + (containerWidth / 2) - (nodeWidth / 2);
-                  const y = -(focalNode.position.y) + (containerHeight / 2) - (nodeHeight / 2);
-                  
-                  reactFlowInstance.setViewport({ x, y, zoom: 1 }, { duration: 0 });
-                }
-              }, 100);
             } catch (error) {
               console.error('Layout error:', error);
               setNodes(initialNodes);
@@ -1795,8 +1860,9 @@
           edges,
           onNodesChange,
           onEdgesChange,
+          onInit,
           nodeTypes,
-          defaultViewport: { x: 0, y: 0, zoom: 1 },
+          defaultViewport: { x: 0, y: 0, zoom: 0.9 },
           minZoom: 0.1,
           maxZoom: 2,
           defaultEdgeOptions: {

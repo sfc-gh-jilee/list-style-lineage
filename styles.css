@@ -235,9 +235,9 @@ body {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  background: var(--Primitives-Level-2-background, #FBFBFB);
+  border: 1px solid var(--Reusable-Border, #D5DAE4);
+  border-radius: var(--Large, 16px);
   font-size: 11px;
   color: #475569;
 }
