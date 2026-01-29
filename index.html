@@ -1304,7 +1304,11 @@
         onChildHover,
         listHeight,
         isFeatureList,
-        nodeId
+        nodeId,
+        itemId,
+        columnLineageMode,
+        sourceColumn,
+        relatedColumns
       }) {
         // Filter children by search query
         const filteredChildren = (children || []).filter(child => {
@@ -1313,10 +1317,22 @@
           return child.name.toLowerCase().includes(query) || 
                  (child.type && child.type.toLowerCase().includes(query));
         });
+        
+        // Determine if a child is the source column or a related column
+        const getColumnLineageClass = (childName) => {
+          if (!columnLineageMode) return '';
+          if (sourceColumn?.itemId === itemId && sourceColumn?.columnName === childName) {
+            return 'column-lineage-source';
+          }
+          if (relatedColumns?.has?.(itemId) && relatedColumns.get(itemId).has(childName)) {
+            return 'column-lineage-related';
+          }
+          return '';
+        };
 
         return React.createElement('div', { className: 'graph-children-section' },
-          // Search input
-          React.createElement('div', { className: 'graph-children-search' },
+          // Search input (hide in lineage mode)
+          !columnLineageMode && React.createElement('div', { className: 'graph-children-search' },
             React.createElement('input', {
               type: 'text',
               className: 'graph-children-search-input',
@@ -1345,9 +1361,12 @@
                 )
               : filteredChildren.map((child, index) => {
                   const isSelected = selectedChildren?.has?.(child.name);
+                  const lineageClass = getColumnLineageClass(child.name);
+                  const showHandles = lineageClass !== '';
+                  
                   return React.createElement('div', {
                     key: child.name + '-' + index,
-                    className: `graph-child-item ${isSelected ? 'selected' : ''}`,
+                    className: `graph-child-item ${isSelected ? 'selected' : ''} ${lineageClass}`,
                     onClick: (e) => {
                       e.stopPropagation();
                       onChildClick?.(child.name);
@@ -1355,6 +1374,23 @@
                     onMouseEnter: () => onChildHover?.(child.name),
                     onMouseLeave: () => onChildHover?.(null)
                   },
+                    // Left handle for column input (target)
+                    showHandles && React.createElement(Handle, {
+                      type: 'target',
+                      position: Position.Left,
+                      id: `column-in-${itemId}-${child.name}`,
+                      className: 'column-handle-left',
+                      style: { 
+                        left: -4,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 8,
+                        height: 8,
+                        background: '#1A6CE7',
+                        border: '2px solid #FFF',
+                        opacity: 0
+                      }
+                    }),
                     // Type icon
                     React.createElement(ColumnTypeIcon, { type: child.type }),
                     // Name
@@ -1374,6 +1410,27 @@
                         style: { width: `${child.importance * 100}%` }
                       })
                     ),
+                    // Type label (optional, hide for lineage mode)
+                    !child.importance && !lineageClass && React.createElement('span', { 
+                      className: 'graph-child-type' 
+                    }, child.type),
+                    // Right handle for column output (source)
+                    showHandles && React.createElement(Handle, {
+                      type: 'source',
+                      position: Position.Right,
+                      id: `column-out-${itemId}-${child.name}`,
+                      className: 'column-handle-right',
+                      style: { 
+                        right: -4,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 8,
+                        height: 8,
+                        background: '#1A6CE7',
+                        border: '2px solid #FFF',
+                        opacity: 0
+                      }
+                    })
                   );
                 })
           )
@@ -1394,15 +1451,24 @@
         selectedChildren,
         onChildClick,
         onChildHover,
-        nodeId
+        nodeId,
+        columnLineageMode,
+        sourceColumn,
+        relatedColumns
       }) {
         const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
         const children = item.features || item.columns || [];
         const isFeatureList = item.features?.length > 0;
         const childLabel = isFeatureList ? 'features' : 'columns';
+        
+        // Check if this card is active in column lineage mode
+        const isLineageActive = columnLineageMode && (
+          sourceColumn?.itemId === item.id || 
+          relatedColumns?.has?.(item.id)
+        );
 
         return React.createElement('div', { 
-          className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''}`
+          className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''} ${isLineageActive ? 'column-lineage-active' : ''}`
         },
           // Header
           React.createElement('div', { className: 'graph-expanded-header' },
@@ -1421,7 +1487,11 @@
             onChildClick: onChildClick,
             onChildHover: onChildHover,
             isFeatureList: isFeatureList,
-            nodeId: nodeId
+            nodeId: nodeId,
+            itemId: item.id,
+            columnLineageMode: columnLineageMode,
+            sourceColumn: sourceColumn,
+            relatedColumns: relatedColumns
           }),
           // Model outputs section (for ML models)
           childrenExpanded && item.outputs?.length > 0 && React.createElement('div', { className: 'graph-outputs-section' },
@@ -1430,7 +1500,11 @@
               children: item.outputs,
               searchQuery: '',
               isFeatureList: false,
-              nodeId: nodeId
+              nodeId: nodeId,
+              itemId: item.id,
+              columnLineageMode: columnLineageMode,
+              sourceColumn: sourceColumn,
+              relatedColumns: relatedColumns
             })
           ),
           // Toggle button
@@ -1500,7 +1574,8 @@
           database, schema, icon, items, onItemClick, selectedItemId, 
           dbCollapsed, schemaCollapsed, onToggleDbCollapse, onToggleSchemaCollapse,
           expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
-          selectedChildren, onChildClick, onChildHover
+          selectedChildren, onChildClick, onChildHover,
+          columnLineageMode, sourceColumn, relatedColumns
         } = data;
         const isSingleItem = items.length === 1;
         const isCollapsed = dbCollapsed || schemaCollapsed;
@@ -1534,6 +1609,49 @@
           const isExpanded = expandedItems?.[item.id] || false;
           const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
           const searchQuery = itemSearchQueries?.[item.id] || '';
+          
+          // Check if this item is involved in column lineage
+          const isInColumnLineage = columnLineageMode && (
+            sourceColumn?.itemId === item.id || 
+            relatedColumns?.has?.(item.id)
+          );
+
+          // In column lineage mode, show expanded card for items with related columns
+          if (isInColumnLineage && hasChildren && isExpanded) {
+            return React.createElement('div', {
+              key: item.id,
+              style: { position: 'relative' }
+            },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: '28px' }
+              }),
+              React.createElement(ExpandedItemCard, {
+                item: item,
+                isSelected: false,
+                isFocal: item.isFocal,
+                childrenExpanded: true,
+                onToggleChildren: () => onToggleItemExpand?.(item.id),
+                searchQuery: searchQuery,
+                onSearchChange: (query) => onItemSearchChange?.(item.id, query),
+                selectedChildren: selectedChildren?.[item.id],
+                onChildClick: (childName) => onChildClick?.(item.id, childName),
+                onChildHover: (childName) => onChildHover?.(item.id, childName),
+                nodeId: id,
+                columnLineageMode: columnLineageMode,
+                sourceColumn: sourceColumn,
+                relatedColumns: relatedColumns
+              }),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: '28px' }
+              })
+            );
+          }
 
           // If selected AND has children AND expanded, show expanded card
           if (isSelected && hasChildren && isExpanded) {
@@ -1558,7 +1676,10 @@
                 selectedChildren: selectedChildren?.[item.id],
                 onChildClick: (childName) => onChildClick?.(item.id, childName),
                 onChildHover: (childName) => onChildHover?.(item.id, childName),
-                nodeId: id
+                nodeId: id,
+                columnLineageMode: columnLineageMode,
+                sourceColumn: sourceColumn,
+                relatedColumns: relatedColumns
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -1733,7 +1854,8 @@
         const { 
           name, icon, items, platformId, onItemClick, selectedItemId, collapsed, onToggleCollapse,
           expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
-          selectedChildren, onChildClick, onChildHover
+          selectedChildren, onChildClick, onChildHover,
+          columnLineageMode, sourceColumn, relatedColumns
         } = data;
 
         const handleHeaderClick = (e) => {
@@ -1749,6 +1871,49 @@
           const isExpanded = expandedItems?.[item.id] || false;
           const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
           const searchQuery = itemSearchQueries?.[item.id] || '';
+          
+          // Check if this item is involved in column lineage
+          const isInColumnLineage = columnLineageMode && (
+            sourceColumn?.itemId === item.id || 
+            relatedColumns?.has?.(item.id)
+          );
+
+          // In column lineage mode, show expanded card for items with related columns
+          if (isInColumnLineage && hasChildren && isExpanded) {
+            return React.createElement('div', {
+              key: item.id,
+              style: { position: 'relative' }
+            },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: '28px' }
+              }),
+              React.createElement(ExpandedItemCard, {
+                item: item,
+                isSelected: false,
+                isFocal: false,
+                childrenExpanded: true,
+                onToggleChildren: () => onToggleItemExpand?.(item.id),
+                searchQuery: searchQuery,
+                onSearchChange: (query) => onItemSearchChange?.(item.id, query),
+                selectedChildren: selectedChildren?.[item.id],
+                onChildClick: (childName) => onChildClick?.(item.id, childName),
+                onChildHover: (childName) => onChildHover?.(item.id, childName),
+                nodeId: id,
+                columnLineageMode: columnLineageMode,
+                sourceColumn: sourceColumn,
+                relatedColumns: relatedColumns
+              }),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: '28px' }
+              })
+            );
+          }
 
           // If selected AND has children AND expanded, show expanded card
           if (isSelected && hasChildren && isExpanded) {
@@ -1773,7 +1938,10 @@
                 selectedChildren: selectedChildren?.[item.id],
                 onChildClick: (childName) => onChildClick?.(item.id, childName),
                 onChildHover: (childName) => onChildHover?.(item.id, childName),
-                nodeId: id
+                nodeId: id,
+                columnLineageMode: columnLineageMode,
+                sourceColumn: sourceColumn,
+                relatedColumns: relatedColumns
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2171,10 +2339,16 @@
         const [selectedChildren, setSelectedChildren] = useState({}); // { itemId: Set<string> }
         const [hoveredChild, setHoveredChild] = useState(null); // { itemId, childName }
         
+        // Column lineage mode state
+        const [columnLineageMode, setColumnLineageMode] = useState(false);
+        const [selectedColumnLineage, setSelectedColumnLineage] = useState(null); // { itemId, columnName }
+        const [relatedColumns, setRelatedColumns] = useState(new Map()); // Map<itemId, Set<columnName>>
+        const [columnLineageEdges, setColumnLineageEdges] = useState([]); // Additional edges for column lineage
+        
         const reactFlowInstance = useReactFlow();
 
         // Calculate node height based on collapse state and expanded items
-        const calculateNodeHeight = useCallback((nodeType, items, collapseInfo, expandedItemsState, selectedItemId) => {
+        const calculateNodeHeight = useCallback((nodeType, items, collapseInfo, expandedItemsState, selectedItemId, columnLineageModeState, sourceColumnState, relatedColumnsState) => {
           const itemHeight = 40;
           const expandedItemHeight = 420; // Height when item is expanded with columns list (header + search + list + button + margins)
           const selectedItemHeight = 100; // Height when item is selected but not expanded (card + margins)
@@ -2191,7 +2365,14 @@
               const isExpanded = expandedItemsState?.[item.id] || false;
               const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
               
-              if (isSelected && hasChildren && isExpanded) {
+              // Check if this item is involved in column lineage
+              const isInColumnLineage = columnLineageModeState && (
+                sourceColumnState?.itemId === item.id || 
+                relatedColumnsState?.has?.(item.id)
+              );
+              
+              // Item is expanded if: (selected AND expanded) OR (in column lineage AND expanded)
+              if ((isSelected || isInColumnLineage) && hasChildren && isExpanded) {
                 height += expandedItemHeight;
               } else if (isSelected && hasChildren) {
                 height += selectedItemHeight;
@@ -2274,25 +2455,182 @@
           }));
         }, []);
 
-        // Handle child (column/feature) click
+        // Handle child (column/feature) click - enters column lineage mode
         const handleChildClick = useCallback((itemId, childName) => {
-          setSelectedChildren(prev => {
-            const currentSet = prev[itemId] || new Set();
-            const newSet = new Set(currentSet);
+          // Check if clicking the same column again - exit lineage mode
+          if (columnLineageMode && selectedColumnLineage?.itemId === itemId && selectedColumnLineage?.columnName === childName) {
+            exitColumnLineageMode();
+            return;
+          }
+          
+          // Find all related columns using the columnLineage data
+          const lineage = window.columnLineage || [];
+          
+          // Recursively find all upstream and downstream columns
+          const findAllRelatedColumns = (sourceItemId, sourceColumnName) => {
+            const related = new Map();
+            const visited = new Set();
+            const queue = [{ itemId: sourceItemId, columnName: sourceColumnName, direction: 'both' }];
             
-            if (newSet.has(childName)) {
-              newSet.delete(childName);
-            } else {
-              // For now, only allow single selection per item
-              newSet.clear();
-              newSet.add(childName);
+            while (queue.length > 0) {
+              const current = queue.shift();
+              const key = `${current.itemId}:${current.columnName}`;
+              
+              if (visited.has(key)) continue;
+              visited.add(key);
+              
+              // Find upstream (sources)
+              if (current.direction === 'both' || current.direction === 'upstream') {
+                lineage.forEach(edge => {
+                  if (edge.targetTable === current.itemId && edge.targetColumn === current.columnName) {
+                    const upstreamKey = `${edge.sourceTable}:${edge.sourceColumn}`;
+                    if (!visited.has(upstreamKey)) {
+                      if (!related.has(edge.sourceTable)) {
+                        related.set(edge.sourceTable, new Set());
+                      }
+                      related.get(edge.sourceTable).add(edge.sourceColumn);
+                      queue.push({ itemId: edge.sourceTable, columnName: edge.sourceColumn, direction: 'upstream' });
+                    }
+                  }
+                });
+              }
+              
+              // Find downstream (targets)
+              if (current.direction === 'both' || current.direction === 'downstream') {
+                lineage.forEach(edge => {
+                  if (edge.sourceTable === current.itemId && edge.sourceColumn === current.columnName) {
+                    const downstreamKey = `${edge.targetTable}:${edge.targetColumn}`;
+                    if (!visited.has(downstreamKey)) {
+                      if (!related.has(edge.targetTable)) {
+                        related.set(edge.targetTable, new Set());
+                      }
+                      related.get(edge.targetTable).add(edge.targetColumn);
+                      queue.push({ itemId: edge.targetTable, columnName: edge.targetColumn, direction: 'downstream' });
+                    }
+                  }
+                });
+              }
             }
             
-            return {
-              ...prev,
-              [itemId]: newSet
-            };
+            return related;
+          };
+          
+          const related = findAllRelatedColumns(itemId, childName);
+          
+          // If no related columns found, just select this column
+          if (related.size === 0) {
+            setSelectedChildren(prev => ({
+              [itemId]: new Set([childName])
+            }));
+            return;
+          }
+          
+          // Enter column lineage mode
+          setColumnLineageMode(true);
+          setSelectedColumnLineage({ itemId, columnName: childName });
+          setRelatedColumns(related);
+          
+          // Clear item selection
+          setSelectedItem(null);
+          if (window.sharedSelection) {
+            window.sharedSelection.setSelection(null, null);
+          }
+          
+          // Set up expanded items and selected children for lineage view
+          const newExpandedItems = { [itemId]: true };
+          const newSelectedChildren = { [itemId]: new Set([childName]) };
+          
+          related.forEach((columns, relatedItemId) => {
+            newExpandedItems[relatedItemId] = true;
+            newSelectedChildren[relatedItemId] = columns;
           });
+          
+          setExpandedItems(newExpandedItems);
+          setSelectedChildren(newSelectedChildren);
+          
+          // Create column lineage edges
+          // We need to find the node ID for each item, as ReactFlow connects nodes not items
+          const newColumnEdges = [];
+          const visited = new Set();
+          
+          // Build a map from item ID to node ID by checking current nodes
+          const itemToNodeMap = new Map();
+          const currentNodes = reactFlowInstance?.getNodes() || [];
+          currentNodes.forEach(node => {
+            if (node.data?.items) {
+              node.data.items.forEach(item => {
+                itemToNodeMap.set(item.id, node.id);
+              });
+            }
+          });
+          
+          // Build edges for all related columns
+          const addEdgesForColumn = (srcItemId, srcColumnName) => {
+            const sourceNodeId = itemToNodeMap.get(srcItemId);
+            if (!sourceNodeId) return;
+            
+            lineage.forEach(edge => {
+              if (edge.sourceTable === srcItemId && edge.sourceColumn === srcColumnName) {
+                // Check if target is in our related set OR is the originally selected column
+                const isTargetRelated = related.has(edge.targetTable) && related.get(edge.targetTable).has(edge.targetColumn);
+                const isTargetSelected = edge.targetTable === itemId && edge.targetColumn === childName;
+                
+                if (isTargetRelated || isTargetSelected) {
+                  const targetNodeId = itemToNodeMap.get(edge.targetTable);
+                  if (!targetNodeId) return;
+                  
+                  const edgeId = `column-edge-${edge.id}`;
+                  if (!visited.has(edgeId)) {
+                    visited.add(edgeId);
+                    newColumnEdges.push({
+                      id: edgeId,
+                      source: sourceNodeId,
+                      sourceHandle: `column-out-${srcItemId}-${srcColumnName}`,
+                      target: targetNodeId,
+                      targetHandle: `column-in-${edge.targetTable}-${edge.targetColumn}`,
+                      type: 'default',
+                      animated: true,
+                      className: 'column-lineage animated',
+                      data: { transformType: edge.transformType },
+                      markerEnd: {
+                        type: MarkerType.ArrowClosed,
+                        width: 14,
+                        height: 14,
+                        color: '#1A6CE7',
+                      },
+                      style: {
+                        stroke: '#1A6CE7',
+                        strokeWidth: 2,
+                      },
+                    });
+                  }
+                }
+              }
+            });
+          };
+          
+          // Add edges from source column
+          addEdgesForColumn(itemId, childName);
+          
+          // Add edges from all related columns (to get the full chain)
+          related.forEach((columns, relatedItemId) => {
+            columns.forEach(colName => {
+              addEdgesForColumn(relatedItemId, colName);
+            });
+          });
+          
+          setColumnLineageEdges(newColumnEdges);
+          
+        }, [columnLineageMode, selectedColumnLineage, reactFlowInstance]);
+        
+        // Exit column lineage mode
+        const exitColumnLineageMode = useCallback(() => {
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          setExpandedItems({});
+          setSelectedChildren({});
         }, []);
 
         // Handle child hover
@@ -2412,10 +2750,20 @@
         useEffect(() => {
           async function initLayout() {
             setIsLoading(true);
+            
+            // Read initial selection from shared state (may have been set by list view)
+            const initialSelectedId = window.sharedSelection?.selectedItemId || selectedItem?.id;
+            if (window.sharedSelection?.selectedItemId && !selectedItem) {
+              setSelectedItem({
+                id: window.sharedSelection.selectedItemId,
+                ...window.sharedSelection.selectedItemData
+              });
+            }
+            
             const { nodes: initialNodes, edges: initialEdges, allItems } = transformDataToNodesAndEdges(
               window.mockLineageData, 
               handleItemClick,
-              selectedItem?.id,
+              initialSelectedId,
               {
                 onToggleDbCollapse: handleToggleDbCollapse,
                 onToggleSchemaCollapse: handleToggleSchemaCollapse,
@@ -2425,12 +2773,28 @@
             
             try {
               const layoutedNodes = await calculateLayout(initialNodes, initialEdges);
-              setNodes(layoutedNodes);
+              // Ensure selectedItemId is set on all nodes
+              const nodesWithSelection = layoutedNodes.map(node => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  selectedItemId: initialSelectedId
+                }
+              }));
+              setNodes(nodesWithSelection);
               setEdges(initialEdges);
               
             } catch (error) {
               console.error('Layout error:', error);
-              setNodes(initialNodes);
+              // Ensure selectedItemId is set even on error
+              const nodesWithSelection = initialNodes.map(node => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  selectedItemId: initialSelectedId
+                }
+              }));
+              setNodes(nodesWithSelection);
               setEdges(initialEdges);
             }
             setIsLoading(false);
@@ -2442,7 +2806,7 @@
 
         // Update nodes when selection or expanded state changes
         useEffect(() => {
-          const currentSelectedId = selectedItem?.id || window.sharedSelection?.selectedItemId;
+          const currentSelectedId = columnLineageMode ? null : (selectedItem?.id || window.sharedSelection?.selectedItemId);
           setNodes(nds => nds.map(node => ({
             ...node,
             data: {
@@ -2455,9 +2819,12 @@
               onItemSearchChange: handleItemSearchChange,
               onChildClick: handleChildClick,
               onChildHover: handleChildHover,
+              columnLineageMode: columnLineageMode,
+              sourceColumn: selectedColumnLineage,
+              relatedColumns: relatedColumns,
             },
           })));
-        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover]);
+        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, columnLineageMode, selectedColumnLineage, relatedColumns, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover]);
 
         // Re-layout when collapse state or expanded items change
         useEffect(() => {
@@ -2467,7 +2834,7 @@
           setNodes(nds => {
             const updatedNodes = nds.map(node => {
               const nodeCollapseInfo = collapseState[node.id] || {};
-              const newHeight = calculateNodeHeight(node.type, node.data.items, nodeCollapseInfo, expandedItems, currentSelectedId);
+              const newHeight = calculateNodeHeight(node.type, node.data.items, nodeCollapseInfo, expandedItems, currentSelectedId, columnLineageMode, selectedColumnLineage, relatedColumns);
               
               return {
                 ...node,
@@ -2537,7 +2904,7 @@
             
             return updatedNodes;
           });
-        }, [collapseState, expandedItems, selectedItem, calculateNodeHeight, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, setNodes]);
+        }, [collapseState, expandedItems, selectedItem, columnLineageMode, selectedColumnLineage, relatedColumns, calculateNodeHeight, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, setNodes]);
 
         // Expose global function to center on selected/focal node
         useEffect(() => {
@@ -2577,6 +2944,13 @@
           };
         }, [reactFlowInstance, selectedItem]);
 
+        // Handle pane click - exit column lineage mode (must be before loading check)
+        const handlePaneClick = useCallback(() => {
+          if (columnLineageMode) {
+            exitColumnLineageMode();
+          }
+        }, [columnLineageMode, exitColumnLineageMode]);
+
         if (isLoading) {
           return React.createElement('div', { className: 'graph-loading' },
             React.createElement('div', { className: 'graph-loading-spinner' }),
@@ -2584,16 +2958,30 @@
           );
         }
 
+        // Combine regular edges with column lineage edges
+        // Dim regular edges to 40% opacity when showing column lineage
+        const combinedEdges = columnLineageMode 
+          ? [
+              ...edges.map(edge => ({
+                ...edge,
+                style: { ...edge.style, opacity: 0.4 }
+              })),
+              ...columnLineageEdges
+            ]
+          : edges;
+
         return React.createElement(ReactFlowComponent, {
           nodes,
-          edges,
+          edges: combinedEdges,
           onNodesChange,
           onEdgesChange,
           onInit,
+          onPaneClick: handlePaneClick,
           nodeTypes,
           defaultViewport: { x: 0, y: 0, zoom: 0.9 },
           minZoom: 0.1,
           maxZoom: 2,
+          nodesDraggable: false, // Disabled for now - add lock/unlock UI later
           zoomOnScroll: false,
           panOnScroll: true,
           zoomActivationKeyCode: 'Meta',

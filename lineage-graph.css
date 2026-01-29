@@ -1000,6 +1000,110 @@
 }
 
 /* ===========================================
+   Column Lineage Edge Styles
+   =========================================== */
+
+/* Column lineage edge - highlighted blue */
+.react-flow__edge.column-lineage .react-flow__edge-path {
+  stroke: #1A6CE7 !important;
+  stroke-width: 1px !important;
+  /* filter: drop-shadow(0 0 3px rgba(26, 108, 231, 0.4)); */
+}
+
+/* Animated flow for column lineage */
+.react-flow__edge.column-lineage.animated .react-flow__edge-path {
+  stroke-dasharray: 8 4;
+  animation: columnLineageFlow 0.6s linear infinite;
+}
+
+@keyframes columnLineageFlow {
+  from {
+    stroke-dashoffset: 12;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Column lineage edge marker (arrow) */
+.react-flow__edge.column-lineage .react-flow__edge-path + marker path {
+  fill: #1A6CE7;
+}
+
+/* Dimmed edges when column lineage is active */
+.react-flow__edge.dimmed-for-column-lineage .react-flow__edge-path {
+  stroke: #E8ECF1 !important;
+  stroke-width: 1px !important;
+  opacity: 0.3;
+}
+
+/* ===========================================
+   Column Lineage Node States
+   =========================================== */
+
+/* Dimmed node when column lineage is active */
+.graph-group-container.dimmed-for-column-lineage,
+.graph-platform-container.dimmed-for-column-lineage,
+.graph-expanded-card.dimmed-for-column-lineage,
+.graph-group-card.dimmed-for-column-lineage,
+.graph-group-item.dimmed-for-column-lineage {
+  opacity: 0.4;
+  filter: grayscale(0.3);
+}
+
+/* Active node in column lineage (has related columns) */
+.graph-expanded-card.column-lineage-active {
+  /* border-color: #1A6CE7; */
+  /* box-shadow: 0 0 0 2px rgba(26, 108, 231, 0.15); */
+}
+
+/* ===========================================
+   Column Lineage Child Item States
+   =========================================== */
+
+/* Source column (where lineage starts) - selected style */
+.graph-child-item.column-lineage-source,
+.graph-child-item.column-lineage-source.selected,
+.graph-child-item.column-lineage-source:hover {
+  background-color: #D6E6FF !important;
+}
+
+.graph-child-item.column-lineage-source .graph-child-name {
+  color: #1A6CE7 !important;
+  font-weight: 600 !important;
+}
+
+.graph-child-item.column-lineage-source .graph-child-type-icon {
+  color: #1A6CE7;
+}
+
+.graph-child-item.column-lineage-source .graph-child-type {
+  color: #6B7897;
+}
+
+/* Related column (connected via lineage) - hover-like subtle style */
+.graph-child-item.column-lineage-related,
+.graph-child-item.column-lineage-related.selected,
+.graph-child-item.column-lineage-related:hover {
+  background-color: #ECEEF1 !important;
+}
+
+.graph-child-item.column-lineage-related .graph-child-name {
+  color: #3D4758 !important;
+  font-weight: 400 !important;
+}
+
+/* Column handles hidden for lineage */
+.graph-child-item.column-lineage-source .graph-child-handle,
+.graph-child-item.column-lineage-related .graph-child-handle,
+.graph-child-item.column-lineage-source.selected .graph-child-handle,
+.graph-child-item.column-lineage-related.selected .graph-child-handle,
+.graph-pinned-child.column-lineage-source .graph-child-handle,
+.graph-pinned-child.column-lineage-related .graph-child-handle {
+  opacity: 0 !important;
+}
+
+/* ===========================================
    Expanded Node Card with Children (Columns/Features)
    =========================================== */
 .graph-group-items>div:first-child.graph-expanded-card.selected,
@@ -1166,6 +1270,10 @@
 
 .graph-child-item.related .graph-child-name {
   color: #5D6A85;
+}
+
+.graph-child-type {
+  display: none;
 }
 
 /* Child type icon */
@@ -1356,7 +1464,7 @@
 
 /* Outputs section (for ML models) */
 .graph-outputs-section {
-  /* border-top: 1px solid #E8ECF1; */
+  border-top: 1px solid #E8ECF1;
 }
 
 .graph-outputs-header {
