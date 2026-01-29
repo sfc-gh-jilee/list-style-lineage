@@ -1557,6 +1557,7 @@
         const ReactFlowComponent = window.ReactFlow.ReactFlow;
         const Controls = window.ReactFlow.Controls;
         const Background = window.ReactFlow.Background;
+        const MiniMap = window.ReactFlow.MiniMap;
         const useNodesState = window.ReactFlow.useNodesState;
         const useEdgesState = window.ReactFlow.useEdgesState;
         const Position = window.ReactFlow.Position;
@@ -3500,6 +3501,22 @@
           React.createElement(Controls, { 
             showInteractive: false,
             position: 'bottom-left'
+          }),
+          React.createElement(MiniMap, {
+            position: 'bottom-right',
+            nodeStrokeWidth: 1,
+            nodeColor: '#e2e8f0',
+            nodeStrokeColor: '#94a3b8',
+            maskColor: 'rgba(255, 255, 255, 0.7)',
+            zoomable: true,
+            pannable: true,
+            style: {
+              width: 150,
+              height: 100,
+              backgroundColor: '#ffffff',
+              border: '1px solid #D5DAE4',
+              borderRadius: '6px'
+            }
           })
         );
       }
