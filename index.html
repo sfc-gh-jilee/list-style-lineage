@@ -113,18 +113,15 @@
         // Depth header click to scroll - scroll to show section at top
         headers.forEach((header, index) => {
           header.addEventListener('click', (e) => {
-            console.log('Header clicked!', index, 'scrollContainer:', scrollContainer);
             if (!scrollContainer) return;
             
             // Use pre-calculated natural position
             const data = headerData[index];
-            console.log('Header data:', data, 'naturalTop:', data?.naturalTop);
             if (!data) return;
             
             // Scroll so this header is at the top, accounting for headers above
             const stickyOffset = index * HEADER_HEIGHT;
             const targetPosition = data.naturalTop - stickyOffset;
-            console.log('Scrolling to:', targetPosition, 'stickyOffset:', stickyOffset);
             scrollContainer.scrollTo({ top: Math.max(0, targetPosition), behavior: 'smooth' });
           });
         });
@@ -334,6 +331,21 @@
           }
           updateStickyHeaders();
         });
+
+        // Segmented button toggle (Graph/List)
+        const toggleBtns = document.querySelectorAll('.view-toggle .toggle-btn');
+        console.log('Toggle buttons found:', toggleBtns.length);
+        toggleBtns.forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Toggle clicked:', btn.textContent);
+            // Remove active from all
+            toggleBtns.forEach(b => b.classList.remove('active'));
+            // Add active to clicked
+            btn.classList.add('active');
+          });
+        });
       });
     </script>
 
@@ -341,7 +353,30 @@
 
       <div class="view-panel">
 
-        <div class="tool-bar"></div>
+        <div class="tool-bar">
+          <div class="toolbar-left">
+            <div class="view-toggle">
+              <button class="toggle-btn">Graph</button>
+              <button class="toggle-btn active">List</button>
+            </div>
+            <button class="toolbar-btn">
+              <img src="./img/filter.svg" alt="" width="16" height="16">
+              Filter
+            </button>
+          </div>
+          <div class="toolbar-right">
+            <button class="toolbar-btn icon-only">
+              <img src="./img/maximize.svg" alt="" width="16" height="16">
+            </button>
+            <button class="toolbar-btn dropdown">
+              <img src="./img/circle.svg" alt="" width="8" height="8">
+              ORGADMIN
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
 
         <div class="lineage-scroll">
           <section class="lineage-table" aria-label="Lineage list">

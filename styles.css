@@ -45,6 +45,88 @@ body {
 
 .tool-bar {
   height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-toggle {
+  display: flex;
+  border-radius: 6px;
+  background: #F7F7F7;
+  padding: 2px;
+}
+
+.toggle-btn {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toggle-btn:hover {
+  color: #1e293b;
+}
+
+.toggle-btn.active {
+  border-radius: 6px;
+  border: 1px solid #BDC4D5;
+  background: #FBFBFB;
+  color: #1e293b;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #BDC4D5;
+  background: #FBFBFB;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toolbar-btn:hover {
+  background: #f1f5f9;
+  border-color: #a8b2c4;
+}
+
+.toolbar-btn.icon-only {
+  padding: 6px 8px;
+}
+
+.toolbar-btn svg {
+  flex-shrink: 0;
+}
+
+.toolbar-btn.dropdown {
+  padding-right: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
 }
 
 /* ===========================================
@@ -87,6 +169,7 @@ body {
   height: 20px;
   cursor: pointer;
   color: #94a3b8;
+  display: none;
 }
 
 .panel-content {
