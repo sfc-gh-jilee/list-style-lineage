@@ -8,15 +8,163 @@
   box-sizing: border-box;
 }
 
-html, body {
+html {
   margin: 0;
   padding: 0;
-  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
   font-family: "Inter", sans-serif;
   font-size: 12px;
   line-height: 16px;
   color: #1f2937;
   background: #ffffff;
+}
+
+/* Main layout with side panel */
+.main-layout {
+  display: flex;
+  overflow: hidden;
+  height: 100vh;
+}
+
+.view-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.lineage-scroll {
+  position: relative;
+  overflow: scroll;
+  flex: 1;
+}
+
+.tool-bar {
+  height: 64px;
+}
+
+/* ===========================================
+   Side Panel
+   =========================================== */
+.side-panel {
+  width: 400px;
+  height: 100vh;
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  /* border-bottom: 1px solid #e2e8f0; */
+}
+
+.panel-header-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.panel-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  flex: 1;
+  text-transform: uppercase;
+}
+
+.panel-close {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  color: #94a3b8;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.panel-section {
+  margin-bottom: 16px;
+}
+
+.panel-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.panel-value {
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.panel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.panel-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #475569;
+}
+
+.panel-columns-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.panel-search {
+  margin-bottom: 12px;
+}
+
+.panel-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #f8fafc;
+}
+
+.panel-column-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel-column-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.panel-column-icon {
+  color: #94a3b8;
 }
 
 /* ===========================================
@@ -26,6 +174,8 @@ html, body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 /* ===========================================
@@ -39,7 +189,6 @@ html, body {
 
 /* Sticky header state (applied via JS) */
 .depth-header[style*="position: fixed"] {
-  width: 100%;
   border-bottom: 1px solid #e2e8f0;
   /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); */
 }
@@ -56,7 +205,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 8px;
+  padding: 0 0;
   height: 28px;
   background: #fff;
   flex-shrink: 0;
@@ -85,8 +234,8 @@ html, body {
   height: 16px;
   font-weight: 400;
   /* font-family: "SF Mono", "Consolas", monospace; */
-  padding: 0 6px;
-  border-radius: 4px;
+  /* padding: 0 6px;
+  border-radius: 4px; */
   /* min-width: 32px; */
   text-align: center;
   flex-shrink: 0;
@@ -109,8 +258,8 @@ html, body {
 .depth-badge--focal {
   /* background: #3b82f6; */
   /* color: #ffffff; */
-  background: hsla(216, 93%, 44%, 1);
-  color: #ffffff;
+  /* background: hsla(216, 93%, 44%, 1); */
+  color: hsla(216, 93%, 44%, 1);
 }
 
 /* Focal Header */
@@ -286,10 +435,18 @@ img.group-icon:not([src*="logo-"]) {
   /* border-top: 1px solid #f1f5f9; */
   background: #ffffff;
   /* transition: background 0.15s; */
+  box-sizing: border-box;
+  border-radius: 4px;
 }
 
 .group-list li:hover {
   background: hsla(217, 13%, 94%, 1);
+}
+
+/* Selected object state */
+.group-list li.selected {
+  outline: 2px solid #1A6CE7;
+  outline-offset: -2px;
 }
 
 /* Connected object highlight (on hover) */

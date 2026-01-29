@@ -43,13 +43,19 @@
       min-width: 0;
       /* gap: 1px; */
       background: #fff;
-      padding: 24px
+      padding: 24px 32px;
     }
 
     .main-header {
       background: #ffffff;
-      height: 100px;
+      height: 138px;
       flex-shrink: 0;
+      background-image: url(img/top.png);
+      background-size: auto 138px;
+      background-repeat: no-repeat;
+      background-position: 0 50%;
+      border-bottom: 1px solid #D5DAE4;
+      box-sizing: border-box;
     }
 
     .tabs {
@@ -69,6 +75,7 @@
       background: #ffffff;
       position: relative;
       overflow: hidden;
+      display: flex;
     }
 
     .content-iframe {
@@ -79,10 +86,16 @@
 
     /* Right Panel */
     .right-panel {
-      width: 300px;
+      width: 400px;
       background: #ffffff;
       border-left: 1px solid #e2e8f0;
       flex-shrink: 0;
+    }
+
+    .lineage-panel {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
     }
   </style>
 </head>
@@ -96,14 +109,14 @@
   <!-- Main Content -->
   <div class="main">
     <div class="main-header"></div>
-    <div class="tabs"></div>
-    <div class="toolbar"></div>
     <div class="content-area">
-      <iframe class="content-iframe" src="./index.html"></iframe>
+  
+      <!-- Lineage Panel -->
+      <div class="lineage-panel">
+        <iframe class="content-iframe" src="./index.html"></iframe>
+      </div>
+
     </div>
   </div>
-
-  <!-- Right Panel -->
-  <div class="right-panel"></div>
 </body>
 </html>
