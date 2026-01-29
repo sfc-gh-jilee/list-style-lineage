@@ -1740,7 +1740,7 @@
         // Render a single column item
         const renderColumnItem = (child, index, isPinned, lineageClass) => {
           const isSelected = selectedChildren?.has?.(child.name);
-          const showHandles = isPinned;
+          const showHandles = isPinned; // Only render handles when in column lineage mode
           
           return React.createElement('div', {
             key: child.name + '-' + index + (isPinned ? '-pinned' : ''),
@@ -1765,8 +1765,7 @@
                 width: 8,
                 height: 8,
                 background: '#1A6CE7',
-                border: '2px solid #FFF',
-                opacity: 0
+                border: '2px solid #FFF'
               }
             }),
             // Type icon
@@ -1805,8 +1804,7 @@
                 width: 8,
                 height: 8,
                 background: '#1A6CE7',
-                border: '2px solid #FFF',
-                opacity: 0
+                border: '2px solid #FFF'
               }
             })
           );
@@ -2773,6 +2771,8 @@
         const [selectedColumnLineage, setSelectedColumnLineage] = useState(null); // { itemId, columnName }
         const [relatedColumns, setRelatedColumns] = useState(new Map()); // Map<itemId, Set<columnName>>
         const [columnLineageEdges, setColumnLineageEdges] = useState([]); // Additional edges for column lineage
+        const [hoverPreviewEdges, setHoverPreviewEdges] = useState([]); // Preview edges on column hover
+        const lineageVersionRef = React.useRef(0); // Track lineage version to avoid stale updates
         
         const reactFlowInstance = useReactFlow();
 
@@ -2959,6 +2959,12 @@
             return;
           }
           
+          // Increment version to invalidate any pending edge updates
+          lineageVersionRef.current += 1;
+          
+          // Clear existing edges first when switching columns
+          setColumnLineageEdges([]);
+          
           // Enter column lineage mode
           setColumnLineageMode(true);
           setSelectedColumnLineage({ itemId, columnName: childName });
@@ -2982,80 +2988,137 @@
           setExpandedItems(newExpandedItems);
           setSelectedChildren(newSelectedChildren);
           
-          // Create column lineage edges
-          // We need to find the node ID for each item, as ReactFlow connects nodes not items
-          const newColumnEdges = [];
-          const visited = new Set();
-          
-          // Build a map from item ID to node ID by checking current nodes
-          const itemToNodeMap = new Map();
-          const currentNodes = reactFlowInstance?.getNodes() || [];
-          currentNodes.forEach(node => {
-            if (node.data?.items) {
-              node.data.items.forEach(item => {
-                itemToNodeMap.set(item.id, node.id);
-              });
-            }
-          });
-          
-          // Build edges for all related columns
-          const addEdgesForColumn = (srcItemId, srcColumnName) => {
-            const sourceNodeId = itemToNodeMap.get(srcItemId);
-            if (!sourceNodeId) return;
-            
-            lineage.forEach(edge => {
-              if (edge.sourceTable === srcItemId && edge.sourceColumn === srcColumnName) {
-                // Check if target is in our related set OR is the originally selected column
-                const isTargetRelated = related.has(edge.targetTable) && related.get(edge.targetTable).has(edge.targetColumn);
-                const isTargetSelected = edge.targetTable === itemId && edge.targetColumn === childName;
-                
-                if (isTargetRelated || isTargetSelected) {
-                  const targetNodeId = itemToNodeMap.get(edge.targetTable);
-                  if (!targetNodeId) return;
-                  
-                  const edgeId = `column-edge-${edge.id}`;
-                  if (!visited.has(edgeId)) {
-                    visited.add(edgeId);
-                    newColumnEdges.push({
-                      id: edgeId,
-                      source: sourceNodeId,
-                      sourceHandle: `column-out-${srcItemId}-${srcColumnName}`,
-                      target: targetNodeId,
-                      targetHandle: `column-in-${edge.targetTable}-${edge.targetColumn}`,
-                      type: 'default',
-                      animated: true,
-                      className: 'column-lineage animated',
-                      data: { transformType: edge.transformType },
-                      markerEnd: {
-                        type: MarkerType.ArrowClosed,
-                        width: 14,
-                        height: 14,
-                        color: '#1A6CE7',
-                      },
-                      style: {
-                        stroke: '#1A6CE7',
-                        strokeWidth: 2,
-                      },
-                    });
-                  }
-                }
-              }
-            });
-          };
-          
-          // Add edges from source column
-          addEdgesForColumn(itemId, childName);
-          
-          // Add edges from all related columns (to get the full chain)
-          related.forEach((columns, relatedItemId) => {
-            columns.forEach(colName => {
-              addEdgesForColumn(relatedItemId, colName);
-            });
-          });
-          
-          setColumnLineageEdges(newColumnEdges);
+          // Edge creation is handled by useEffect below after render
           
         }, [columnLineageMode, selectedColumnLineage, reactFlowInstance]);
+        
+        // Create column lineage edges AFTER items are expanded (handles must exist first)
+        useEffect(() => {
+          if (!columnLineageMode || !selectedColumnLineage || !reactFlowInstance) {
+            return;
+          }
+          
+          const { itemId, columnName: childName } = selectedColumnLineage;
+          const lineage = window.columnLineage || [];
+          const currentVersion = lineageVersionRef.current;
+          
+          // Delay to ensure DOM has updated with expanded items and handles are rendered
+          const timeoutId = setTimeout(() => {
+            // Skip if version changed (user selected a different column)
+            if (lineageVersionRef.current !== currentVersion) {
+              console.log('Skipping stale edge update, version changed');
+              return;
+            }
+            const newColumnEdges = [];
+            const visited = new Set();
+            
+            // Build a map from item ID to node ID by checking current nodes
+            const itemToNodeMap = new Map();
+            const currentNodes = reactFlowInstance.getNodes() || [];
+            currentNodes.forEach(node => {
+              if (node.data?.items) {
+                node.data.items.forEach(item => {
+                  itemToNodeMap.set(item.id, node.id);
+                });
+              }
+            });
+            
+            console.log('Creating column lineage edges. Source:', itemId, childName);
+            console.log('Related columns:', Array.from(relatedColumns.entries()).map(([k, v]) => [k, Array.from(v)]));
+            
+            // Build edges for all related columns
+            const addEdgesForColumn = (srcItemId, srcColumnName) => {
+              const sourceNodeId = itemToNodeMap.get(srcItemId);
+              if (!sourceNodeId) {
+                console.log('  No node found for source:', srcItemId);
+                return;
+              }
+              
+              lineage.forEach(edge => {
+                if (edge.sourceTable === srcItemId && edge.sourceColumn === srcColumnName) {
+                  // Check if target is in our related set OR is the originally selected column
+                  const isTargetRelated = relatedColumns.has(edge.targetTable) && relatedColumns.get(edge.targetTable).has(edge.targetColumn);
+                  const isTargetSelected = edge.targetTable === itemId && edge.targetColumn === childName;
+                  
+                  if (isTargetRelated || isTargetSelected) {
+                    const targetNodeId = itemToNodeMap.get(edge.targetTable);
+                    if (!targetNodeId) {
+                      console.log('  No node found for target:', edge.targetTable);
+                      return;
+                    }
+                    
+                    const edgeId = `column-edge-${edge.id}`;
+                    if (!visited.has(edgeId)) {
+                      visited.add(edgeId);
+                      
+                      // Check if handles exist in DOM
+                      const sourceHandle = document.querySelector(`[data-handleid="column-out-${srcItemId}-${srcColumnName}"]`);
+                      const targetHandle = document.querySelector(`[data-handleid="column-in-${edge.targetTable}-${edge.targetColumn}"]`);
+                      console.log('  Edge:', srcItemId + '.' + srcColumnName, '->', edge.targetTable + '.' + edge.targetColumn,
+                        'Handles exist:', !!sourceHandle, !!targetHandle);
+                      
+                      // Use column handles if they exist, otherwise fall back to object handles
+                      const actualSourceHandle = sourceHandle 
+                        ? `column-out-${srcItemId}-${srcColumnName}` 
+                        : `right-${srcItemId}`;
+                      const actualTargetHandle = targetHandle 
+                        ? `column-in-${edge.targetTable}-${edge.targetColumn}` 
+                        : `left-${edge.targetTable}`;
+                      
+                      newColumnEdges.push({
+                        id: edgeId,
+                        source: sourceNodeId,
+                        sourceHandle: actualSourceHandle,
+                        target: targetNodeId,
+                        targetHandle: actualTargetHandle,
+                        type: 'default',
+                        animated: true,
+                        className: 'column-lineage animated',
+                        data: { transformType: edge.transformType },
+                        markerEnd: {
+                          type: MarkerType.ArrowClosed,
+                          width: 14,
+                          height: 14,
+                          color: '#1A6CE7',
+                        },
+                        style: {
+                          stroke: '#1A6CE7',
+                          strokeWidth: 2,
+                        },
+                      });
+                    }
+                  }
+                }
+              });
+            };
+            
+            // Add edges from source column
+            addEdgesForColumn(itemId, childName);
+            
+            // Add edges from all related columns (to get the full chain)
+            relatedColumns.forEach((columns, relatedItemId) => {
+              columns.forEach(colName => {
+                addEdgesForColumn(relatedItemId, colName);
+              });
+            });
+            
+            console.log('Column lineage edges created:', newColumnEdges.length);
+            setColumnLineageEdges(newColumnEdges);
+            
+            // Force a second update after handles are fully positioned
+            setTimeout(() => {
+              // Skip if version changed
+              if (lineageVersionRef.current !== currentVersion) {
+                console.log('Skipping stale force update, version changed');
+                return;
+              }
+              console.log('Force re-setting column lineage edges');
+              setColumnLineageEdges([...newColumnEdges]);
+            }, 200);
+          }, 350); // Delay for DOM to update
+          
+          return () => clearTimeout(timeoutId);
+        }, [columnLineageMode, selectedColumnLineage, relatedColumns, expandedItems, reactFlowInstance]);
         
         // Exit column lineage mode
         const exitColumnLineageMode = useCallback(() => {
@@ -3067,16 +3130,117 @@
           setSelectedChildren({});
         }, []);
 
-        // Handle child hover
+        // Handle child hover - show preview of column lineage edges
         const handleChildHover = useCallback((itemId, childName) => {
           if (childName) {
             setHoveredChild({ itemId, childName });
+            
+            // Don't show preview if already in column lineage mode
+            if (columnLineageMode) {
+              setHoverPreviewEdges([]);
+              return;
+            }
+            
+            // Create preview edges for direct upstream (-1) and downstream (+1) connections
+            const lineage = window.columnLineage || [];
+            const currentNodes = reactFlowInstance?.getNodes() || [];
+            
+            // Build a map from item ID to node ID and handles
+            const itemToNodeMap = new Map();
+            currentNodes.forEach(node => {
+              if (node.data?.items) {
+                node.data.items.forEach(item => {
+                  itemToNodeMap.set(item.id, {
+                    nodeId: node.id,
+                    leftHandle: `left-${item.id}`,
+                    rightHandle: `right-${item.id}`
+                  });
+                });
+              }
+            });
+            
+            const sourceInfo = itemToNodeMap.get(itemId);
+            if (!sourceInfo) {
+              setHoverPreviewEdges([]);
+              return;
+            }
+            
+            const previewEdges = [];
+            const addedEdges = new Set(); // Track unique edges
+            
+            // Find direct downstream connections (this column -> other columns)
+            // Use object handles for preview (column handles only exist in lineage mode)
+            lineage.forEach(edge => {
+              if (edge.sourceTable === itemId && edge.sourceColumn === childName) {
+                const targetInfo = itemToNodeMap.get(edge.targetTable);
+                if (targetInfo) {
+                  const edgeKey = `${sourceInfo.nodeId}-${targetInfo.nodeId}`;
+                  if (!addedEdges.has(edgeKey)) {
+                    addedEdges.add(edgeKey);
+                    previewEdges.push({
+                      id: `preview-down-${edge.id}`,
+                      source: sourceInfo.nodeId,
+                      sourceHandle: sourceInfo.rightHandle,
+                      target: targetInfo.nodeId,
+                      targetHandle: targetInfo.leftHandle,
+                      type: 'default',
+                      animated: true,
+                      className: 'column-lineage-preview',
+                      markerEnd: {
+                        type: MarkerType.ArrowClosed,
+                        width: 10,
+                        height: 10,
+                        color: '#D5DAE4',
+                      },
+                      style: {
+                        stroke: '#D5DAE4',
+                        strokeWidth: 1,
+                      },
+                    });
+                  }
+                }
+              }
+              
+              // Find direct upstream connections (other columns -> this column)
+              if (edge.targetTable === itemId && edge.targetColumn === childName) {
+                const upstreamInfo = itemToNodeMap.get(edge.sourceTable);
+                if (upstreamInfo) {
+                  const edgeKey = `${upstreamInfo.nodeId}-${sourceInfo.nodeId}`;
+                  if (!addedEdges.has(edgeKey)) {
+                    addedEdges.add(edgeKey);
+                    previewEdges.push({
+                      id: `preview-up-${edge.id}`,
+                      source: upstreamInfo.nodeId,
+                      sourceHandle: upstreamInfo.rightHandle,
+                      target: sourceInfo.nodeId,
+                      targetHandle: sourceInfo.leftHandle,
+                      type: 'default',
+                      animated: true,
+                      className: 'column-lineage-preview',
+                      markerEnd: {
+                        type: MarkerType.ArrowClosed,
+                        width: 10,
+                        height: 10,
+                        color: '#D5DAE4',
+                      },
+                      style: {
+                        stroke: '#D5DAE4',
+                        strokeWidth: 1,
+                      },
+                    });
+                  }
+                }
+              }
+            });
+            
+            setHoverPreviewEdges(previewEdges);
           } else {
             setHoveredChild(null);
+            setHoverPreviewEdges([]);
           }
-        }, []);
+        }, [columnLineageMode, reactFlowInstance]);
 
-        // Handle item click - update shared selection and center view
+        // Handle item click - update shared selection, expand to show columns, and center view
         const handleItemClick = useCallback((item, nodeId) => {
           // Exit column lineage mode if active
           if (columnLineageMode) {
@@ -3084,6 +3248,15 @@
           }
           
           setSelectedItem(item);
+          
+          // Auto-expand item to show columns/features if it has any
+          const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
+          if (hasChildren) {
+            setExpandedItems(prev => ({
+              ...prev,
+              [item.id]: true
+            }));
+          }
           
           // Sync with global shared selection - pass all item data for side panel
           if (window.sharedSelection) {
@@ -3111,13 +3284,14 @@
             });
           }
           
-          // Center view on the selected node
+          // Center view on the selected node (keep current zoom)
           if (reactFlowInstance && nodeId) {
             const node = reactFlowInstance.getNode(nodeId);
             if (node) {
+              const currentZoom = reactFlowInstance.getZoom();
               const x = node.position.x + (node.width || 304) / 2;
               const y = node.position.y + (node.height || 40) / 2;
-              reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+              reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
             }
           }
         }, [reactFlowInstance, columnLineageMode, exitColumnLineageMode]);
@@ -3139,12 +3313,21 @@
               const x = focalNode.position.x + (focalNode.data.width || 304) / 2;
               const y = focalNode.position.y + (focalNode.data.height || 100) / 2;
               console.log('onInit - centering to:', { x, y });
-              instance.setCenter(x, y, { zoom: 0.9, duration: 0 });
+              instance.setCenter(x, y, { zoom: 0.875, duration: 0 });
               
               // Select the focal item on initial load
               const focalItem = focalNode.data.items?.find(item => item.isFocal) || focalNode.data.item;
               if (focalItem) {
                 setSelectedItem(focalItem);
+                
+                // Auto-expand to show columns/features if it has any
+                const hasChildren = focalItem.columns?.length > 0 || focalItem.features?.length > 0;
+                if (hasChildren) {
+                  setExpandedItems(prev => ({
+                    ...prev,
+                    [focalItem.id]: true
+                  }));
+                }
                 
                 // Sync with global shared selection
                 if (window.sharedSelection) {
@@ -3199,9 +3382,10 @@
                     const posY = targetNode.position.y;
                     // Only center if we have valid coordinates
                     if (typeof posX === 'number' && typeof posY === 'number' && !isNaN(posX) && !isNaN(posY)) {
+                      const currentZoom = reactFlowInstance.getZoom();
                       const x = posX + (targetNode.width || targetNode.data.width || 304) / 2;
                       const y = posY + (targetNode.height || targetNode.data.height || 100) / 2;
-                      reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+                      reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
                     }
                   }
                 }
@@ -3434,9 +3618,10 @@
             }
             
             if (targetNode) {
+              const currentZoom = reactFlowInstance.getZoom();
               const x = targetNode.position.x + (targetNode.width || targetNode.data.width || 304) / 2;
               const y = targetNode.position.y + (targetNode.height || targetNode.data.height || 100) / 2;
-              reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+              reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
             }
           };
           
@@ -3459,7 +3644,7 @@
           );
         }
 
-        // Combine regular edges with column lineage edges
+        // Combine regular edges with column lineage edges and hover preview edges
         // Dim regular edges to 40% opacity when showing column lineage
         const combinedEdges = columnLineageMode 
           ? [
@@ -3469,7 +3654,10 @@
               })),
               ...columnLineageEdges
             ]
-          : edges;
+          : [
+              ...edges,
+              ...hoverPreviewEdges
+            ];
 
         return React.createElement(ReactFlowComponent, {
           nodes,
@@ -3479,7 +3667,7 @@
           onInit,
           onPaneClick: handlePaneClick,
           nodeTypes,
-          defaultViewport: { x: 0, y: 0, zoom: 0.9 },
+          defaultViewport: { x: 0, y: 0, zoom: 0.875 },
           minZoom: 0.1,
           maxZoom: 2,
           nodesDraggable: false, // Disabled for now - add lock/unlock UI later
