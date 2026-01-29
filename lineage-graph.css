@@ -1054,7 +1054,6 @@
 /* Active node in column lineage (has related columns) */
 .graph-expanded-card.column-lineage-active {
   /* border-color: #1A6CE7; */
-  /* box-shadow: 0 0 0 2px rgba(26, 108, 231, 0.15); */
 }
 
 /* ===========================================
@@ -1070,7 +1069,7 @@
 
 .graph-child-item.column-lineage-source .graph-child-name {
   color: #1A6CE7 !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
 }
 
 .graph-child-item.column-lineage-source .graph-child-type-icon {
@@ -1109,7 +1108,11 @@
 .graph-group-items>div:first-child.graph-expanded-card.selected,
 .graph-group-items>div:first-child .graph-expanded-card.selected,
 .graph-platform-items>div:first-child.graph-expanded-card.selected,
-.graph-platform-items>div:first-child .graph-expanded-card.selected {
+.graph-platform-items>div:first-child .graph-expanded-card.selected,
+.graph-group-items>div:first-child.graph-expanded-card.column-lineage-active,
+.graph-group-items>div:first-child .graph-expanded-card.column-lineage-active,
+.graph-platform-items>div:first-child.graph-expanded-card.column-lineage-active,
+.graph-platform-items>div:first-child .graph-expanded-card.column-lineage-active {
   margin-top: 0 !important;
 }
 
@@ -1139,8 +1142,12 @@
   margin: 20px 0;
 }
 
+.graph-expanded-card.column-lineage-active {
+  margin: 20px 0;
+}
+
 .graph-expanded-card.focal {
-  border: 2px solid #1A6CE7;
+  /* border: 2px solid #1A6CE7; */
 }
 
 /* Card header section */
@@ -1212,6 +1219,22 @@
 
 .graph-children-search-input::placeholder {
   color: #9FABC1;
+}
+
+/* Pinned columns container (above scrollable list) */
+.graph-children-pinned {
+  padding: 4px 8px;
+  /* border-bottom: 1px solid #E8ECF1; */
+  /* background: #FAFBFC; */
+}
+
+.graph-children-pinned .graph-child-item {
+  margin: 0;
+  /* border-radius: 0; */
+}
+
+.graph-children-pinned .graph-child-item.pinned {
+  position: relative;
 }
 
 /* Children list container */

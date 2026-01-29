@@ -1310,14 +1310,6 @@
         sourceColumn,
         relatedColumns
       }) {
-        // Filter children by search query
-        const filteredChildren = (children || []).filter(child => {
-          if (!searchQuery) return true;
-          const query = searchQuery.toLowerCase();
-          return child.name.toLowerCase().includes(query) || 
-                 (child.type && child.type.toLowerCase().includes(query));
-        });
-        
         // Determine if a child is the source column or a related column
         const getColumnLineageClass = (childName) => {
           if (!columnLineageMode) return '';
@@ -1329,8 +1321,110 @@
           }
           return '';
         };
+        
+        // Separate pinned (lineage-related) columns from regular columns
+        const pinnedColumns = [];
+        const regularColumns = [];
+        
+        (children || []).forEach(child => {
+          const lineageClass = getColumnLineageClass(child.name);
+          if (lineageClass) {
+            pinnedColumns.push({ ...child, lineageClass });
+          } else {
+            regularColumns.push(child);
+          }
+        });
+        
+        // Filter regular children by search query (pinned columns are always shown)
+        const filteredRegularChildren = regularColumns.filter(child => {
+          if (!searchQuery) return true;
+          const query = searchQuery.toLowerCase();
+          return child.name.toLowerCase().includes(query) || 
+                 (child.type && child.type.toLowerCase().includes(query));
+        });
+        
+        // Render a single column item
+        const renderColumnItem = (child, index, isPinned, lineageClass) => {
+          const isSelected = selectedChildren?.has?.(child.name);
+          const showHandles = isPinned;
+          
+          return React.createElement('div', {
+            key: child.name + '-' + index + (isPinned ? '-pinned' : ''),
+            className: `graph-child-item ${isSelected ? 'selected' : ''} ${lineageClass || ''} ${isPinned ? 'pinned' : ''}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              onChildClick?.(child.name);
+            },
+            onMouseEnter: () => onChildHover?.(child.name),
+            onMouseLeave: () => onChildHover?.(null)
+          },
+            // Left handle for column input (target)
+            showHandles && React.createElement(Handle, {
+              type: 'target',
+              position: Position.Left,
+              id: `column-in-${itemId}-${child.name}`,
+              className: 'column-handle-left',
+              style: { 
+                left: -4,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 8,
+                height: 8,
+                background: '#1A6CE7',
+                border: '2px solid #FFF',
+                opacity: 0
+              }
+            }),
+            // Type icon
+            React.createElement(ColumnTypeIcon, { type: child.type }),
+            // Name
+            React.createElement('span', { className: 'graph-child-name' }, child.name),
+            // Key indicator
+            React.createElement(KeyIcon, { 
+              isPrimaryKey: child.isPrimaryKey, 
+              isForeignKey: child.isForeignKey 
+            }),
+            // Feature importance bar (for ML models)
+            child.importance !== undefined && React.createElement('div', { 
+              className: 'graph-child-importance',
+              title: `Importance: ${(child.importance * 100).toFixed(0)}%`
+            },
+              React.createElement('div', { 
+                className: 'graph-child-importance-bar',
+                style: { width: `${child.importance * 100}%` }
+              })
+            ),
+            // Type label (optional, hide for pinned/lineage mode)
+            !child.importance && !isPinned && React.createElement('span', { 
+              className: 'graph-child-type' 
+            }, child.type),
+            // Right handle for column output (source)
+            showHandles && React.createElement(Handle, {
+              type: 'source',
+              position: Position.Right,
+              id: `column-out-${itemId}-${child.name}`,
+              className: 'column-handle-right',
+              style: { 
+                right: -4,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 8,
+                height: 8,
+                background: '#1A6CE7',
+                border: '2px solid #FFF',
+                opacity: 0
+              }
+            })
+          );
+        };
 
         return React.createElement('div', { className: 'graph-children-section' },
+          // Pinned columns (outside scrollable area)
+          pinnedColumns.length > 0 && React.createElement('div', { className: 'graph-children-pinned' },
+            pinnedColumns.map((child, index) => 
+              renderColumnItem(child, index, true, child.lineageClass)
+            )
+          ),
           // Search input (hide in lineage mode)
           !columnLineageMode && React.createElement('div', { className: 'graph-children-search' },
             React.createElement('input', {
@@ -1346,7 +1440,7 @@
               onMouseDown: (e) => e.stopPropagation()
             })
           ),
-          // Children list
+          // Regular children list (scrollable)
           React.createElement('div', { 
             className: 'graph-children-list nowheel',
             style: { maxHeight: listHeight || 240 },
@@ -1355,84 +1449,13 @@
               e.nativeEvent.stopImmediatePropagation();
             }
           },
-            filteredChildren.length === 0 
+            filteredRegularChildren.length === 0 
               ? React.createElement('div', { className: 'graph-children-empty' }, 
-                  searchQuery ? 'No matches found' : 'No columns'
+                  searchQuery ? 'No matches found' : (pinnedColumns.length > 0 ? '' : 'No columns')
                 )
-              : filteredChildren.map((child, index) => {
-                  const isSelected = selectedChildren?.has?.(child.name);
-                  const lineageClass = getColumnLineageClass(child.name);
-                  const showHandles = lineageClass !== '';
-                  
-                  return React.createElement('div', {
-                    key: child.name + '-' + index,
-                    className: `graph-child-item ${isSelected ? 'selected' : ''} ${lineageClass}`,
-                    onClick: (e) => {
-                      e.stopPropagation();
-                      onChildClick?.(child.name);
-                    },
-                    onMouseEnter: () => onChildHover?.(child.name),
-                    onMouseLeave: () => onChildHover?.(null)
-                  },
-                    // Left handle for column input (target)
-                    showHandles && React.createElement(Handle, {
-                      type: 'target',
-                      position: Position.Left,
-                      id: `column-in-${itemId}-${child.name}`,
-                      className: 'column-handle-left',
-                      style: { 
-                        left: -4,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 8,
-                        height: 8,
-                        background: '#1A6CE7',
-                        border: '2px solid #FFF',
-                        opacity: 0
-                      }
-                    }),
-                    // Type icon
-                    React.createElement(ColumnTypeIcon, { type: child.type }),
-                    // Name
-                    React.createElement('span', { className: 'graph-child-name' }, child.name),
-                    // Key indicator
-                    React.createElement(KeyIcon, { 
-                      isPrimaryKey: child.isPrimaryKey, 
-                      isForeignKey: child.isForeignKey 
-                    }),
-                    // Feature importance bar (for ML models)
-                    child.importance !== undefined && React.createElement('div', { 
-                      className: 'graph-child-importance',
-                      title: `Importance: ${(child.importance * 100).toFixed(0)}%`
-                    },
-                      React.createElement('div', { 
-                        className: 'graph-child-importance-bar',
-                        style: { width: `${child.importance * 100}%` }
-                      })
-                    ),
-                    // Type label (optional, hide for lineage mode)
-                    !child.importance && !lineageClass && React.createElement('span', { 
-                      className: 'graph-child-type' 
-                    }, child.type),
-                    // Right handle for column output (source)
-                    showHandles && React.createElement(Handle, {
-                      type: 'source',
-                      position: Position.Right,
-                      id: `column-out-${itemId}-${child.name}`,
-                      className: 'column-handle-right',
-                      style: { 
-                        right: -4,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 8,
-                        height: 8,
-                        background: '#1A6CE7',
-                        border: '2px solid #FFF',
-                        opacity: 0
-                      }
-                    })
-                  );
-                })
+              : filteredRegularChildren.map((child, index) => 
+                  renderColumnItem(child, index, false, '')
+                )
           )
         );
       }
@@ -2517,11 +2540,16 @@
           
           const related = findAllRelatedColumns(itemId, childName);
           
-          // If no related columns found, just select this column
+          // If no related columns found, exit lineage mode and clear all selections
           if (related.size === 0) {
-            setSelectedChildren(prev => ({
-              [itemId]: new Set([childName])
-            }));
+            // Exit column lineage mode if active
+            if (columnLineageMode) {
+              exitColumnLineageMode();
+            } else {
+              // Just clear existing selections and select this column only
+              setExpandedItems({ [itemId]: true });
+              setSelectedChildren({ [itemId]: new Set([childName]) });
+            }
             return;
           }
           
