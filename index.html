@@ -757,6 +757,38 @@
           }
         };
 
+        // Helper: Find full item data from mockLineageData by name
+        function findItemDataByName(name) {
+          if (!window.mockLineageData) return null;
+          const normalizedName = name.toLowerCase().trim();
+          
+          for (const depth of window.mockLineageData.depths) {
+            for (const group of depth.groups) {
+              // Some groups have items directly
+              if (group.items) {
+                for (const item of group.items) {
+                  if (item.name.toLowerCase().trim() === normalizedName) {
+                    return item;
+                  }
+                }
+              }
+              // Database groups have schemas which contain items
+              if (group.schemas) {
+                for (const schema of group.schemas) {
+                  if (schema.items) {
+                    for (const item of schema.items) {
+                      if (item.name.toLowerCase().trim() === normalizedName) {
+                        return item;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          return null;
+        }
+
         // Function to select an item in list view and sync globally
         function selectItem(item) {
           // Deselect previous in list
@@ -768,19 +800,47 @@
           selectedListItem = item;
           item.classList.add('selected');
           
-          // Get object info
+          // Get object info from DOM
           const objectName = item.querySelector('.object-name')?.textContent || 'Unknown';
           const objectIcon = item.querySelector('.object-icon')?.src || './img/table.svg';
           const groupName = item.closest('.object-group')?.querySelector('.group-name')?.textContent || '-';
           
-          // Create item data and set global selection
-          const itemId = objectName.toLowerCase().replace(/\s+/g, '_');
-          window.sharedSelection.setSelection(itemId, {
-            id: itemId,
-            name: objectName,
-            icon: objectIcon,
-            schema: groupName
-          });
+          // Try to find full item data from mockLineageData
+          const fullItemData = findItemDataByName(objectName);
+          
+          if (fullItemData) {
+            // Use full item data (same as graph view)
+            window.sharedSelection.setSelection(fullItemData.id, {
+              id: fullItemData.id,
+              name: fullItemData.name,
+              icon: fullItemData.icon || objectIcon,
+              database: fullItemData.database,
+              schemaName: fullItemData.schemaName,
+              schema: fullItemData.schema || groupName,
+              platform: fullItemData.platform,
+              objType: fullItemData.objType,
+              columns: fullItemData.columns,
+              features: fullItemData.features,
+              outputs: fullItemData.outputs,
+              description: fullItemData.description,
+              comment: fullItemData.comment,
+              owner: fullItemData.owner,
+              createdAt: fullItemData.createdAt,
+              created: fullItemData.created,
+              dataQuality: fullItemData.dataQuality,
+              rowCount: fullItemData.rowCount,
+              tags: fullItemData.tags
+            });
+          } else {
+            // Fallback to minimal data from DOM
+            const itemId = objectName.toLowerCase().replace(/\s+/g, '_');
+            window.sharedSelection.setSelection(itemId, {
+              id: itemId,
+              name: objectName,
+              icon: objectIcon,
+              schema: groupName
+            });
+          }
         }
 
         // Listen for selection changes from graph view
@@ -3133,10 +3193,15 @@
                     return false;
                   });
                   
-                  if (targetNode) {
-                    const x = targetNode.position.x + (targetNode.width || targetNode.data.width || 304) / 2;
-                    const y = targetNode.position.y + (targetNode.height || targetNode.data.height || 100) / 2;
-                    reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+                  if (targetNode && targetNode.position) {
+                    const posX = targetNode.position.x;
+                    const posY = targetNode.position.y;
+                    // Only center if we have valid coordinates
+                    if (typeof posX === 'number' && typeof posY === 'number' && !isNaN(posX) && !isNaN(posY)) {
+                      const x = posX + (targetNode.width || targetNode.data.width || 304) / 2;
+                      const y = posY + (targetNode.height || targetNode.data.height || 100) / 2;
+                      reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+                    }
                   }
                 }
               } else {
