@@ -3498,10 +3498,6 @@
             size: 1.5,
             color: 'rgba(213, 218, 228, 1)'
           }),
-          React.createElement(Controls, { 
-            showInteractive: false,
-            position: 'bottom-left'
-          }),
           React.createElement(MiniMap, {
             position: 'bottom-right',
             nodeStrokeWidth: 1,
@@ -3515,7 +3511,16 @@
               height: 100,
               backgroundColor: '#ffffff',
               border: '1px solid #D5DAE4',
-              borderRadius: '6px'
+              borderRadius: '6px',
+              right: 46,
+              bottom: 16
+            }
+          }),
+          React.createElement(Controls, { 
+            showInteractive: false,
+            position: 'bottom-right',
+            style: {
+              bottom: 16
             }
           })
         );
