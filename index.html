@@ -1477,7 +1477,8 @@
         nodeId,
         columnLineageMode,
         sourceColumn,
-        relatedColumns
+        relatedColumns,
+        onItemClick
       }) {
         const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
         const children = item.features || item.columns || [];
@@ -1493,8 +1494,15 @@
         return React.createElement('div', { 
           className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''} ${isLineageActive ? 'column-lineage-active' : ''}`
         },
-          // Header
-          React.createElement('div', { className: 'graph-expanded-header' },
+          // Header (clickable to select item)
+          React.createElement('div', { 
+            className: 'graph-expanded-header',
+            onClick: (e) => {
+              e.stopPropagation();
+              onItemClick?.();
+            },
+            style: { cursor: 'pointer' }
+          },
             isFocal && React.createElement('div', { className: 'graph-expanded-badge' }, 'Currently viewing'),
             React.createElement('div', { className: 'graph-expanded-info' },
               React.createElement('img', { className: 'graph-expanded-icon', src: item.icon, alt: '' }),
@@ -1665,7 +1673,8 @@
                 nodeId: id,
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
-                relatedColumns: relatedColumns
+                relatedColumns: relatedColumns,
+                onItemClick: () => onItemClick?.(item, id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -1702,7 +1711,8 @@
                 nodeId: id,
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
-                relatedColumns: relatedColumns
+                relatedColumns: relatedColumns,
+                onItemClick: () => onItemClick?.(item, id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -1927,7 +1937,8 @@
                 nodeId: id,
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
-                relatedColumns: relatedColumns
+                relatedColumns: relatedColumns,
+                onItemClick: () => onItemClick?.(item, id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -1964,7 +1975,8 @@
                 nodeId: id,
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
-                relatedColumns: relatedColumns
+                relatedColumns: relatedColumns,
+                onItemClick: () => onItemClick?.(item, id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2672,6 +2684,11 @@
 
         // Handle item click - update shared selection and center view
         const handleItemClick = useCallback((item, nodeId) => {
+          // Exit column lineage mode if active
+          if (columnLineageMode) {
+            exitColumnLineageMode();
+          }
+          
           setSelectedItem(item);
           
           // Sync with global shared selection - pass all item data for side panel
@@ -2709,7 +2726,7 @@
               reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
             }
           }
-        }, [reactFlowInstance]);
+        }, [reactFlowInstance, columnLineageMode, exitColumnLineageMode]);
 
         // Center on focal node when ReactFlow initializes
         const onInit = useCallback((instance) => {
