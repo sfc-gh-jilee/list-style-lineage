@@ -144,7 +144,53 @@
             setTimeout(updateStickyHeaders, 50);
             setTimeout(updateStickyHeaders, 150);
             setTimeout(updateStickyHeaders, 300);
+            // Update collapse/expand all button state
+            updateCollapseExpandAllButton();
           });
+        });
+
+        // Collapse/Expand all groups toggle
+        let allGroupsCollapsed = false;
+        const collapseExpandAllBtn = document.getElementById('collapse-expand-all');
+        
+        function updateCollapseExpandAllButton() {
+          const allGroups = document.querySelectorAll('.object-group');
+          const collapsedGroups = document.querySelectorAll('.object-group.collapsed');
+          allGroupsCollapsed = collapsedGroups.length === allGroups.length;
+          
+          const img = collapseExpandAllBtn.querySelector('img');
+          if (allGroupsCollapsed) {
+            img.src = './img/chevrons-expand.svg';
+            img.alt = 'Expand all';
+            collapseExpandAllBtn.title = 'Expand all groups';
+          } else {
+            img.src = './img/chevrons-collapse.svg';
+            img.alt = 'Collapse all';
+            collapseExpandAllBtn.title = 'Collapse all groups';
+          }
+        }
+        
+        collapseExpandAllBtn.addEventListener('click', () => {
+          const allGroups = document.querySelectorAll('.object-group');
+          
+          if (allGroupsCollapsed) {
+            // Expand all
+            allGroups.forEach(group => group.classList.remove('collapsed'));
+          } else {
+            // Collapse all
+            allGroups.forEach(group => group.classList.add('collapsed'));
+          }
+          
+          allGroupsCollapsed = !allGroupsCollapsed;
+          updateCollapseExpandAllButton();
+          
+          // Update sticky headers after collapse animation
+          setTimeout(updateStickyHeaders, 50);
+          setTimeout(updateStickyHeaders, 150);
+          setTimeout(updateStickyHeaders, 300);
+          
+          // Update connection overflow
+          setTimeout(updateConnectionOverflow, 350);
         });
 
         // Hover highlighting for connected objects
@@ -832,10 +878,18 @@
             // Toggle views based on button text
             const isGraphView = btn.textContent.trim() === 'Graph';
             
+            // Get view-specific buttons
+            const collapseExpandBtn = document.getElementById('collapse-expand-all');
+            const maximizeBtn = document.getElementById('maximize-btn');
+            
             if (isGraphView) {
               viewPanel.classList.add('graph-mode');
               lineageScroll.style.display = 'none';
               lineageGraph.style.display = 'block';
+              
+              // Show graph-view buttons, hide list-view buttons
+              if (collapseExpandBtn) collapseExpandBtn.style.display = 'none';
+              if (maximizeBtn) maximizeBtn.style.display = '';
               
               // Center on selected node when switching to graph view
               setTimeout(() => {
@@ -847,6 +901,10 @@
               viewPanel.classList.remove('graph-mode');
               lineageScroll.style.display = 'block';
               lineageGraph.style.display = 'none';
+              
+              // Show list-view buttons, hide graph-view buttons
+              if (collapseExpandBtn) collapseExpandBtn.style.display = '';
+              if (maximizeBtn) maximizeBtn.style.display = 'none';
               
               // Recalculate natural positions after list view is visible
               // This is needed because positions are 0 when list is hidden
@@ -881,8 +939,11 @@
             </button>
           </div>
           <div class="toolbar-right">
-            <button class="toolbar-btn icon-only">
-              <img src="./img/maximize.svg" alt="" width="16" height="16">
+            <button class="toolbar-btn icon-only list-view-only" id="collapse-expand-all" title="Collapse all groups" style="display: none;">
+              <img src="./img/chevrons-collapse.svg" alt="Collapse all" width="16" height="16">
+            </button>
+            <button class="toolbar-btn icon-only graph-view-only" id="maximize-btn" title="Maximize">
+              <img src="./img/maximize.svg" alt="Maximize" width="16" height="16">
             </button>
             <button class="toolbar-btn dropdown">
               <img src="./img/circle.svg" alt="" width="8" height="8">
