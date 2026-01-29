@@ -206,12 +206,24 @@ body {
 
 .panel-content {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 16px;
+  min-height: 0;
 }
 
 .panel-section {
   margin-bottom: 16px;
+}
+
+/* Columns section fills remaining height */
+.panel-section:last-child {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
 }
 
 .panel-label {
@@ -268,7 +280,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 300px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
