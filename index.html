@@ -267,6 +267,278 @@
           });
         });
 
+        // ===========================================
+        // Connection Overflow Detection & Popover
+        // ===========================================
+        
+        // Create popover element
+        const popover = document.createElement('div');
+        popover.className = 'connection-popover';
+        popover.innerHTML = `
+          <div class="connection-popover-section connection-popover-upstream">
+            <div class="connection-popover-label connection-popover-label--upstream">Upstream</div>
+            <ul class="connection-popover-list"></ul>
+          </div>
+          <div class="connection-popover-section connection-popover-downstream">
+            <div class="connection-popover-label connection-popover-label--downstream">Downstream</div>
+            <ul class="connection-popover-list"></ul>
+          </div>
+        `;
+        document.body.appendChild(popover);
+        
+        let popoverTimeout = null;
+        let activePopoverTrigger = null;
+        
+        // Hide popover function
+        function hidePopover() {
+          popover.classList.remove('visible');
+          activePopoverTrigger = null;
+        }
+        
+        // Show popover with connection data
+        function showPopover(trigger, item) {
+          if (popoverTimeout) clearTimeout(popoverTimeout);
+          
+          const { upstream, downstream } = getConnectedObjects(item);
+          
+          // Populate upstream section
+          const upstreamSection = popover.querySelector('.connection-popover-upstream');
+          const upstreamList = upstreamSection.querySelector('.connection-popover-list');
+          upstreamList.innerHTML = '';
+          
+          if (upstream.length > 0) {
+            upstreamSection.style.display = 'block';
+            upstream.forEach(upItem => {
+              const name = upItem.querySelector('.object-name')?.textContent || '';
+              const iconSrc = upItem.querySelector('.object-icon')?.src || './img/table.svg';
+              const li = document.createElement('li');
+              li.className = 'connection-popover-item';
+              li.innerHTML = `
+                <img class="connection-popover-item-icon" src="${iconSrc}" alt="">
+                <span class="connection-popover-item-name">${name}</span>
+              `;
+              li.addEventListener('click', () => {
+                hidePopover();
+                scrollToItem(upItem);
+                selectItem(upItem);
+              });
+              upstreamList.appendChild(li);
+            });
+          } else {
+            upstreamSection.style.display = 'none';
+          }
+          
+          // Populate downstream section
+          const downstreamSection = popover.querySelector('.connection-popover-downstream');
+          const downstreamList = downstreamSection.querySelector('.connection-popover-list');
+          downstreamList.innerHTML = '';
+          
+          if (downstream.length > 0) {
+            downstreamSection.style.display = 'block';
+            downstream.forEach(downItem => {
+              const name = downItem.querySelector('.object-name')?.textContent || '';
+              const iconSrc = downItem.querySelector('.object-icon')?.src || './img/table.svg';
+              const li = document.createElement('li');
+              li.className = 'connection-popover-item';
+              li.innerHTML = `
+                <img class="connection-popover-item-icon" src="${iconSrc}" alt="">
+                <span class="connection-popover-item-name">${name}</span>
+              `;
+              li.addEventListener('click', () => {
+                hidePopover();
+                scrollToItem(downItem);
+                selectItem(downItem);
+              });
+              downstreamList.appendChild(li);
+            });
+          } else {
+            downstreamSection.style.display = 'none';
+          }
+          
+          // Position popover
+          const rect = trigger.getBoundingClientRect();
+          const popoverHeight = popover.offsetHeight || 200;
+          const popoverWidth = popover.offsetWidth || 240;
+          
+          let top = rect.bottom + 8;
+          let left = rect.left;
+          
+          // Adjust if would go off screen
+          if (top + popoverHeight > window.innerHeight) {
+            top = rect.top - popoverHeight - 8;
+          }
+          if (left + popoverWidth > window.innerWidth) {
+            left = window.innerWidth - popoverWidth - 16;
+          }
+          
+          popover.style.top = `${top}px`;
+          popover.style.left = `${left}px`;
+          popover.classList.add('visible');
+          activePopoverTrigger = trigger;
+        }
+        
+        // Popover mouse events
+        popover.addEventListener('mouseenter', () => {
+          if (popoverTimeout) clearTimeout(popoverTimeout);
+        });
+        
+        popover.addEventListener('mouseleave', () => {
+          popoverTimeout = setTimeout(hidePopover, 150);
+        });
+        
+        // Handle overflow detection and compact counters
+        function updateConnectionOverflow() {
+          const connectionsContainers = document.querySelectorAll('.connections');
+          
+          connectionsContainers.forEach(container => {
+            const tags = Array.from(container.querySelectorAll('.connection-tag'));
+            if (tags.length === 0) return;
+            
+            const item = container.closest('li');
+            if (!item) return;
+            
+            // Remove existing overflow badge and compact counter
+            const existingOverflow = container.querySelector('.connection-overflow');
+            if (existingOverflow) existingOverflow.remove();
+            const existingCompact = container.querySelector('.connection-compact-counter');
+            if (existingCompact) existingCompact.remove();
+            
+            // Reset all tags to visible
+            tags.forEach(tag => tag.style.display = '');
+            
+            const containerWidth = container.clientWidth;
+            const arrowWidth = 20; // Arrow pseudo-element width
+            const overflowBadgeWidth = 32; // Approximate width for "+N" badge
+            const totalConnections = tags.length;
+            
+            // If only 1 connection, always show it (no overflow logic needed)
+            if (totalConnections === 1) {
+              // Just add compact counter for narrow screens (CSS will hide/show appropriately)
+              addCompactCounter(container, item, totalConnections);
+              return;
+            }
+            
+            // First pass: measure all tags to see if they fit without overflow badge
+            let totalWidthWithoutBadge = arrowWidth;
+            let allFit = true;
+            
+            tags.forEach(tag => {
+              const tagWidth = tag.offsetWidth + 4; // +4 for gap
+              totalWidthWithoutBadge += tagWidth;
+            });
+            
+            if (totalWidthWithoutBadge <= containerWidth) {
+              // All tags fit, no overflow needed
+              addCompactCounter(container, item, totalConnections);
+              return;
+            }
+            
+            // Second pass: determine how many fit with space reserved for overflow badge
+            let totalWidth = arrowWidth;
+            let visibleCount = 0;
+            let hiddenCount = 0;
+            const availableWidth = containerWidth - overflowBadgeWidth;
+            
+            tags.forEach((tag, index) => {
+              const tagWidth = tag.offsetWidth + 4; // +4 for gap
+              if (totalWidth + tagWidth <= availableWidth) {
+                totalWidth += tagWidth;
+                visibleCount++;
+              } else {
+                tag.style.display = 'none';
+                hiddenCount++;
+              }
+            });
+            
+            // Ensure at least 1 tag is always visible (don't hide all in overflow)
+            if (visibleCount === 0 && tags.length > 0) {
+              tags[0].style.display = '';
+              visibleCount = 1;
+              hiddenCount = tags.length - 1;
+            }
+            
+            // Add overflow badge if some tags are hidden
+            if (hiddenCount > 0) {
+              const overflowBadge = document.createElement('span');
+              overflowBadge.className = 'connection-overflow';
+              overflowBadge.textContent = `+${hiddenCount}`;
+              overflowBadge.title = `${hiddenCount} more connection${hiddenCount > 1 ? 's' : ''}`;
+              
+              // Hover to show popover
+              overflowBadge.addEventListener('mouseenter', () => {
+                showPopover(overflowBadge, item);
+              });
+              overflowBadge.addEventListener('mouseleave', () => {
+                popoverTimeout = setTimeout(hidePopover, 150);
+              });
+              overflowBadge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showPopover(overflowBadge, item);
+              });
+              
+              container.appendChild(overflowBadge);
+            }
+            
+            // Add compact counter for narrow screens
+            addCompactCounter(container, item, totalConnections);
+            
+            // Add hover listeners to the entire connections container
+            addConnectionsHover(container, item);
+          });
+        }
+        
+        // Helper function to add hover behavior to connections container
+        function addConnectionsHover(container, item) {
+          // Remove existing listeners by cloning (to avoid duplicates on resize)
+          if (!container.dataset.hoverEnabled) {
+            container.dataset.hoverEnabled = 'true';
+            
+            container.addEventListener('mouseenter', () => {
+              showPopover(container, item);
+            });
+            container.addEventListener('mouseleave', () => {
+              popoverTimeout = setTimeout(hidePopover, 150);
+            });
+          }
+        }
+        
+        // Helper function to add compact counter
+        function addCompactCounter(container, item, totalConnections) {
+          const isDownstream = container.classList.contains('connections--downstream');
+          
+          const compactCounter = document.createElement('span');
+          compactCounter.className = `connection-compact-counter ${isDownstream ? 'connection-compact-counter--downstream' : 'connection-compact-counter--upstream'}`;
+          compactCounter.textContent = totalConnections;
+          compactCounter.title = `${totalConnections} ${isDownstream ? 'downstream' : 'upstream'} connection${totalConnections > 1 ? 's' : ''}`;
+          
+          // Hover to show popover
+          compactCounter.addEventListener('mouseenter', () => {
+            showPopover(compactCounter, item);
+          });
+          compactCounter.addEventListener('mouseleave', () => {
+            popoverTimeout = setTimeout(hidePopover, 150);
+          });
+          compactCounter.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showPopover(compactCounter, item);
+          });
+          
+          container.appendChild(compactCounter);
+        }
+        
+        // Run overflow detection on load and resize
+        updateConnectionOverflow();
+        window.addEventListener('resize', () => {
+          updateConnectionOverflow();
+        });
+        
+        // Also update when groups collapse/expand
+        document.querySelectorAll('.group-header').forEach(groupHeader => {
+          groupHeader.addEventListener('click', () => {
+            setTimeout(updateConnectionOverflow, 350);
+          });
+        });
+
         function scrollToItem(targetItem, highlight = true) {
           if (!scrollContainer || !targetItem) return;
           const targetTop = getOffsetInContainer(targetItem);
@@ -708,7 +980,7 @@
                 <div class="group-header">
                   <img class="chevron" src="./img/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
-                  <span class="group-name">ACME_PROD / RAW_DB / RAW_ECOMMERCE</span>
+                  <span class="group-name"><!--ACME_PROD /--> RAW_DB / RAW_ECOMMERCE</span>
                   <span class="group-count">3</span>
                 </div>
                 <ul class="group-list">
@@ -748,7 +1020,7 @@
                 <div class="group-header">
                   <img class="chevron" src="./img/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
-                  <span class="group-name">ACME_PROD / RAW_DB / RAW_MARKETING</span>
+                  <span class="group-name"><!--ACME_PROD /--> RAW_DB / RAW_MARKETING</span>
                   <span class="group-count">4</span>
                 </div>
                 <ul class="group-list">
@@ -803,7 +1075,7 @@
                 <div class="group-header">
                   <img class="chevron" src="./img/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
-                  <span class="group-name">ACME_PROD / TRANSFORM_DB / STAGING</span>
+                  <span class="group-name"><!--ACME_PROD /--> TRANSFORM_DB / STAGING</span>
                   <span class="group-count">6</span>
                 </div>
                 <ul class="group-list">
@@ -878,7 +1150,7 @@
                 <div class="group-header group-header--focal">
                   <img class="chevron" src="./img/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
-                  <span class="group-name">ACME_ANALYTICS / ANALYTICS_DB / ANALYTICS</span>
+                  <span class="group-name"><!--ACME_ANALYTICS /--> ANALYTICS_DB / ANALYTICS</span>
                   <span class="group-count">1</span>
                 </div>
                 <ul class="group-list">
@@ -909,7 +1181,7 @@
                 <div class="group-header">
                   <img class="chevron" src="./img/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
-                  <span class="group-name">ACME_ANALYTICS / ANALYTICS_DB / MARTS</span>
+                  <span class="group-name"><!--ACME_ANALYTICS /--> ANALYTICS_DB / MARTS</span>
                   <span class="group-count">4</span>
                 </div>
                 <ul class="group-list">
@@ -2728,7 +3000,7 @@
           }
         }, [reactFlowInstance, columnLineageMode, exitColumnLineageMode]);
 
-        // Center on focal node when ReactFlow initializes
+        // Center on focal node when ReactFlow initializes and select the focal item
         const onInit = useCallback((instance) => {
           console.log('ReactFlow onInit called');
           setTimeout(() => {
@@ -2746,6 +3018,38 @@
               const y = focalNode.position.y + (focalNode.data.height || 100) / 2;
               console.log('onInit - centering to:', { x, y });
               instance.setCenter(x, y, { zoom: 0.9, duration: 0 });
+              
+              // Select the focal item on initial load
+              const focalItem = focalNode.data.items?.find(item => item.isFocal) || focalNode.data.item;
+              if (focalItem) {
+                setSelectedItem(focalItem);
+                
+                // Sync with global shared selection
+                if (window.sharedSelection) {
+                  window.sharedSelection.setSelection(focalItem.id, {
+                    id: focalItem.id,
+                    name: focalItem.name,
+                    icon: focalItem.icon,
+                    database: focalItem.database,
+                    schemaName: focalItem.schemaName,
+                    schema: focalItem.schema,
+                    platform: focalItem.platform,
+                    objType: focalItem.objType,
+                    columns: focalItem.columns,
+                    features: focalItem.features,
+                    outputs: focalItem.outputs,
+                    description: focalItem.description,
+                    comment: focalItem.comment,
+                    owner: focalItem.owner,
+                    createdAt: focalItem.createdAt,
+                    rowCount: focalItem.rowCount,
+                    dataQuality: focalItem.dataQuality,
+                    tags: focalItem.tags,
+                    downstream: focalItem.downstream,
+                    upstream: focalItem.upstream
+                  });
+                }
+              }
             }
           }, 100);
         }, []);
@@ -2877,6 +3181,36 @@
           
           // Update node data with collapse state and recalculate heights
           setNodes(nds => {
+            const gap = 72; // spacing between nodes
+            
+            // FIRST: Calculate old layer centers BEFORE updating heights
+            // Group old nodes by layer
+            const oldNodesByLayer = {};
+            nds.forEach(node => {
+              const layer = node.data.layer;
+              if (layer !== undefined) {
+                if (!oldNodesByLayer[layer]) {
+                  oldNodesByLayer[layer] = [];
+                }
+                oldNodesByLayer[layer].push(node);
+              }
+            });
+            
+            // Sort by Y position and calculate old layer centers
+            const oldLayerCenters = {};
+            Object.keys(oldNodesByLayer).forEach(layer => {
+              const layerNodes = oldNodesByLayer[layer].sort((a, b) => a.position.y - b.position.y);
+              let layerMinY = Infinity;
+              let layerMaxY = -Infinity;
+              layerNodes.forEach(node => {
+                const oldHeight = node.data.height || 100;
+                layerMinY = Math.min(layerMinY, node.position.y);
+                layerMaxY = Math.max(layerMaxY, node.position.y + oldHeight);
+              });
+              oldLayerCenters[layer] = (layerMinY + layerMaxY) / 2;
+            });
+            
+            // SECOND: Update nodes with new heights and data
             const updatedNodes = nds.map(node => {
               const nodeCollapseInfo = collapseState[node.id] || {};
               const newHeight = calculateNodeHeight(node.type, node.data.items, nodeCollapseInfo, expandedItems, currentSelectedId, columnLineageMode, selectedColumnLineage, relatedColumns);
@@ -2902,7 +3236,7 @@
               };
             });
             
-            // Re-center nodes vertically per layer after height changes
+            // THIRD: Re-center nodes vertically per layer using OLD centers
             const nodesByLayer = {};
             updatedNodes.forEach(node => {
               const layer = node.data.layer;
@@ -2914,30 +3248,25 @@
               }
             });
             
-            // Find global canvas center (use original center from initial layout)
-            let globalMinY = Infinity;
-            let globalMaxY = -Infinity;
-            updatedNodes.forEach(node => {
-              const nodeHeight = node.data.height || 100;
-              globalMinY = Math.min(globalMinY, node.position.y);
-              globalMaxY = Math.max(globalMaxY, node.position.y + nodeHeight);
+            // Sort nodes by their original Y position within each layer
+            Object.keys(nodesByLayer).forEach(layer => {
+              nodesByLayer[layer].sort((a, b) => a.position.y - b.position.y);
             });
-            const canvasCenterY = (globalMinY + globalMaxY) / 2;
             
-            // Re-center each layer vertically
+            // Re-center each layer vertically, using pre-calculated old centers
             Object.keys(nodesByLayer).forEach(layer => {
               const layerNodes = nodesByLayer[layer];
+              const layerCenterY = oldLayerCenters[layer] || 0;
               
               // Calculate new layer height with updated node heights
               let totalHeight = 0;
-              const gap = 72; // spacing between nodes
               layerNodes.forEach((node, idx) => {
                 totalHeight += node.data.height || 100;
                 if (idx < layerNodes.length - 1) totalHeight += gap;
               });
               
-              // Position nodes centered around canvas center
-              let currentY = canvasCenterY - totalHeight / 2;
+              // Position nodes centered around the layer's original center
+              let currentY = layerCenterY - totalHeight / 2;
               layerNodes.forEach(node => {
                 node.position = {
                   ...node.position,
