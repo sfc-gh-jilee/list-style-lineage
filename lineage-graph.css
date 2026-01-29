@@ -58,6 +58,17 @@
 /* ===========================================
    Edges - Smooth Bezier Curves
    =========================================== */
+/* Ensure edges render above group nodes */
+.react-flow__edges {
+  z-index: 10 !important;
+}
+
+/* Keep group nodes below edges */
+.react-flow__node-group,
+.react-flow__node[data-type="group"] {
+  z-index: 0 !important;
+}
+
 .react-flow__edge-path {
   stroke: #BDC4D5 !important;
   stroke-width: 1px !important;
@@ -117,6 +128,7 @@
   border-radius: 8px;
   padding: 8px;
   min-width: 320px;
+  z-index: 1;
 }
 
 /* Database Header */
@@ -126,6 +138,13 @@
   gap: 6px;
   padding: 4px 8px;
   margin-bottom: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.graph-group-db-header:hover {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .graph-group-db-icon {
@@ -165,6 +184,65 @@
   gap: 6px;
   padding: 4px 8px;
   margin-bottom: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.graph-group-schema-header:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.graph-group-schema-header.collapsed {
+  margin-bottom: 0;
+}
+
+/* Maintain width when collapsed */
+.graph-group-container {
+  min-width: 340px;
+}
+
+.graph-platform-container {
+  min-width: 340px;
+}
+
+/* Collapsed states for headers */
+.graph-group-db-header.collapsed + .graph-group-schema-section,
+.graph-group-schema-section.db-collapsed {
+  display: none;
+}
+
+.graph-group-schema-header.collapsed + .graph-group-items,
+.graph-group-items.schema-collapsed {
+  display: none;
+}
+
+/* Chevron indicator for collapse state */
+.graph-group-db-header::after,
+.graph-group-schema-header::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background-image: url('./img/chevron-down-small.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.graph-group-db-header:hover::after,
+.graph-group-schema-header:hover::after,
+.graph-group-db-header.collapsed::after,
+.graph-group-schema-header.collapsed::after {
+  opacity: 1;
+}
+
+.graph-group-db-header.collapsed::after,
+.graph-group-schema-header.collapsed::after {
+  transform: rotate(-90deg);
 }
 
 .graph-group-schema-icon {
@@ -213,8 +291,8 @@
 }
 
 .graph-group-card:hover {
-  border-color: #c1c9d6;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-color: #9FABC1;
+  /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); */
 }
 
 .graph-group-card.selected {
@@ -281,7 +359,7 @@
 }
 
 .graph-group-item:hover {
-  border-color: #c1c9d6;
+  border-color: #9FABC1;
 }
 
 .graph-group-item.selected {
@@ -324,6 +402,7 @@
   background: rgba(26, 108, 231, 0.00);
   padding: 8px;
   min-width: 320px;
+  z-index: 1;
 }
 
 /* Platform-specific background colors */
@@ -349,6 +428,41 @@
   gap: 6px;
   padding: 4px 8px;
   margin-bottom: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.graph-platform-header:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Chevron indicator for platform header collapse */
+.graph-platform-header::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background-image: url('./img/chevron-down-small.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.graph-platform-header:hover::after,
+.graph-platform-header.collapsed::after {
+  opacity: 1;
+}
+
+.graph-platform-header.collapsed::after {
+  transform: rotate(-90deg);
+}
+
+.graph-platform-header.collapsed {
+  margin-bottom: 0;
 }
 
 .graph-platform-icon {
@@ -392,7 +506,7 @@
 }
 
 .graph-platform-item:hover {
-  border-color: #c1c9d6;
+  border-color: #9FABC1;
 }
 
 .graph-platform-item.selected {
@@ -434,8 +548,9 @@
 }
 
 .graph-object-card:hover {
-  border-color: #c1c9d6;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: var(--Medium-plus, 12px);
+  border: 1px solid var(--Reusable-Border-hover, #9FABC1);
+  background: var(--Primitives-Level-1-background, #FFF);
 }
 
 .graph-object-card.selected {
@@ -504,7 +619,7 @@
 }
 
 .graph-compact-item:hover {
-  border-color: #c1c9d6;
+  border-color: #9FABC1;
 }
 
 .graph-compact-item.selected {
@@ -770,8 +885,9 @@
   transition: opacity 0.15s;
 }
 
+/* Handles remain invisible on hover */
 .react-flow__node:hover .react-flow__handle {
-  opacity: 1;
+  opacity: 0;
 }
 
 .react-flow__handle-left {
@@ -881,4 +997,375 @@
    =========================================== */
 .react-flow__attribution {
   display: none;
+}
+
+/* ===========================================
+   Expanded Node Card with Children (Columns/Features)
+   =========================================== */
+.graph-group-items>div:first-child.graph-expanded-card.selected,
+.graph-group-items>div:first-child .graph-expanded-card.selected,
+.graph-platform-items>div:first-child.graph-expanded-card.selected,
+.graph-platform-items>div:first-child .graph-expanded-card.selected {
+  margin-top: 0 !important;
+}
+
+.graph-group-items>div:last-child.graph-expanded-card.selected,
+.graph-group-items>div:last-child .graph-expanded-card.selected,
+.graph-platform-items>div:last-child.graph-expanded-card.selected,
+.graph-platform-items>div:last-child .graph-expanded-card.selected {
+  margin-bottom: 0 !important;
+}
+      
+/* Expanded card container */
+.graph-expanded-card {
+  background: #FFF;
+  border: 1px solid #D5DAE4;
+  border-radius: 8px;
+  width: 304px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.graph-expanded-card:hover {
+  border-color: #9FABC1;
+}
+
+.graph-expanded-card.selected {
+  border: 2.5px solid #1A6CE7;
+  margin: 20px 0;
+}
+
+.graph-expanded-card.focal {
+  border: 2px solid #1A6CE7;
+}
+
+/* Card header section */
+.graph-expanded-header {
+  padding: 12px 16px;
+}
+
+.graph-expanded-badge {
+  color: #085BD7;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  margin-bottom: 4px;
+}
+
+.graph-expanded-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.graph-expanded-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.graph-expanded-name {
+  overflow: hidden;
+  color: #1E252F;
+  text-overflow: ellipsis;
+  font-family: Inter, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-transform: uppercase;
+}
+
+/* Children section (columns/features) */
+.graph-children-section {
+  padding: 0;
+}
+
+/* Search input container */
+.graph-children-search {
+  padding: 0 8px;
+}
+
+.graph-children-search-input {
+  width: 100%;
+  padding: 6px 10px 6px 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: Inter, sans-serif;
+  color: #1E252F;
+  background: #FAFBFC url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%235D6A85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>') no-repeat 10px center;
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+  box-sizing: border-box;
+}
+
+.graph-children-search-input:focus {
+  border: 1px solid #1A6CE7;
+  background-color: #FFF;
+}
+
+.graph-children-search-input::placeholder {
+  color: #9FABC1;
+}
+
+/* Children list container */
+.graph-children-list {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 8px;
+}
+
+/* Scrollbar styling */
+.graph-children-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.graph-children-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.graph-children-list::-webkit-scrollbar-thumb {
+  background: #D5DAE4;
+  border-radius: 3px;
+}
+
+.graph-children-list::-webkit-scrollbar-thumb:hover {
+  background: #9FABC1;
+}
+
+/* Individual child item (column/feature) */
+.graph-child-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  position: relative;
+  border-radius: 4px;
+}
+
+.graph-child-item:hover {
+  background-color: #ECEEF1;
+}
+
+.graph-child-item.selected {
+  background-color: #D6E6FF;
+}
+
+.graph-child-item.selected .graph-child-name {
+  color: #1A6CE7;
+  font-weight: 400;
+}
+
+.graph-child-item.related {
+  background-color: #F5F7FA;
+}
+
+.graph-child-item.related .graph-child-name {
+  color: #5D6A85;
+}
+
+/* Child type icon */
+.graph-child-type-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Child name */
+.graph-child-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1E252F;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+/* Column handles for lineage edges */
+.graph-child-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #1A6CE7;
+  border: 2px solid #FFF;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.graph-child-handle.left {
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.graph-child-handle.right {
+  right: 0;
+  transform: translateX(50%);
+}
+
+.graph-child-item:hover .graph-child-handle,
+.graph-child-item.selected .graph-child-handle,
+.graph-child-item.related .graph-child-handle {
+  opacity: 1;
+}
+
+/* Pinned child (shown above list) */
+.graph-pinned-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #EBF3FF;
+  border-bottom: 1px solid #D5DAE4;
+  position: relative;
+}
+
+.graph-pinned-child .graph-child-name {
+  color: #1A6CE7;
+  font-weight: 600;
+}
+
+.graph-pinned-child .graph-child-handle {
+  opacity: 1;
+}
+
+/* Feature importance indicator (for ML models) */
+.graph-child-importance {
+  width: 40px;
+  height: 4px;
+  background: #E8ECF1;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.graph-child-importance-bar {
+  height: 100%;
+  background: #1A6CE7;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+/* Show/Hide children toggle button */
+.graph-toggle-children-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #5D6A85;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.graph-toggle-children-btn:hover {
+  background-color: #F5F7FA;
+  color: #1E252F;
+}
+
+.graph-toggle-children-btn svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.2s ease;
+}
+
+.graph-toggle-children-btn.expanded svg {
+  transform: rotate(180deg);
+}
+
+/* Column type icons */
+.column-icon-string { color: #10B981; }
+.column-icon-number { color: #3B82F6; }
+.column-icon-boolean { color: #8B5CF6; }
+.column-icon-date { color: #F59E0B; }
+.column-icon-timestamp { color: #F59E0B; }
+.column-icon-json { color: #EC4899; }
+.column-icon-array { color: #EC4899; }
+.column-icon-variant { color: #6B7280; }
+.column-icon-default { color: #6B7280; }
+
+/* Feature type icons (ML models) */
+.feature-icon-numeric { color: #3B82F6; }
+.feature-icon-categorical { color: #10B981; }
+.feature-icon-sequence { color: #8B5CF6; }
+.feature-icon-measure { color: #3B82F6; }
+.feature-icon-dimension { color: #10B981; }
+
+/* Key indicators */
+.graph-child-key-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.graph-child-key-icon.foreign-key {
+  color: #8B5CF6;
+}
+
+/* Empty state for children */
+.graph-children-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: #9FABC1;
+  font-size: 12px;
+}
+
+/* Resize handle for children list height */
+.graph-children-resize-handle {
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  background: transparent;
+  border-top: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.graph-children-resize-handle:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.graph-children-resize-handle::before {
+  content: '';
+  width: 32px;
+  height: 3px;
+  background: #D5DAE4;
+  border-radius: 2px;
+  transition: background-color 0.15s;
+}
+
+.graph-children-resize-handle:hover::before {
+  background: #1A6CE7;
+}
+
+/* Outputs section (for ML models) */
+.graph-outputs-section {
+  /* border-top: 1px solid #E8ECF1; */
+}
+
+.graph-outputs-header {
+  padding: 8px 16px;
+  color: #1E252F;
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  /* text-transform: uppercase; */
+  /* letter-spacing: 0.02em; */
+  /* background: #FAFBFC; */
 }

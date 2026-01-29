@@ -313,7 +313,32 @@
         const panelIcon = document.getElementById('panelIcon');
         const panelTitle = document.getElementById('panelTitle');
         const panelSchema = document.getElementById('panelSchema');
+        const panelComment = document.getElementById('panelComment');
+        const panelOwner = document.getElementById('panelOwner');
+        const panelCreated = document.getElementById('panelCreated');
+        const panelQuality = document.getElementById('panelQuality');
+        const panelRows = document.getElementById('panelRows');
+        const panelTags = document.getElementById('panelTags');
+        const panelColumns = document.getElementById('panelColumns');
         let selectedListItem = null;
+
+        // Helper: Get column type icon path (same logic as graph view)
+        function getPanelColumnIcon(type) {
+          const normalizedType = (type || '').toUpperCase();
+          if (['VARCHAR', 'TEXT', 'STRING', 'CHAR'].some(t => normalizedType.includes(t))) return 'img/text.svg';
+          if (['INTEGER', 'INT', 'BIGINT', 'NUMBER', 'SMALLINT', 'TINYINT'].some(t => normalizedType.includes(t))) return 'img/number.svg';
+          if (['DECIMAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'REAL'].some(t => normalizedType.includes(t))) return 'img/number.svg';
+          if (['BOOLEAN', 'BOOL'].some(t => normalizedType.includes(t))) return 'img/boolean.svg';
+          if (['BINARY', 'VARBINARY', 'BLOB', 'BYTES'].some(t => normalizedType.includes(t))) return 'img/binary.svg';
+          if (normalizedType.includes('DATE') && !normalizedType.includes('TIME')) return 'img/date.svg';
+          if (['TIMESTAMP', 'DATETIME', 'TIME'].some(t => normalizedType.includes(t))) return 'img/timestamp.svg';
+          if (['JSON', 'VARIANT'].some(t => normalizedType.includes(t))) return 'img/code.svg';
+          if (['OBJECT', 'STRUCT', 'MAP'].some(t => normalizedType.includes(t))) return 'img/object.svg';
+          if (normalizedType.includes('ARRAY')) return 'img/array.svg';
+          if (normalizedType === 'MEASURE') return 'img/number.svg';
+          if (normalizedType === 'DIMENSION') return 'img/object.svg';
+          return 'img/column.svg';
+        }
 
         // Global shared selection state (accessible by graph view)
         window.sharedSelection = {
@@ -350,9 +375,66 @@
           // Update side panel with item data
           updateSidePanel: function(itemData) {
             if (!itemData) return;
+            
+            // Header
             panelTitle.textContent = itemData.name || 'Unknown';
             panelIcon.src = itemData.icon || './img/table.svg';
-            panelSchema.textContent = itemData.schema || itemData.platform || '-';
+            
+            // Database / Schema
+            let schemaText = '-';
+            if (itemData.database && itemData.schemaName) {
+              schemaText = `${itemData.database} / ${itemData.schemaName}`;
+            } else if (itemData.schema) {
+              schemaText = itemData.schema;
+            } else if (itemData.platform) {
+              schemaText = itemData.platform;
+            }
+            panelSchema.textContent = schemaText;
+            
+            // Comment/Description
+            panelComment.textContent = itemData.description || itemData.comment || '-';
+            
+            // Owner
+            panelOwner.textContent = itemData.owner || 'ACCOUNTADMIN';
+            
+            // Created date
+            panelCreated.textContent = itemData.createdAt || itemData.created || '-';
+            
+            // Data quality
+            panelQuality.textContent = itemData.dataQuality || '-';
+            
+            // Row count
+            panelRows.textContent = itemData.rowCount ? itemData.rowCount.toLocaleString() : '-';
+            
+            // Tags
+            if (itemData.tags && itemData.tags.length > 0) {
+              panelTags.innerHTML = itemData.tags.map(tag => 
+                `<span class="panel-tag">${tag}</span>`
+              ).join('');
+              panelTags.parentElement.style.display = 'block';
+            } else {
+              panelTags.innerHTML = '';
+              panelTags.parentElement.style.display = 'none';
+            }
+            
+            // Columns
+            const columns = itemData.columns || itemData.features || [];
+            if (columns.length > 0) {
+              panelColumns.innerHTML = columns.map(col => {
+                const iconSrc = getPanelColumnIcon(col.type);
+                const keyIcon = col.isPrimaryKey ? '<img src="img/key.svg" class="panel-column-key" title="Primary Key">' :
+                               col.isForeignKey ? '<img src="img/link.svg" class="panel-column-key" title="Foreign Key">' : '';
+                return `<div class="panel-column-item">
+                  <img src="${iconSrc}" class="panel-column-icon" alt="${col.type || 'column'}">
+                  <span class="panel-column-name">${col.name}</span>
+                  ${keyIcon}
+                </div>`;
+              }).join('');
+              panelColumns.parentElement.style.display = 'block';
+            } else {
+              panelColumns.innerHTML = '<div class="panel-column-empty">No columns</div>';
+            }
+            
             sidePanel.classList.remove('hidden');
           }
         };
@@ -1067,6 +1149,9 @@
     <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/reactflow@11.11.4/dist/umd/index.js"></script>
     <script src="https://unpkg.com/elkjs@0.9.3/lib/elk.bundled.js"></script>
+    
+    <!-- Mock Data with Column Lineage -->
+    <script src="./mockData.js"></script>
 
     <script>
       // Wait for DOM and libraries to load
@@ -1097,202 +1182,284 @@
         const ELK = window.ELK;
 
       // =============================================
-      // Mock Data - Hierarchical structure
-      // Database > Schema > Objects
+      // Mock Data - loaded from mockData.js
+      // Contains columns/features and column lineage
       // =============================================
-      const mockLineageData = {
-        depths: [
-          {
-            id: 'depth-1',
-            level: -3,
-            label: 'Upstream −3',
-            type: 'upstream',
-            groups: [
-              {
-                id: 'external-apis',
-                name: 'External APIs',
-                icon: './img/api.svg',
-                type: 'platform', // No nested schema
-                items: [
-                  { id: 'shopify-api', name: 'Shopify Orders API', icon: './img/api.svg', downstream: ['orders'] },
-                  { id: 'stripe-api', name: 'Stripe Payments API', icon: './img/api.svg', downstream: ['payments'] },
-                  { id: 'salesforce-api', name: 'Salesforce CRM', icon: './img/api.svg', downstream: ['customers'] },
-                  { id: 'ga4-api', name: 'Google Analytics 4', icon: './img/api.svg', downstream: ['ga_sessions', 'ga_events'] },
-                  { id: 'fb-ads-api', name: 'Facebook Ads API', icon: './img/api.svg', downstream: ['ad_spend'] },
-                  { id: 'mixpanel-api', name: 'Mixpanel Events', icon: './img/api.svg', downstream: ['product_events'] },
-                ]
-              }
-            ]
+      // Use the global mockLineageData from mockData.js
+      // Also available: window.columnLineage, window.findRelatedColumns, etc.
+
+      // =============================================
+      // Helper: Get column type icon image path
+      // =============================================
+      function getColumnTypeIcon(type) {
+        const normalizedType = (type || '').toUpperCase();
+        
+        // String types
+        if (['VARCHAR', 'TEXT', 'STRING', 'CHAR'].some(t => normalizedType.includes(t))) {
+          return 'img/text.svg';
+        }
+        // Integer/Number types
+        if (['INTEGER', 'INT', 'BIGINT', 'NUMBER', 'SMALLINT', 'TINYINT'].some(t => normalizedType.includes(t))) {
+          return 'img/number.svg';
+        }
+        // Decimal/Float types
+        if (['DECIMAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'REAL'].some(t => normalizedType.includes(t))) {
+          return 'img/number.svg';
+        }
+        // Boolean types
+        if (['BOOLEAN', 'BOOL'].some(t => normalizedType.includes(t))) {
+          return 'img/boolean.svg';
+        }
+        // Binary types
+        if (['BINARY', 'VARBINARY', 'BLOB', 'BYTES'].some(t => normalizedType.includes(t))) {
+          return 'img/binary.svg';
+        }
+        // Date types
+        if (normalizedType.includes('DATE') && !normalizedType.includes('TIME')) {
+          return 'img/date.svg';
+        }
+        // Timestamp types
+        if (['TIMESTAMP', 'DATETIME', 'TIME'].some(t => normalizedType.includes(t))) {
+          return 'img/timestamp.svg';
+        }
+        // JSON/Code types
+        if (['JSON', 'VARIANT'].some(t => normalizedType.includes(t))) {
+          return 'img/code.svg';
+        }
+        // Object types
+        if (['OBJECT', 'STRUCT', 'MAP'].some(t => normalizedType.includes(t))) {
+          return 'img/object.svg';
+        }
+        // Array types
+        if (normalizedType.includes('ARRAY')) {
+          return 'img/array.svg';
+        }
+        // Measure (BI) - numeric
+        if (normalizedType === 'MEASURE') {
+          return 'img/number.svg';
+        }
+        // Dimension (BI) - object-like
+        if (normalizedType === 'DIMENSION') {
+          return 'img/object.svg';
+        }
+        // ML Feature types
+        if (normalizedType === 'CATEGORICAL' || normalizedType === 'SEQUENCE') {
+          return 'img/object.svg';
+        }
+        // Default
+        return 'img/column.svg';
+      }
+
+      // =============================================
+      // Component: Column/Feature Type Icon
+      // =============================================
+      function ColumnTypeIcon({ type }) {
+        const iconSrc = getColumnTypeIcon(type);
+        return React.createElement('img', { 
+          className: 'graph-child-type-icon',
+          src: iconSrc,
+          alt: type || 'column',
+          title: type,
+          width: 16,
+          height: 16
+        });
+      }
+
+      // =============================================
+      // Component: Key Icon (Primary/Foreign)
+      // =============================================
+      function KeyIcon({ isPrimaryKey, isForeignKey }) {
+        if (isPrimaryKey) {
+          return React.createElement('img', { 
+            className: 'graph-child-key-icon primary-key',
+            src: 'img/key.svg',
+            alt: 'Primary Key',
+            title: 'Primary Key',
+            width: 16,
+            height: 16
+          });
+        }
+        if (isForeignKey) {
+          return React.createElement('img', { 
+            className: 'graph-child-key-icon foreign-key',
+            src: 'img/link.svg',
+            alt: 'Foreign Key',
+            title: 'Foreign Key',
+            width: 16,
+            height: 16
+          });
+        }
+        return null;
+      }
+
+      // =============================================
+      // Component: Children List (Columns/Features)
+      // =============================================
+      function ChildrenList({ 
+        children, 
+        searchQuery, 
+        onSearchChange,
+        selectedChildren,
+        onChildClick,
+        onChildHover,
+        listHeight,
+        isFeatureList,
+        nodeId
+      }) {
+        // Filter children by search query
+        const filteredChildren = (children || []).filter(child => {
+          if (!searchQuery) return true;
+          const query = searchQuery.toLowerCase();
+          return child.name.toLowerCase().includes(query) || 
+                 (child.type && child.type.toLowerCase().includes(query));
+        });
+
+        return React.createElement('div', { className: 'graph-children-section' },
+          // Search input
+          React.createElement('div', { className: 'graph-children-search' },
+            React.createElement('input', {
+              type: 'text',
+              className: 'graph-children-search-input',
+              placeholder: isFeatureList ? 'Search features...' : 'Search columns...',
+              value: searchQuery || '',
+              onChange: (e) => {
+                e.stopPropagation();
+                onSearchChange?.(e.target.value);
+              },
+              onClick: (e) => e.stopPropagation(),
+              onMouseDown: (e) => e.stopPropagation()
+            })
+          ),
+          // Children list
+          React.createElement('div', { 
+            className: 'graph-children-list nowheel',
+            style: { maxHeight: listHeight || 240 },
+            onWheelCapture: (e) => {
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }
           },
-          {
-            id: 'depth-2',
-            level: -2,
-            label: 'Upstream −2',
-            type: 'upstream',
-            groups: [
-              {
-                id: 'acme-raw-db',
-                database: 'ACME_PROD',
-                icon: './img/logo-snowflake.svg',
-                type: 'database',
-                schemas: [
-                  {
-                    id: 'raw-ecommerce',
-                    name: 'RAW_ECOMMERCE',
-                    items: [
-                      { id: 'orders', name: 'ORDERS', icon: './img/table.svg', downstream: ['stg_orders'] },
-                      { id: 'payments', name: 'PAYMENTS', icon: './img/table.svg', downstream: ['stg_payments'] },
-                      { id: 'customers', name: 'CUSTOMERS', icon: './img/table.svg', downstream: ['stg_customers', 'stg_orders'] },
-                    ]
+            filteredChildren.length === 0 
+              ? React.createElement('div', { className: 'graph-children-empty' }, 
+                  searchQuery ? 'No matches found' : 'No columns'
+                )
+              : filteredChildren.map((child, index) => {
+                  const isSelected = selectedChildren?.has?.(child.name);
+                  return React.createElement('div', {
+                    key: child.name + '-' + index,
+                    className: `graph-child-item ${isSelected ? 'selected' : ''}`,
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      onChildClick?.(child.name);
+                    },
+                    onMouseEnter: () => onChildHover?.(child.name),
+                    onMouseLeave: () => onChildHover?.(null)
                   },
-                  {
-                    id: 'raw-marketing',
-                    name: 'RAW_MARKETING',
-                    items: [
-                      { id: 'ga_sessions', name: 'GA_SESSIONS', icon: './img/table.svg', downstream: ['stg_sessions'] },
-                      { id: 'ga_events', name: 'GA_EVENTS', icon: './img/table.svg', downstream: ['stg_web_events'] },
-                      { id: 'ad_spend', name: 'AD_SPEND', icon: './img/table.svg', downstream: ['stg_ad_spend'] },
-                      { id: 'product_events', name: 'PRODUCT_EVENTS', icon: './img/table.svg', downstream: ['stg_web_events', 'stg_sessions'] },
-                    ]
-                  }
-                ]
-              }
-            ]
+                    // Type icon
+                    React.createElement(ColumnTypeIcon, { type: child.type }),
+                    // Name
+                    React.createElement('span', { className: 'graph-child-name' }, child.name),
+                    // Key indicator
+                    React.createElement(KeyIcon, { 
+                      isPrimaryKey: child.isPrimaryKey, 
+                      isForeignKey: child.isForeignKey 
+                    }),
+                    // Feature importance bar (for ML models)
+                    child.importance !== undefined && React.createElement('div', { 
+                      className: 'graph-child-importance',
+                      title: `Importance: ${(child.importance * 100).toFixed(0)}%`
+                    },
+                      React.createElement('div', { 
+                        className: 'graph-child-importance-bar',
+                        style: { width: `${child.importance * 100}%` }
+                      })
+                    ),
+                  );
+                })
+          )
+        );
+      }
+
+      // =============================================
+      // Component: Expanded Item Card with Children
+      // =============================================
+      function ExpandedItemCard({
+        item,
+        isSelected,
+        isFocal,
+        childrenExpanded,
+        onToggleChildren,
+        searchQuery,
+        onSearchChange,
+        selectedChildren,
+        onChildClick,
+        onChildHover,
+        nodeId
+      }) {
+        const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
+        const children = item.features || item.columns || [];
+        const isFeatureList = item.features?.length > 0;
+        const childLabel = isFeatureList ? 'features' : 'columns';
+
+        return React.createElement('div', { 
+          className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''}`
+        },
+          // Header
+          React.createElement('div', { className: 'graph-expanded-header' },
+            isFocal && React.createElement('div', { className: 'graph-expanded-badge' }, 'Currently viewing'),
+            React.createElement('div', { className: 'graph-expanded-info' },
+              React.createElement('img', { className: 'graph-expanded-icon', src: item.icon, alt: '' }),
+              React.createElement('span', { className: 'graph-expanded-name' }, item.name)
+            )
+          ),
+          // Children section (when expanded)
+          childrenExpanded && hasChildren && React.createElement(ChildrenList, {
+            children: children,
+            searchQuery: searchQuery,
+            onSearchChange: onSearchChange,
+            selectedChildren: selectedChildren,
+            onChildClick: onChildClick,
+            onChildHover: onChildHover,
+            isFeatureList: isFeatureList,
+            nodeId: nodeId
+          }),
+          // Model outputs section (for ML models)
+          childrenExpanded && item.outputs?.length > 0 && React.createElement('div', { className: 'graph-outputs-section' },
+            React.createElement('div', { className: 'graph-outputs-header' }, 'Outputs'),
+            React.createElement(ChildrenList, {
+              children: item.outputs,
+              searchQuery: '',
+              isFeatureList: false,
+              nodeId: nodeId
+            })
+          ),
+          // Toggle button
+          hasChildren && React.createElement('button', {
+            className: `graph-toggle-children-btn ${childrenExpanded ? 'expanded' : ''}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              onToggleChildren?.();
+            }
           },
-          {
-            id: 'depth-3',
-            level: -1,
-            label: 'Upstream −1',
-            type: 'upstream',
-            groups: [
-              {
-                id: 'acme-transform-db',
-                database: 'ACME_PROD',
-                icon: './img/logo-snowflake.svg',
-                type: 'database',
-                schemas: [
-                  {
-                    id: 'staging',
-                    name: 'STAGING',
-                    items: [
-                      { id: 'stg_orders', name: 'STG_ORDERS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
-                      { id: 'stg_payments', name: 'STG_PAYMENTS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
-                      { id: 'stg_customers', name: 'STG_CUSTOMERS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
-                      { id: 'stg_sessions', name: 'STG_SESSIONS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
-                      { id: 'stg_web_events', name: 'STG_WEB_EVENTS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
-                      { id: 'stg_ad_spend', name: 'STG_AD_SPEND', icon: './img/view.svg', downstream: [] },
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            id: 'depth-4',
-            level: 0,
-            label: 'Currently viewing',
-            type: 'focal',
-            groups: [
-              {
-                id: 'acme-analytics-db',
-                database: 'ANALYTICS_DB',
-                icon: './img/logo-snowflake.svg',
-                type: 'database',
-                schemas: [
-                  {
-                    id: 'analytics',
-                    name: 'ANALYTICS',
-                    items: [
-                      { id: 'fct_customer_orders', name: 'FCT_CUSTOMER_ORDERS', icon: './img/dataset.svg', downstream: ['dim_customers', 'fct_daily_revenue', 'fct_attribution', 'user_journey_agg'], isFocal: true },
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            id: 'depth-5',
-            level: 1,
-            label: 'Downstream +1',
-            type: 'downstream',
-            groups: [
-              {
-                id: 'acme-marts-db',
-                database: 'ACME_ANALYTICS',
-                icon: './img/logo-snowflake.svg',
-                type: 'database',
-                schemas: [
-                  {
-                    id: 'marts',
-                    name: 'MARTS',
-                    items: [
-                      { id: 'dim_customers', name: 'DIM_CUSTOMERS', icon: './img/table.svg', downstream: ['customer-360-dashboard', 'churn_prediction_model'] },
-                      { id: 'fct_daily_revenue', name: 'FCT_DAILY_REVENUE', icon: './img/table.svg', downstream: ['exec-revenue-dashboard'] },
-                      { id: 'fct_attribution', name: 'FCT_ATTRIBUTION', icon: './img/table.svg', downstream: ['marketing-roi-dashboard', 'attribution_model'] },
-                      { id: 'user_journey_agg', name: 'USER_JOURNEY_AGG', icon: './img/table.svg', downstream: [] },
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            id: 'depth-6',
-            level: 2,
-            label: 'Downstream +2',
-            type: 'downstream',
-            groups: [
-              {
-                id: 'tableau',
-                name: 'Tableau',
-                icon: './img/logo-tableau.svg',
-                type: 'platform',
-                items: [
-                  { id: 'exec-revenue-dashboard', name: 'Exec Revenue Dashboard', icon: './img/dashboard.svg', downstream: ['finance-weekly-report'] },
-                ]
-              },
-              {
-                id: 'looker',
-                name: 'Looker',
-                icon: './img/logo-looker.svg',
-                type: 'platform',
-                items: [
-                  { id: 'customer-360-dashboard', name: 'Customer 360 Dashboard', icon: './img/dashboard.svg', downstream: ['investor-data-room'] },
-                  { id: 'marketing-roi-dashboard', name: 'Marketing ROI Dashboard', icon: './img/dashboard.svg', downstream: [] },
-                ]
-              },
-              {
-                id: 'ml-models',
-                name: 'ML Models',
-                icon: './img/model.svg',
-                type: 'platform',
-                items: [
-                  { id: 'churn_prediction_model', name: 'Churn Prediction Model', icon: './img/model.svg', downstream: [] },
-                  { id: 'attribution_model', name: 'Attribution Model', icon: './img/model.svg', downstream: [] },
-                ]
-              }
-            ]
-          },
-          {
-            id: 'depth-7',
-            level: 3,
-            label: 'Downstream +3',
-            type: 'downstream',
-            groups: [
-              {
-                id: 'exports',
-                name: 'Exports',
-                icon: './img/api.svg',
-                type: 'platform',
-                items: [
-                  { id: 'finance-weekly-report', name: 'Finance Weekly Report', icon: './img/api.svg', downstream: [] },
-                  { id: 'investor-data-room', name: 'Investor Data Room', icon: './img/api.svg', downstream: [] },
-                ]
-              }
-            ]
-          }
-        ]
-      };
+            childrenExpanded 
+              ? `Hide ${childLabel}` 
+              : `${children.length} ${childLabel}`,
+            React.createElement('svg', { 
+              viewBox: '0 0 12 12', 
+              fill: 'none',
+              xmlns: 'http://www.w3.org/2000/svg'
+            },
+              React.createElement('path', {
+                d: 'M3 5l3 3 3-3',
+                stroke: 'currentColor',
+                strokeWidth: '1.5',
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round'
+              })
+            )
+          )
+        );
+      }
 
       // =============================================
       // Custom Node: Object Card (single table/view)
@@ -1329,78 +1496,231 @@
       // Custom Node: Group Node (database > schema > items)
       // =============================================
       function GroupNode({ data, id }) {
-        const { database, schema, icon, items, onItemClick, selectedItemId } = data;
+        const { 
+          database, schema, icon, items, onItemClick, selectedItemId, 
+          dbCollapsed, schemaCollapsed, onToggleDbCollapse, onToggleSchemaCollapse,
+          expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
+          selectedChildren, onChildClick, onChildHover
+        } = data;
         const isSingleItem = items.length === 1;
+        const isCollapsed = dbCollapsed || schemaCollapsed;
+
+        // Calculate handle position based on collapse state
+        const getCollapsedHandleTop = () => {
+          if (dbCollapsed) {
+            return '24px';
+          }
+          if (schemaCollapsed) {
+            return '62px';
+          }
+          return '50%';
+        };
+
+        const handleDbHeaderClick = (e) => {
+          e.stopPropagation();
+          onToggleDbCollapse?.(id);
+        };
+
+        const handleSchemaHeaderClick = (e) => {
+          e.stopPropagation();
+          onToggleSchemaCollapse?.(id);
+        };
+
+        const collapsedHandleTop = getCollapsedHandleTop();
+
+        // Render an item - either expanded or compact
+        const renderItem = (item, index) => {
+          const isSelected = selectedItemId === item.id;
+          const isExpanded = expandedItems?.[item.id] || false;
+          const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
+          const searchQuery = itemSearchQueries?.[item.id] || '';
+
+          // If selected AND has children AND expanded, show expanded card
+          if (isSelected && hasChildren && isExpanded) {
+            return React.createElement('div', {
+              key: item.id,
+              style: { position: 'relative' }
+            },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: '28px' }
+              }),
+              React.createElement(ExpandedItemCard, {
+                item: item,
+                isSelected: true,
+                isFocal: item.isFocal,
+                childrenExpanded: true,
+                onToggleChildren: () => onToggleItemExpand?.(item.id),
+                searchQuery: searchQuery,
+                onSearchChange: (query) => onItemSearchChange?.(item.id, query),
+                selectedChildren: selectedChildren?.[item.id],
+                onChildClick: (childName) => onChildClick?.(item.id, childName),
+                onChildHover: (childName) => onChildHover?.(item.id, childName),
+                nodeId: id
+              }),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: '28px' }
+              })
+            );
+          }
+
+          // If selected with children but NOT expanded, show card with toggle button
+          if (isSelected && hasChildren) {
+            const children = item.features || item.columns || [];
+            const childLabel = item.features?.length > 0 ? 'features' : 'columns';
+            
+            return React.createElement('div', {
+              key: item.id,
+              className: `graph-expanded-card selected ${item.isFocal ? 'focal' : ''}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                onItemClick?.(item, id);
+              },
+              style: { position: 'relative' }
+            },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: '28px' }
+              }),
+              React.createElement('div', { className: 'graph-expanded-header' },
+                item.isFocal && React.createElement('div', { className: 'graph-expanded-badge' }, 'Currently viewing'),
+                React.createElement('div', { className: 'graph-expanded-info' },
+                  React.createElement('img', { className: 'graph-expanded-icon', src: item.icon, alt: '' }),
+                  React.createElement('span', { className: 'graph-expanded-name' }, item.name)
+                )
+              ),
+              React.createElement('button', {
+                className: 'graph-toggle-children-btn',
+                onClick: (e) => {
+                  e.stopPropagation();
+                  onToggleItemExpand?.(item.id);
+                }
+              },
+                `${children.length} ${childLabel}`,
+                React.createElement('svg', { 
+                  viewBox: '0 0 12 12', 
+                  fill: 'none',
+                  xmlns: 'http://www.w3.org/2000/svg'
+                },
+                  React.createElement('path', {
+                    d: 'M3 5l3 3 3-3',
+                    stroke: 'currentColor',
+                    strokeWidth: '1.5',
+                    strokeLinecap: 'round',
+                    strokeLinejoin: 'round'
+                  })
+                )
+              ),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: '28px' }
+              })
+            );
+          }
+
+          // Default: Single item card or compact item
+          if (isSingleItem) {
+            return React.createElement('div', {
+              key: item.id,
+              className: `graph-group-card ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                onItemClick?.(item, id);
+              }
+            },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: '50%', transform: 'translateY(-50%)' }
+              }),
+              item.isFocal && React.createElement('div', { className: 'graph-group-card-badge' }, 'Currently viewing'),
+              React.createElement('div', { className: 'graph-group-card-content' },
+                React.createElement('img', { className: 'graph-group-card-icon', src: item.icon, alt: '' }),
+                React.createElement('span', { className: 'graph-group-card-name' }, item.name)
+              ),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: '50%', transform: 'translateY(-50%)' }
+              })
+            );
+          }
+
+          // Multiple items - compact list item
+          return React.createElement('div', {
+            key: item.id,
+            className: `graph-group-item ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              onItemClick?.(item, id);
+            }
+          },
+            React.createElement(Handle, {
+              type: 'target',
+              position: Position.Left,
+              id: `left-${item.id}`,
+              style: { top: 'auto', bottom: 'auto' }
+            }),
+            React.createElement('img', { className: 'graph-group-item-icon', src: item.icon, alt: '' }),
+            React.createElement('span', { className: 'graph-group-item-name' }, item.name),
+            React.createElement(Handle, {
+              type: 'source',
+              position: Position.Right,
+              id: `right-${item.id}`,
+              style: { top: 'auto', bottom: 'auto' }
+            })
+          );
+        };
 
         return React.createElement('div', { className: 'graph-group-container' },
+          // Collapsed handles
+          isCollapsed && items.map(item => 
+            React.createElement(React.Fragment, { key: `collapsed-handles-${item.id}` },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: collapsedHandleTop, transform: 'translateY(-50%)' }
+              }),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: collapsedHandleTop, transform: 'translateY(-50%)' }
+              })
+            )
+          ),
           // Database header
-          React.createElement('div', { className: 'graph-group-db-header' },
+          React.createElement('div', { 
+            className: `graph-group-db-header ${dbCollapsed ? 'collapsed' : ''}`,
+            onClick: handleDbHeaderClick
+          },
             React.createElement('img', { className: 'graph-group-db-icon', src: icon, alt: '' }),
             React.createElement('img', { className: 'graph-group-db-icon', src: './img/database.svg', alt: '' }),
             React.createElement('span', { className: 'graph-group-db-name' }, database)
           ),
           // Schema section
-          React.createElement('div', { className: 'graph-group-schema-section' },
-            React.createElement('div', { className: 'graph-group-schema-header' },
+          !dbCollapsed && React.createElement('div', { className: 'graph-group-schema-section' },
+            React.createElement('div', { 
+              className: `graph-group-schema-header ${schemaCollapsed ? 'collapsed' : ''}`,
+              onClick: handleSchemaHeaderClick
+            },
               React.createElement('img', { className: 'graph-group-schema-icon', src: './img/schema.svg', alt: '' }),
               React.createElement('span', { className: 'graph-group-schema-name' }, schema)
             ),
-            // Items - regular card for single item, compact list for multiple
-            React.createElement('div', { className: 'graph-group-items' },
-              items.map((item, index) => 
-                isSingleItem 
-                  // Single item - render as regular card
-                  ? React.createElement('div', {
-                      key: item.id,
-                      className: `graph-group-card ${selectedItemId === item.id ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
-                      onClick: (e) => {
-                        e.stopPropagation();
-                        onItemClick?.(item, id);
-                      }
-                    },
-                      React.createElement(Handle, {
-                        type: 'target',
-                        position: Position.Left,
-                        id: `left-${item.id}`,
-                        style: { top: '50%', transform: 'translateY(-50%)' }
-                      }),
-                      item.isFocal && React.createElement('div', { className: 'graph-group-card-badge' }, 'Currently viewing'),
-                      React.createElement('div', { className: 'graph-group-card-content' },
-                        React.createElement('img', { className: 'graph-group-card-icon', src: item.icon, alt: '' }),
-                        React.createElement('span', { className: 'graph-group-card-name' }, item.name)
-                      ),
-                      React.createElement(Handle, {
-                        type: 'source',
-                        position: Position.Right,
-                        id: `right-${item.id}`,
-                        style: { top: '50%', transform: 'translateY(-50%)' }
-                      })
-                    )
-                  // Multiple items - render as compact list item
-                  : React.createElement('div', {
-                      key: item.id,
-                      className: `graph-group-item ${selectedItemId === item.id ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
-                      onClick: (e) => {
-                        e.stopPropagation();
-                        onItemClick?.(item, id);
-                      }
-                    },
-                      React.createElement(Handle, {
-                        type: 'target',
-                        position: Position.Left,
-                        id: `left-${item.id}`,
-                        style: { top: 'auto', bottom: 'auto' }
-                      }),
-                      React.createElement('img', { className: 'graph-group-item-icon', src: item.icon, alt: '' }),
-                      React.createElement('span', { className: 'graph-group-item-name' }, item.name),
-                      React.createElement(Handle, {
-                        type: 'source',
-                        position: Position.Right,
-                        id: `right-${item.id}`,
-                        style: { top: 'auto', bottom: 'auto' }
-                      })
-                    )
-              )
+            !schemaCollapsed && React.createElement('div', { className: 'graph-group-items' },
+              items.map(renderItem)
             )
           )
         );
@@ -1410,42 +1730,173 @@
       // Custom Node: Platform Group (Tableau, Looker, etc)
       // =============================================
       function PlatformGroupNode({ data, id }) {
-        const { name, icon, items, platformId, onItemClick, selectedItemId } = data;
+        const { 
+          name, icon, items, platformId, onItemClick, selectedItemId, collapsed, onToggleCollapse,
+          expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
+          selectedChildren, onChildClick, onChildHover
+        } = data;
+
+        const handleHeaderClick = (e) => {
+          e.stopPropagation();
+          onToggleCollapse?.(id);
+        };
+
+        const collapsedHandleTop = '24px';
+
+        // Render an item - either expanded or compact
+        const renderItem = (item, index) => {
+          const isSelected = selectedItemId === item.id;
+          const isExpanded = expandedItems?.[item.id] || false;
+          const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
+          const searchQuery = itemSearchQueries?.[item.id] || '';
+
+          // If selected AND has children AND expanded, show expanded card
+          if (isSelected && hasChildren && isExpanded) {
+            return React.createElement('div', {
+              key: item.id,
+              style: { position: 'relative' }
+            },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: '28px' }
+              }),
+              React.createElement(ExpandedItemCard, {
+                item: item,
+                isSelected: true,
+                isFocal: false,
+                childrenExpanded: true,
+                onToggleChildren: () => onToggleItemExpand?.(item.id),
+                searchQuery: searchQuery,
+                onSearchChange: (query) => onItemSearchChange?.(item.id, query),
+                selectedChildren: selectedChildren?.[item.id],
+                onChildClick: (childName) => onChildClick?.(item.id, childName),
+                onChildHover: (childName) => onChildHover?.(item.id, childName),
+                nodeId: id
+              }),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: '28px' }
+              })
+            );
+          }
+
+          // If selected with children but NOT expanded, show card with toggle button
+          if (isSelected && hasChildren) {
+            const children = item.features || item.columns || [];
+            const childLabel = item.features?.length > 0 ? 'features' : 'columns';
+            
+            return React.createElement('div', {
+              key: item.id,
+              className: 'graph-expanded-card selected',
+              onClick: (e) => {
+                e.stopPropagation();
+                onItemClick?.(item, id);
+              },
+              style: { position: 'relative' }
+            },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: '28px' }
+              }),
+              React.createElement('div', { className: 'graph-expanded-header' },
+                React.createElement('div', { className: 'graph-expanded-info' },
+                  React.createElement('img', { className: 'graph-expanded-icon', src: item.icon, alt: '' }),
+                  React.createElement('span', { className: 'graph-expanded-name' }, item.name)
+                )
+              ),
+              React.createElement('button', {
+                className: 'graph-toggle-children-btn',
+                onClick: (e) => {
+                  e.stopPropagation();
+                  onToggleItemExpand?.(item.id);
+                }
+              },
+                `${children.length} ${childLabel}`,
+                React.createElement('svg', { 
+                  viewBox: '0 0 12 12', 
+                  fill: 'none',
+                  xmlns: 'http://www.w3.org/2000/svg'
+                },
+                  React.createElement('path', {
+                    d: 'M3 5l3 3 3-3',
+                    stroke: 'currentColor',
+                    strokeWidth: '1.5',
+                    strokeLinecap: 'round',
+                    strokeLinejoin: 'round'
+                  })
+                )
+              ),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: '28px' }
+              })
+            );
+          }
+
+          // Default compact platform item
+          return React.createElement('div', {
+            key: item.id,
+            className: `graph-platform-item ${isSelected ? 'selected' : ''}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              onItemClick?.(item, id);
+            }
+          },
+            React.createElement(Handle, {
+              type: 'target',
+              position: Position.Left,
+              id: `left-${item.id}`,
+              style: { top: 'auto', bottom: 'auto' }
+            }),
+            React.createElement('img', { className: 'graph-platform-item-icon', src: item.icon, alt: '' }),
+            React.createElement('span', { className: 'graph-platform-item-name' }, item.name),
+            React.createElement(Handle, {
+              type: 'source',
+              position: Position.Right,
+              id: `right-${item.id}`,
+              style: { top: 'auto', bottom: 'auto' }
+            })
+          );
+        };
 
         return React.createElement('div', { className: `graph-platform-container platform-${platformId}` },
+          // Collapsed handles
+          collapsed && items.map(item => 
+            React.createElement(React.Fragment, { key: `collapsed-handles-${item.id}` },
+              React.createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: collapsedHandleTop, transform: 'translateY(-50%)' }
+              }),
+              React.createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: collapsedHandleTop, transform: 'translateY(-50%)' }
+              })
+            )
+          ),
           // Platform header
-          React.createElement('div', { className: 'graph-platform-header' },
+          React.createElement('div', { 
+            className: `graph-platform-header ${collapsed ? 'collapsed' : ''}`,
+            onClick: handleHeaderClick
+          },
             React.createElement('img', { className: 'graph-platform-icon', src: icon, alt: '' }),
             React.createElement('span', { className: 'graph-platform-name' }, name),
             React.createElement('span', { className: 'graph-platform-count' }, items.length)
           ),
           // Items list
-          React.createElement('div', { className: 'graph-platform-items' },
-            items.map((item, index) => 
-              React.createElement('div', {
-                key: item.id,
-                className: `graph-platform-item ${selectedItemId === item.id ? 'selected' : ''}`,
-                onClick: (e) => {
-                  e.stopPropagation();
-                  onItemClick?.(item, id);
-                }
-              },
-                React.createElement(Handle, {
-                  type: 'target',
-                  position: Position.Left,
-                  id: `left-${item.id}`,
-                  style: { top: 'auto', bottom: 'auto' }
-                }),
-                React.createElement('img', { className: 'graph-platform-item-icon', src: item.icon, alt: '' }),
-                React.createElement('span', { className: 'graph-platform-item-name' }, item.name),
-                React.createElement(Handle, {
-                  type: 'source',
-                  position: Position.Right,
-                  id: `right-${item.id}`,
-                  style: { top: 'auto', bottom: 'auto' }
-                })
-              )
-            )
+          !collapsed && React.createElement('div', { className: 'graph-platform-items' },
+            items.map(renderItem)
           )
         );
       }
@@ -1566,7 +2017,8 @@
       // Transform Mock Data to Nodes & Edges
       // Groups with compact cards, focal as single card
       // =============================================
-      function transformDataToNodesAndEdges(data, onItemClick, selectedItemId) {
+      function transformDataToNodesAndEdges(data, onItemClick, selectedItemId, collapseHandlers = {}) {
+        const { onToggleDbCollapse, onToggleSchemaCollapse, onTogglePlatformCollapse } = collapseHandlers;
         const nodes = [];
         const edges = [];
         const allItems = [];
@@ -1587,6 +2039,13 @@
                 const hasFocal = schema.items.some(item => item.isFocal);
                 
                 // Always use groupNode for database/schema structures
+                // Enrich items with database and schema info
+                const enrichedItems = schema.items.map(item => ({
+                  ...item,
+                  database: group.database,
+                  schemaName: schema.name
+                }));
+                
                 nodes.push({
                   id: groupNodeId,
                   type: 'groupNode',
@@ -1595,18 +2054,22 @@
                     database: group.database,
                     schema: schema.name,
                     icon: group.icon,
-                    items: schema.items,
+                    items: enrichedItems,
                     onItemClick,
                     selectedItemId,
                     hasFocal,
                     layer: depthIndex,
                     width: 340,
                     height: nodeHeight,
+                    dbCollapsed: false,
+                    schemaCollapsed: false,
+                    onToggleDbCollapse,
+                    onToggleSchemaCollapse,
                   },
                 });
                   
                 // Map each item to handles on this group node
-                schema.items.forEach(item => {
+                enrichedItems.forEach(item => {
                   itemToHandleMap.set(item.id, { 
                     nodeId: groupNodeId, 
                     sourceHandle: `right-${item.id}`,
@@ -1623,6 +2086,12 @@
               const headerHeight = 40;
               const nodeHeight = headerHeight + (group.items.length * itemHeight) + 16;
               
+              // Enrich items with platform info
+              const enrichedPlatformItems = group.items.map(item => ({
+                ...item,
+                platform: group.name
+              }));
+              
               nodes.push({
                 id: platformNodeId,
                 type: 'platformGroup',
@@ -1630,18 +2099,20 @@
                 data: {
                   name: group.name,
                   icon: group.icon,
-                  items: group.items,
+                  items: enrichedPlatformItems,
                   platformId: group.id,
                   onItemClick,
                   selectedItemId,
                   layer: depthIndex,
                   width: 340,
                   height: nodeHeight,
+                  collapsed: false,
+                  onToggleCollapse: onTogglePlatformCollapse,
                 },
               });
               
               // Map each item to handles on this platform node
-              group.items.forEach(item => {
+              enrichedPlatformItems.forEach(item => {
                 itemToHandleMap.set(item.id, { 
                   nodeId: platformNodeId, 
                   sourceHandle: `right-${item.id}`,
@@ -1692,19 +2163,174 @@
         const [edges, setEdges, onEdgesChange] = useEdgesState([]);
         const [selectedItem, setSelectedItem] = useState(null);
         const [isLoading, setIsLoading] = useState(true);
+        const [collapseState, setCollapseState] = useState({}); // { nodeId: { dbCollapsed, schemaCollapsed, collapsed } }
+        
+        // New state for column/feature expansion
+        const [expandedItems, setExpandedItems] = useState({}); // { itemId: boolean }
+        const [itemSearchQueries, setItemSearchQueries] = useState({}); // { itemId: string }
+        const [selectedChildren, setSelectedChildren] = useState({}); // { itemId: Set<string> }
+        const [hoveredChild, setHoveredChild] = useState(null); // { itemId, childName }
+        
         const reactFlowInstance = useReactFlow();
+
+        // Calculate node height based on collapse state and expanded items
+        const calculateNodeHeight = useCallback((nodeType, items, collapseInfo, expandedItemsState, selectedItemId) => {
+          const itemHeight = 40;
+          const expandedItemHeight = 420; // Height when item is expanded with columns list (header + search + list + button + margins)
+          const selectedItemHeight = 100; // Height when item is selected but not expanded (card + margins)
+          const dbHeaderHeight = 32;
+          const schemaHeaderHeight = 40;
+          const schemaPadding = 16;
+          const containerPadding = 16;
+          
+          // Calculate total items height accounting for expanded/selected items
+          const calculateItemsHeight = (itemsList) => {
+            let height = 0;
+            itemsList.forEach(item => {
+              const isSelected = selectedItemId === item.id;
+              const isExpanded = expandedItemsState?.[item.id] || false;
+              const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
+              
+              if (isSelected && hasChildren && isExpanded) {
+                height += expandedItemHeight;
+              } else if (isSelected && hasChildren) {
+                height += selectedItemHeight;
+              } else {
+                height += itemHeight;
+              }
+            });
+            return height;
+          };
+          
+          if (nodeType === 'groupNode') {
+            if (collapseInfo?.dbCollapsed) {
+              return dbHeaderHeight + containerPadding;
+            }
+            if (collapseInfo?.schemaCollapsed) {
+              return dbHeaderHeight + schemaHeaderHeight + schemaPadding + containerPadding;
+            }
+            const itemsHeight = calculateItemsHeight(items || []);
+            return dbHeaderHeight + schemaHeaderHeight + itemsHeight + schemaPadding + containerPadding + 24;
+          }
+          
+          if (nodeType === 'platformGroup') {
+            const platformHeaderHeight = 40;
+            if (collapseInfo?.collapsed) {
+              return platformHeaderHeight + 16;
+            }
+            const itemsHeight = calculateItemsHeight(items || []);
+            return platformHeaderHeight + itemsHeight + 16;
+          }
+          
+          return 100;
+        }, []);
+
+        // Handle toggle collapse for database header
+        const handleToggleDbCollapse = useCallback((nodeId) => {
+          setCollapseState(prev => ({
+            ...prev,
+            [nodeId]: {
+              ...prev[nodeId],
+              dbCollapsed: !prev[nodeId]?.dbCollapsed
+            }
+          }));
+        }, []);
+
+        // Handle toggle collapse for schema header
+        const handleToggleSchemaCollapse = useCallback((nodeId) => {
+          setCollapseState(prev => ({
+            ...prev,
+            [nodeId]: {
+              ...prev[nodeId],
+              schemaCollapsed: !prev[nodeId]?.schemaCollapsed
+            }
+          }));
+        }, []);
+
+        // Handle toggle collapse for platform header
+        const handleTogglePlatformCollapse = useCallback((nodeId) => {
+          setCollapseState(prev => ({
+            ...prev,
+            [nodeId]: {
+              ...prev[nodeId],
+              collapsed: !prev[nodeId]?.collapsed
+            }
+          }));
+        }, []);
+
+        // Handle toggle item children expansion (columns/features)
+        const handleToggleItemExpand = useCallback((itemId) => {
+          setExpandedItems(prev => ({
+            ...prev,
+            [itemId]: !prev[itemId]
+          }));
+        }, []);
+
+        // Handle item search query change
+        const handleItemSearchChange = useCallback((itemId, query) => {
+          setItemSearchQueries(prev => ({
+            ...prev,
+            [itemId]: query
+          }));
+        }, []);
+
+        // Handle child (column/feature) click
+        const handleChildClick = useCallback((itemId, childName) => {
+          setSelectedChildren(prev => {
+            const currentSet = prev[itemId] || new Set();
+            const newSet = new Set(currentSet);
+            
+            if (newSet.has(childName)) {
+              newSet.delete(childName);
+            } else {
+              // For now, only allow single selection per item
+              newSet.clear();
+              newSet.add(childName);
+            }
+            
+            return {
+              ...prev,
+              [itemId]: newSet
+            };
+          });
+        }, []);
+
+        // Handle child hover
+        const handleChildHover = useCallback((itemId, childName) => {
+          if (childName) {
+            setHoveredChild({ itemId, childName });
+          } else {
+            setHoveredChild(null);
+          }
+        }, []);
 
         // Handle item click - update shared selection and center view
         const handleItemClick = useCallback((item, nodeId) => {
           setSelectedItem(item);
           
-          // Sync with global shared selection
+          // Sync with global shared selection - pass all item data for side panel
           if (window.sharedSelection) {
             window.sharedSelection.setSelection(item.id, {
               id: item.id,
               name: item.name,
               icon: item.icon,
-              schema: item.schema || item.platform || '-'
+              database: item.database,
+              schemaName: item.schemaName,
+              schema: item.schema,
+              platform: item.platform,
+              objType: item.objType,
+              columns: item.columns,
+              features: item.features,
+              outputs: item.outputs,
+              description: item.description,
+              comment: item.comment,
+              owner: item.owner,
+              createdAt: item.createdAt,
+              rowCount: item.rowCount,
+              dataQuality: item.dataQuality,
+              tags: item.tags,
+              downstream: item.downstream,
+              upstream: item.upstream
             });
           }
           
@@ -1787,9 +2413,14 @@
           async function initLayout() {
             setIsLoading(true);
             const { nodes: initialNodes, edges: initialEdges, allItems } = transformDataToNodesAndEdges(
-              mockLineageData, 
+              window.mockLineageData, 
               handleItemClick,
-              selectedItem?.id
+              selectedItem?.id,
+              {
+                onToggleDbCollapse: handleToggleDbCollapse,
+                onToggleSchemaCollapse: handleToggleSchemaCollapse,
+                onTogglePlatformCollapse: handleTogglePlatformCollapse,
+              }
             );
             
             try {
@@ -1806,9 +2437,10 @@
           }
           
           initLayout();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
 
-        // Update nodes when selection changes
+        // Update nodes when selection or expanded state changes
         useEffect(() => {
           const currentSelectedId = selectedItem?.id || window.sharedSelection?.selectedItemId;
           setNodes(nds => nds.map(node => ({
@@ -1816,9 +2448,96 @@
             data: {
               ...node.data,
               selectedItemId: currentSelectedId,
+              expandedItems: expandedItems,
+              itemSearchQueries: itemSearchQueries,
+              selectedChildren: selectedChildren,
+              onToggleItemExpand: handleToggleItemExpand,
+              onItemSearchChange: handleItemSearchChange,
+              onChildClick: handleChildClick,
+              onChildHover: handleChildHover,
             },
           })));
-        }, [selectedItem, setNodes]);
+        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover]);
+
+        // Re-layout when collapse state or expanded items change
+        useEffect(() => {
+          const currentSelectedId = selectedItem?.id || window.sharedSelection?.selectedItemId;
+          
+          // Update node data with collapse state and recalculate heights
+          setNodes(nds => {
+            const updatedNodes = nds.map(node => {
+              const nodeCollapseInfo = collapseState[node.id] || {};
+              const newHeight = calculateNodeHeight(node.type, node.data.items, nodeCollapseInfo, expandedItems, currentSelectedId);
+              
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  dbCollapsed: nodeCollapseInfo.dbCollapsed,
+                  schemaCollapsed: nodeCollapseInfo.schemaCollapsed,
+                  collapsed: nodeCollapseInfo.collapsed,
+                  onToggleDbCollapse: handleToggleDbCollapse,
+                  onToggleSchemaCollapse: handleToggleSchemaCollapse,
+                  onToggleCollapse: handleTogglePlatformCollapse,
+                  onToggleItemExpand: handleToggleItemExpand,
+                  onItemSearchChange: handleItemSearchChange,
+                  onChildClick: handleChildClick,
+                  onChildHover: handleChildHover,
+                  expandedItems: expandedItems,
+                  selectedItemId: currentSelectedId,
+                  height: newHeight,
+                },
+              };
+            });
+            
+            // Re-center nodes vertically per layer after height changes
+            const nodesByLayer = {};
+            updatedNodes.forEach(node => {
+              const layer = node.data.layer;
+              if (layer !== undefined) {
+                if (!nodesByLayer[layer]) {
+                  nodesByLayer[layer] = [];
+                }
+                nodesByLayer[layer].push(node);
+              }
+            });
+            
+            // Find global canvas center (use original center from initial layout)
+            let globalMinY = Infinity;
+            let globalMaxY = -Infinity;
+            updatedNodes.forEach(node => {
+              const nodeHeight = node.data.height || 100;
+              globalMinY = Math.min(globalMinY, node.position.y);
+              globalMaxY = Math.max(globalMaxY, node.position.y + nodeHeight);
+            });
+            const canvasCenterY = (globalMinY + globalMaxY) / 2;
+            
+            // Re-center each layer vertically
+            Object.keys(nodesByLayer).forEach(layer => {
+              const layerNodes = nodesByLayer[layer];
+              
+              // Calculate new layer height with updated node heights
+              let totalHeight = 0;
+              const gap = 72; // spacing between nodes
+              layerNodes.forEach((node, idx) => {
+                totalHeight += node.data.height || 100;
+                if (idx < layerNodes.length - 1) totalHeight += gap;
+              });
+              
+              // Position nodes centered around canvas center
+              let currentY = canvasCenterY - totalHeight / 2;
+              layerNodes.forEach(node => {
+                node.position = {
+                  ...node.position,
+                  y: currentY
+                };
+                currentY += (node.data.height || 100) + gap;
+              });
+            });
+            
+            return updatedNodes;
+          });
+        }, [collapseState, expandedItems, selectedItem, calculateNodeHeight, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, setNodes]);
 
         // Expose global function to center on selected/focal node
         useEffect(() => {
@@ -1875,6 +2594,10 @@
           defaultViewport: { x: 0, y: 0, zoom: 0.9 },
           minZoom: 0.1,
           maxZoom: 2,
+          zoomOnScroll: false,
+          panOnScroll: true,
+          zoomActivationKeyCode: 'Meta',
+          noPanClassName: 'nowheel',
           defaultEdgeOptions: {
             type: 'default',  // bezier curves
           },
