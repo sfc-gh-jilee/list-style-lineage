@@ -35,6 +35,12 @@ body {
   display: flex;
   flex-direction: column;
   flex: 1;
+  position: relative;
+}
+
+/* Graph mode - view panel needs to handle absolute toolbar */
+.view-panel.graph-mode {
+  position: relative;
 }
 
 .lineage-scroll {
@@ -51,6 +57,30 @@ body {
   padding: 0 16px;
   border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
+  position: relative;
+  background: #ffffff;
+  z-index: 50;
+}
+
+/* Graph mode - toolbar overlay */
+.view-panel.graph-mode .tool-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: transparent;
+  border-bottom: none;
+}
+
+/* Graph view container */
+.lineage-graph {
+  display: none;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  background-color: #fefefe;
+  background-image: radial-gradient(circle, #d5dae49a 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .toolbar-left,

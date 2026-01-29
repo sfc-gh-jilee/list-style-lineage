@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lineage List</title>
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./lineage-graph.css" />
+    <!-- React Flow CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reactflow@11.11.4/dist/style.css" />
   </head>
   <body>
     <script>
@@ -284,17 +287,59 @@
         const panelIcon = document.getElementById('panelIcon');
         const panelTitle = document.getElementById('panelTitle');
         const panelSchema = document.getElementById('panelSchema');
-        let selectedItem = null;
+        let selectedListItem = null;
 
-        // Function to select an item and update panel
+        // Global shared selection state (accessible by graph view)
+        window.sharedSelection = {
+          selectedItemId: null,
+          selectedItemData: null,
+          listeners: [],
+          
+          // Update selection from any view
+          setSelection: function(itemId, itemData) {
+            this.selectedItemId = itemId;
+            this.selectedItemData = itemData;
+            this.notifyListeners();
+            this.updateSidePanel(itemData);
+          },
+          
+          // Clear selection
+          clearSelection: function() {
+            this.selectedItemId = null;
+            this.selectedItemData = null;
+            this.notifyListeners();
+            sidePanel.classList.add('hidden');
+          },
+          
+          // Subscribe to selection changes
+          addListener: function(callback) {
+            this.listeners.push(callback);
+          },
+          
+          // Notify all listeners of selection change
+          notifyListeners: function() {
+            this.listeners.forEach(cb => cb(this.selectedItemId, this.selectedItemData));
+          },
+          
+          // Update side panel with item data
+          updateSidePanel: function(itemData) {
+            if (!itemData) return;
+            panelTitle.textContent = itemData.name || 'Unknown';
+            panelIcon.src = itemData.icon || './img/table.svg';
+            panelSchema.textContent = itemData.schema || itemData.platform || '-';
+            sidePanel.classList.remove('hidden');
+          }
+        };
+
+        // Function to select an item in list view and sync globally
         function selectItem(item) {
-          // Deselect previous
-          if (selectedItem) {
-            selectedItem.classList.remove('selected');
+          // Deselect previous in list
+          if (selectedListItem) {
+            selectedListItem.classList.remove('selected');
           }
           
           // Select new
-          selectedItem = item;
+          selectedListItem = item;
           item.classList.add('selected');
           
           // Get object info
@@ -302,16 +347,38 @@
           const objectIcon = item.querySelector('.object-icon')?.src || './img/table.svg';
           const groupName = item.closest('.object-group')?.querySelector('.group-name')?.textContent || '-';
           
-          // Update panel
-          panelTitle.textContent = objectName;
-          panelIcon.src = objectIcon;
-          panelSchema.textContent = groupName;
-          
-          // Show panel
-          sidePanel.classList.remove('hidden');
+          // Create item data and set global selection
+          const itemId = objectName.toLowerCase().replace(/\s+/g, '_');
+          window.sharedSelection.setSelection(itemId, {
+            id: itemId,
+            name: objectName,
+            icon: objectIcon,
+            schema: groupName
+          });
         }
 
-        // Click to select object
+        // Listen for selection changes from graph view
+        window.sharedSelection.addListener((itemId, itemData) => {
+          // Update list view selection
+          if (selectedListItem) {
+            selectedListItem.classList.remove('selected');
+            selectedListItem = null;
+          }
+          
+          if (itemId && itemData) {
+            // Find and highlight matching item in list view
+            const matchName = itemData.name?.toUpperCase();
+            allItems.forEach(item => {
+              const nameEl = item.querySelector('.object-name');
+              if (nameEl && nameEl.textContent.trim().toUpperCase() === matchName) {
+                item.classList.add('selected');
+                selectedListItem = item;
+              }
+            });
+          }
+        });
+
+        // Click to select object in list view
         allItems.forEach(item => {
           item.style.cursor = 'pointer';
           item.addEventListener('click', (e) => {
@@ -324,26 +391,50 @@
 
         // Close panel
         panelClose.addEventListener('click', () => {
-          sidePanel.classList.add('hidden');
-          if (selectedItem) {
-            selectedItem.classList.remove('selected');
-            selectedItem = null;
+          window.sharedSelection.clearSelection();
+          if (selectedListItem) {
+            selectedListItem.classList.remove('selected');
+            selectedListItem = null;
           }
           updateStickyHeaders();
         });
 
         // Segmented button toggle (Graph/List)
         const toggleBtns = document.querySelectorAll('.view-toggle .toggle-btn');
-        console.log('Toggle buttons found:', toggleBtns.length);
+        const viewPanel = document.querySelector('.view-panel');
+        const lineageScroll = document.querySelector('.lineage-scroll');
+        const lineageGraph = document.querySelector('.lineage-graph');
+        const toolBar = document.querySelector('.tool-bar');
+        
         toggleBtns.forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Toggle clicked:', btn.textContent);
+            
             // Remove active from all
             toggleBtns.forEach(b => b.classList.remove('active'));
             // Add active to clicked
             btn.classList.add('active');
+            
+            // Toggle views based on button text
+            const isGraphView = btn.textContent.trim() === 'Graph';
+            
+            if (isGraphView) {
+              viewPanel.classList.add('graph-mode');
+              lineageScroll.style.display = 'none';
+              lineageGraph.style.display = 'block';
+              
+              // Center on selected node when switching to graph view
+              setTimeout(() => {
+                if (window.centerOnSelectedNode) {
+                  window.centerOnSelectedNode();
+                }
+              }, 100);
+            } else {
+              viewPanel.classList.remove('graph-mode');
+              lineageScroll.style.display = 'block';
+              lineageGraph.style.display = 'none';
+            }
           });
         });
       });
@@ -838,6 +929,9 @@
             </div>
           </section>    
         </div>
+
+        <div class="lineage-graph" id="lineage-graph-container">
+        </div>
       
       </div>
 
@@ -896,5 +990,847 @@
       </div>
     </aside>
     </div>
+
+    <!-- React Flow Graph View - UMD builds (dev for debugging) -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/reactflow@11.11.4/dist/umd/index.js"></script>
+    <script src="https://unpkg.com/elkjs@0.9.3/lib/elk.bundled.js"></script>
+
+    <script>
+      // Wait for DOM and libraries to load
+      document.addEventListener('DOMContentLoaded', function() {
+        // Extract from globals
+        const { useState, useCallback, useEffect, useMemo, createElement } = React;
+        const { createRoot } = ReactDOM;
+        
+        // Extract ReactFlow components - use named exports, not default
+        const ReactFlowComponent = window.ReactFlow.ReactFlow;
+        const Controls = window.ReactFlow.Controls;
+        const Background = window.ReactFlow.Background;
+        const useNodesState = window.ReactFlow.useNodesState;
+        const useEdgesState = window.ReactFlow.useEdgesState;
+        const Position = window.ReactFlow.Position;
+        const Handle = window.ReactFlow.Handle;
+        const ReactFlowProvider = window.ReactFlow.ReactFlowProvider;
+        const useReactFlow = window.ReactFlow.useReactFlow;
+        const BackgroundVariant = window.ReactFlow.BackgroundVariant;
+        const MarkerType = window.ReactFlow.MarkerType;
+        
+        // Check if ReactFlow loaded
+        if (!ReactFlowComponent) {
+          console.error('ReactFlow not loaded. Available:', Object.keys(window.ReactFlow || {}));
+          return;
+        }
+        
+        const ELK = window.ELK;
+
+      // =============================================
+      // Mock Data - Hierarchical structure
+      // Database > Schema > Objects
+      // =============================================
+      const mockLineageData = {
+        depths: [
+          {
+            id: 'depth-1',
+            level: -3,
+            label: 'Upstream −3',
+            type: 'upstream',
+            groups: [
+              {
+                id: 'external-apis',
+                name: 'External APIs',
+                icon: './img/api.svg',
+                type: 'platform', // No nested schema
+                items: [
+                  { id: 'shopify-api', name: 'Shopify Orders API', icon: './img/api.svg', downstream: ['orders'] },
+                  { id: 'stripe-api', name: 'Stripe Payments API', icon: './img/api.svg', downstream: ['payments'] },
+                  { id: 'salesforce-api', name: 'Salesforce CRM', icon: './img/api.svg', downstream: ['customers'] },
+                  { id: 'ga4-api', name: 'Google Analytics 4', icon: './img/api.svg', downstream: ['ga_sessions', 'ga_events'] },
+                  { id: 'fb-ads-api', name: 'Facebook Ads API', icon: './img/api.svg', downstream: ['ad_spend'] },
+                  { id: 'mixpanel-api', name: 'Mixpanel Events', icon: './img/api.svg', downstream: ['product_events'] },
+                ]
+              }
+            ]
+          },
+          {
+            id: 'depth-2',
+            level: -2,
+            label: 'Upstream −2',
+            type: 'upstream',
+            groups: [
+              {
+                id: 'acme-raw-db',
+                database: 'ACME_PROD',
+                icon: './img/logo-snowflake.svg',
+                type: 'database',
+                schemas: [
+                  {
+                    id: 'raw-ecommerce',
+                    name: 'RAW_ECOMMERCE',
+                    items: [
+                      { id: 'orders', name: 'ORDERS', icon: './img/table.svg', downstream: ['stg_orders'] },
+                      { id: 'payments', name: 'PAYMENTS', icon: './img/table.svg', downstream: ['stg_payments'] },
+                      { id: 'customers', name: 'CUSTOMERS', icon: './img/table.svg', downstream: ['stg_customers', 'stg_orders'] },
+                    ]
+                  },
+                  {
+                    id: 'raw-marketing',
+                    name: 'RAW_MARKETING',
+                    items: [
+                      { id: 'ga_sessions', name: 'GA_SESSIONS', icon: './img/table.svg', downstream: ['stg_sessions'] },
+                      { id: 'ga_events', name: 'GA_EVENTS', icon: './img/table.svg', downstream: ['stg_web_events'] },
+                      { id: 'ad_spend', name: 'AD_SPEND', icon: './img/table.svg', downstream: ['stg_ad_spend'] },
+                      { id: 'product_events', name: 'PRODUCT_EVENTS', icon: './img/table.svg', downstream: ['stg_web_events', 'stg_sessions'] },
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'depth-3',
+            level: -1,
+            label: 'Upstream −1',
+            type: 'upstream',
+            groups: [
+              {
+                id: 'acme-transform-db',
+                database: 'ACME_PROD',
+                icon: './img/logo-snowflake.svg',
+                type: 'database',
+                schemas: [
+                  {
+                    id: 'staging',
+                    name: 'STAGING',
+                    items: [
+                      { id: 'stg_orders', name: 'STG_ORDERS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
+                      { id: 'stg_payments', name: 'STG_PAYMENTS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
+                      { id: 'stg_customers', name: 'STG_CUSTOMERS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
+                      { id: 'stg_sessions', name: 'STG_SESSIONS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
+                      { id: 'stg_web_events', name: 'STG_WEB_EVENTS', icon: './img/view.svg', downstream: ['fct_customer_orders'] },
+                      { id: 'stg_ad_spend', name: 'STG_AD_SPEND', icon: './img/view.svg', downstream: [] },
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'depth-4',
+            level: 0,
+            label: 'Currently viewing',
+            type: 'focal',
+            groups: [
+              {
+                id: 'acme-analytics-db',
+                database: 'ANALYTICS_DB',
+                icon: './img/logo-snowflake.svg',
+                type: 'database',
+                schemas: [
+                  {
+                    id: 'analytics',
+                    name: 'ANALYTICS',
+                    items: [
+                      { id: 'fct_customer_orders', name: 'FCT_CUSTOMER_ORDERS', icon: './img/dataset.svg', downstream: ['dim_customers', 'fct_daily_revenue', 'fct_attribution', 'user_journey_agg'], isFocal: true },
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'depth-5',
+            level: 1,
+            label: 'Downstream +1',
+            type: 'downstream',
+            groups: [
+              {
+                id: 'acme-marts-db',
+                database: 'ACME_ANALYTICS',
+                icon: './img/logo-snowflake.svg',
+                type: 'database',
+                schemas: [
+                  {
+                    id: 'marts',
+                    name: 'MARTS',
+                    items: [
+                      { id: 'dim_customers', name: 'DIM_CUSTOMERS', icon: './img/table.svg', downstream: ['customer-360-dashboard', 'churn_prediction_model'] },
+                      { id: 'fct_daily_revenue', name: 'FCT_DAILY_REVENUE', icon: './img/table.svg', downstream: ['exec-revenue-dashboard'] },
+                      { id: 'fct_attribution', name: 'FCT_ATTRIBUTION', icon: './img/table.svg', downstream: ['marketing-roi-dashboard', 'attribution_model'] },
+                      { id: 'user_journey_agg', name: 'USER_JOURNEY_AGG', icon: './img/table.svg', downstream: [] },
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'depth-6',
+            level: 2,
+            label: 'Downstream +2',
+            type: 'downstream',
+            groups: [
+              {
+                id: 'tableau',
+                name: 'Tableau',
+                icon: './img/logo-tableau.svg',
+                type: 'platform',
+                items: [
+                  { id: 'exec-revenue-dashboard', name: 'Exec Revenue Dashboard', icon: './img/dashboard.svg', downstream: ['finance-weekly-report'] },
+                ]
+              },
+              {
+                id: 'looker',
+                name: 'Looker',
+                icon: './img/logo-looker.svg',
+                type: 'platform',
+                items: [
+                  { id: 'customer-360-dashboard', name: 'Customer 360 Dashboard', icon: './img/dashboard.svg', downstream: ['investor-data-room'] },
+                  { id: 'marketing-roi-dashboard', name: 'Marketing ROI Dashboard', icon: './img/dashboard.svg', downstream: [] },
+                ]
+              },
+              {
+                id: 'ml-models',
+                name: 'ML Models',
+                icon: './img/model.svg',
+                type: 'platform',
+                items: [
+                  { id: 'churn_prediction_model', name: 'Churn Prediction Model', icon: './img/model.svg', downstream: [] },
+                  { id: 'attribution_model', name: 'Attribution Model', icon: './img/model.svg', downstream: [] },
+                ]
+              }
+            ]
+          },
+          {
+            id: 'depth-7',
+            level: 3,
+            label: 'Downstream +3',
+            type: 'downstream',
+            groups: [
+              {
+                id: 'exports',
+                name: 'Exports',
+                icon: './img/api.svg',
+                type: 'platform',
+                items: [
+                  { id: 'finance-weekly-report', name: 'Finance Weekly Report', icon: './img/api.svg', downstream: [] },
+                  { id: 'investor-data-room', name: 'Investor Data Room', icon: './img/api.svg', downstream: [] },
+                ]
+              }
+            ]
+          }
+        ]
+      };
+
+      // =============================================
+      // Custom Node: Object Card (single table/view)
+      // =============================================
+      function ObjectCardNode({ data, selected, id }) {
+        const { item, onItemClick, selectedItemId, isFocal } = data;
+        const isSelected = selected || selectedItemId === item.id;
+
+        return React.createElement('div', { 
+          className: `graph-object-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''}`,
+          onClick: () => onItemClick?.(item, id)
+        },
+          React.createElement(Handle, {
+            type: 'target',
+            position: Position.Left,
+            id: 'left'
+          }),
+          // Focal badge
+          isFocal && React.createElement('div', { className: 'graph-object-focal-badge' }, 'Currently viewing'),
+          // Object info
+          React.createElement('div', { className: 'graph-object-info' },
+            React.createElement('img', { className: 'graph-object-icon', src: item.icon, alt: '' }),
+            React.createElement('span', { className: 'graph-object-name' }, item.name)
+          ),
+          React.createElement(Handle, {
+            type: 'source',
+            position: Position.Right,
+            id: 'right'
+          })
+        );
+      }
+
+      // =============================================
+      // Custom Node: Group Node (database > schema > items)
+      // =============================================
+      function GroupNode({ data, id }) {
+        const { database, schema, icon, items, onItemClick, selectedItemId } = data;
+        const isSingleItem = items.length === 1;
+
+        return React.createElement('div', { className: 'graph-group-container' },
+          // Database header
+          React.createElement('div', { className: 'graph-group-db-header' },
+            React.createElement('img', { className: 'graph-group-db-icon', src: icon, alt: '' }),
+            React.createElement('img', { className: 'graph-group-db-icon', src: './img/database.svg', alt: '' }),
+            React.createElement('span', { className: 'graph-group-db-name' }, database)
+          ),
+          // Schema section
+          React.createElement('div', { className: 'graph-group-schema-section' },
+            React.createElement('div', { className: 'graph-group-schema-header' },
+              React.createElement('img', { className: 'graph-group-schema-icon', src: './img/schema.svg', alt: '' }),
+              React.createElement('span', { className: 'graph-group-schema-name' }, schema)
+            ),
+            // Items - regular card for single item, compact list for multiple
+            React.createElement('div', { className: 'graph-group-items' },
+              items.map((item, index) => 
+                isSingleItem 
+                  // Single item - render as regular card
+                  ? React.createElement('div', {
+                      key: item.id,
+                      className: `graph-group-card ${selectedItemId === item.id ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        onItemClick?.(item, id);
+                      }
+                    },
+                      React.createElement(Handle, {
+                        type: 'target',
+                        position: Position.Left,
+                        id: `left-${item.id}`,
+                        style: { top: '50%', transform: 'translateY(-50%)' }
+                      }),
+                      item.isFocal && React.createElement('div', { className: 'graph-group-card-badge' }, 'Currently viewing'),
+                      React.createElement('div', { className: 'graph-group-card-content' },
+                        React.createElement('img', { className: 'graph-group-card-icon', src: item.icon, alt: '' }),
+                        React.createElement('span', { className: 'graph-group-card-name' }, item.name)
+                      ),
+                      React.createElement(Handle, {
+                        type: 'source',
+                        position: Position.Right,
+                        id: `right-${item.id}`,
+                        style: { top: '50%', transform: 'translateY(-50%)' }
+                      })
+                    )
+                  // Multiple items - render as compact list item
+                  : React.createElement('div', {
+                      key: item.id,
+                      className: `graph-group-item ${selectedItemId === item.id ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        onItemClick?.(item, id);
+                      }
+                    },
+                      React.createElement(Handle, {
+                        type: 'target',
+                        position: Position.Left,
+                        id: `left-${item.id}`,
+                        style: { top: 'auto', bottom: 'auto' }
+                      }),
+                      React.createElement('img', { className: 'graph-group-item-icon', src: item.icon, alt: '' }),
+                      React.createElement('span', { className: 'graph-group-item-name' }, item.name),
+                      React.createElement(Handle, {
+                        type: 'source',
+                        position: Position.Right,
+                        id: `right-${item.id}`,
+                        style: { top: 'auto', bottom: 'auto' }
+                      })
+                    )
+              )
+            )
+          )
+        );
+      }
+
+      // =============================================
+      // Custom Node: Platform Group (Tableau, Looker, etc)
+      // =============================================
+      function PlatformGroupNode({ data, id }) {
+        const { name, icon, items, platformId, onItemClick, selectedItemId } = data;
+
+        return React.createElement('div', { className: `graph-platform-container platform-${platformId}` },
+          // Platform header
+          React.createElement('div', { className: 'graph-platform-header' },
+            React.createElement('img', { className: 'graph-platform-icon', src: icon, alt: '' }),
+            React.createElement('span', { className: 'graph-platform-name' }, name),
+            React.createElement('span', { className: 'graph-platform-count' }, items.length)
+          ),
+          // Items list
+          React.createElement('div', { className: 'graph-platform-items' },
+            items.map((item, index) => 
+              React.createElement('div', {
+                key: item.id,
+                className: `graph-platform-item ${selectedItemId === item.id ? 'selected' : ''}`,
+                onClick: (e) => {
+                  e.stopPropagation();
+                  onItemClick?.(item, id);
+                }
+              },
+                React.createElement(Handle, {
+                  type: 'target',
+                  position: Position.Left,
+                  id: `left-${item.id}`,
+                  style: { top: 'auto', bottom: 'auto' }
+                }),
+                React.createElement('img', { className: 'graph-platform-item-icon', src: item.icon, alt: '' }),
+                React.createElement('span', { className: 'graph-platform-item-name' }, item.name),
+                React.createElement(Handle, {
+                  type: 'source',
+                  position: Position.Right,
+                  id: `right-${item.id}`,
+                  style: { top: 'auto', bottom: 'auto' }
+                })
+              )
+            )
+          )
+        );
+      }
+
+      // =============================================
+      // Node Types Registry
+      // =============================================
+      const nodeTypes = {
+        objectCard: ObjectCardNode,
+        groupNode: GroupNode,
+        platformGroup: PlatformGroupNode,
+      };
+
+      // =============================================
+      // ELK Layout Configuration
+      // =============================================
+      const elk = new ELK();
+
+      const elkLayoutOptions = {
+        'elk.algorithm': 'layered',
+        'elk.direction': 'RIGHT',
+        'elk.spacing.nodeNode': '72',
+        'elk.layered.spacing.nodeNodeBetweenLayers': '120',
+        'elk.layered.spacing.edgeNodeBetweenLayers': '40',
+        'elk.edgeRouting': 'SPLINES',
+        'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+        'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
+        'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+        'elk.contentAlignment': 'V_CENTER',
+        'elk.nodeLabels.placement': 'INSIDE V_CENTER H_CENTER',
+      };
+
+      async function calculateLayout(nodes, edges) {
+        const elkGraph = {
+          id: 'root',
+          layoutOptions: elkLayoutOptions,
+          children: nodes.map(node => ({
+            id: node.id,
+            width: node.data.width || 240,
+            height: node.data.height || 100,
+            // Assign layer based on depth
+            layoutOptions: {
+              'elk.layered.layerConstraint': node.data.layer !== undefined ? node.data.layer.toString() : undefined,
+            }
+          })),
+          edges: edges.map(edge => ({
+            id: edge.id,
+            sources: [edge.source],
+            targets: [edge.target],
+          })),
+        };
+
+        const layoutedGraph = await elk.layout(elkGraph);
+
+        // First pass: get positions from ELK
+        const layoutedNodes = nodes.map(node => {
+          const layoutedNode = layoutedGraph.children.find(n => n.id === node.id);
+          return {
+            ...node,
+            position: {
+              x: layoutedNode?.x || 0,
+              y: layoutedNode?.y || 0,
+            },
+          };
+        });
+
+        // Second pass: center each column vertically
+        // Group nodes by layer
+        const nodesByLayer = {};
+        layoutedNodes.forEach(node => {
+          const layer = node.data.layer;
+          if (layer !== undefined) {
+            if (!nodesByLayer[layer]) {
+              nodesByLayer[layer] = [];
+            }
+            nodesByLayer[layer].push(node);
+          }
+        });
+
+        // Find global min and max Y across all nodes to determine canvas height
+        let globalMinY = Infinity;
+        let globalMaxY = -Infinity;
+        layoutedNodes.forEach(node => {
+          const nodeHeight = node.data.height || 100;
+          globalMinY = Math.min(globalMinY, node.position.y);
+          globalMaxY = Math.max(globalMaxY, node.position.y + nodeHeight);
+        });
+        const canvasHeight = globalMaxY - globalMinY;
+        const canvasCenterY = globalMinY + canvasHeight / 2;
+
+        // Center each layer's nodes vertically
+        Object.keys(nodesByLayer).forEach(layer => {
+          const layerNodes = nodesByLayer[layer];
+          
+          // Find layer's vertical extent
+          let layerMinY = Infinity;
+          let layerMaxY = -Infinity;
+          layerNodes.forEach(node => {
+            const nodeHeight = node.data.height || 100;
+            layerMinY = Math.min(layerMinY, node.position.y);
+            layerMaxY = Math.max(layerMaxY, node.position.y + nodeHeight);
+          });
+          
+          const layerHeight = layerMaxY - layerMinY;
+          const layerCenterY = layerMinY + layerHeight / 2;
+          const offsetY = canvasCenterY - layerCenterY;
+          
+          // Apply offset to center the layer
+          layerNodes.forEach(node => {
+            node.position.y += offsetY;
+          });
+        });
+
+        return layoutedNodes;
+      }
+
+      // =============================================
+      // Transform Mock Data to Nodes & Edges
+      // Groups with compact cards, focal as single card
+      // =============================================
+      function transformDataToNodesAndEdges(data, onItemClick, selectedItemId) {
+        const nodes = [];
+        const edges = [];
+        const allItems = [];
+        const itemToHandleMap = new Map(); // Map item id to node id and handle id
+
+        data.depths.forEach((depth, depthIndex) => {
+          depth.groups.forEach((group, groupIndex) => {
+            
+            if (group.type === 'database' && group.schemas) {
+              // Database group with schemas - create group nodes
+              group.schemas.forEach((schema, schemaIndex) => {
+                const groupNodeId = `group-${group.id}-${schema.id}`;
+                const itemHeight = 40;
+                const headerHeight = 70;
+                const nodeHeight = headerHeight + (schema.items.length * itemHeight) + 24;
+                
+                // Check if this group contains the focal item
+                const hasFocal = schema.items.some(item => item.isFocal);
+                
+                // Always use groupNode for database/schema structures
+                nodes.push({
+                  id: groupNodeId,
+                  type: 'groupNode',
+                  position: { x: 0, y: 0 },
+                  data: {
+                    database: group.database,
+                    schema: schema.name,
+                    icon: group.icon,
+                    items: schema.items,
+                    onItemClick,
+                    selectedItemId,
+                    hasFocal,
+                    layer: depthIndex,
+                    width: 340,
+                    height: nodeHeight,
+                  },
+                });
+                  
+                // Map each item to handles on this group node
+                schema.items.forEach(item => {
+                  itemToHandleMap.set(item.id, { 
+                    nodeId: groupNodeId, 
+                    sourceHandle: `right-${item.id}`,
+                    targetHandle: `left-${item.id}`
+                  });
+                  allItems.push({ ...item, nodeId: groupNodeId, isFocal: item.isFocal });
+                });
+              });
+              
+            } else if (group.type === 'platform' && group.items) {
+              // Platform group (Tableau, Looker, etc)
+              const platformNodeId = `platform-${group.id}`;
+              const itemHeight = 40;
+              const headerHeight = 40;
+              const nodeHeight = headerHeight + (group.items.length * itemHeight) + 16;
+              
+              nodes.push({
+                id: platformNodeId,
+                type: 'platformGroup',
+                position: { x: 0, y: 0 },
+                data: {
+                  name: group.name,
+                  icon: group.icon,
+                  items: group.items,
+                  platformId: group.id,
+                  onItemClick,
+                  selectedItemId,
+                  layer: depthIndex,
+                  width: 340,
+                  height: nodeHeight,
+                },
+              });
+              
+              // Map each item to handles on this platform node
+              group.items.forEach(item => {
+                itemToHandleMap.set(item.id, { 
+                  nodeId: platformNodeId, 
+                  sourceHandle: `right-${item.id}`,
+                  targetHandle: `left-${item.id}`
+                });
+                allItems.push({ ...item, nodeId: platformNodeId });
+              });
+            }
+          });
+        });
+
+        // Create edges between items using handle mapping
+        allItems.forEach(item => {
+          if (item.downstream && item.downstream.length > 0) {
+            item.downstream.forEach(targetItemId => {
+              const sourceMapping = itemToHandleMap.get(item.id);
+              const targetMapping = itemToHandleMap.get(targetItemId);
+              
+              if (sourceMapping && targetMapping) {
+                edges.push({
+                  id: `edge-${item.id}-${targetItemId}`,
+                  source: sourceMapping.nodeId,
+                  sourceHandle: sourceMapping.sourceHandle,
+                  target: targetMapping.nodeId,
+                  targetHandle: targetMapping.targetHandle,
+                  type: 'default',
+                  animated: false,
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    width: 12,
+                    height: 12,
+                    color: '#BDC4D5',
+                  },
+                });
+              }
+            });
+          }
+        });
+
+        return { nodes, edges, allItems };
+      }
+
+      // =============================================
+      // Main Graph Component
+      // =============================================
+      function LineageGraph() {
+        const [nodes, setNodes, onNodesChange] = useNodesState([]);
+        const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+        const [selectedItem, setSelectedItem] = useState(null);
+        const [isLoading, setIsLoading] = useState(true);
+        const reactFlowInstance = useReactFlow();
+
+        // Handle item click - update shared selection and center view
+        const handleItemClick = useCallback((item, nodeId) => {
+          setSelectedItem(item);
+          
+          // Sync with global shared selection
+          if (window.sharedSelection) {
+            window.sharedSelection.setSelection(item.id, {
+              id: item.id,
+              name: item.name,
+              icon: item.icon,
+              schema: item.schema || item.platform || '-'
+            });
+          }
+          
+          // Center view on the selected node
+          if (reactFlowInstance && nodeId) {
+            const node = reactFlowInstance.getNode(nodeId);
+            if (node) {
+              const x = node.position.x + (node.width || 304) / 2;
+              const y = node.position.y + (node.height || 40) / 2;
+              reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+            }
+          }
+        }, [reactFlowInstance]);
+        
+        // Listen for selection changes from list view
+        useEffect(() => {
+          if (window.sharedSelection) {
+            const handleSelectionChange = (itemId, itemData) => {
+              if (itemId) {
+                setSelectedItem({ id: itemId, ...itemData });
+                
+                // Center view on the selected node
+                if (reactFlowInstance) {
+                  // Find the node containing this item
+                  const allNodes = reactFlowInstance.getNodes();
+                  const targetNode = allNodes.find(node => {
+                    // Check if this node contains the item
+                    if (node.data.item?.id === itemId) return true;
+                    if (node.data.items?.some(item => item.id === itemId)) return true;
+                    return false;
+                  });
+                  
+                  if (targetNode) {
+                    const x = targetNode.position.x + (targetNode.width || targetNode.data.width || 304) / 2;
+                    const y = targetNode.position.y + (targetNode.height || targetNode.data.height || 100) / 2;
+                    reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+                  }
+                }
+              } else {
+                setSelectedItem(null);
+              }
+            };
+            
+            window.sharedSelection.addListener(handleSelectionChange);
+            
+            // Initialize with current selection if any
+            if (window.sharedSelection.selectedItemId) {
+              setSelectedItem({
+                id: window.sharedSelection.selectedItemId,
+                ...window.sharedSelection.selectedItemData
+              });
+            }
+          }
+        }, [reactFlowInstance]);
+
+        // Initialize layout
+        useEffect(() => {
+          async function initLayout() {
+            setIsLoading(true);
+            const { nodes: initialNodes, edges: initialEdges, allItems } = transformDataToNodesAndEdges(
+              mockLineageData, 
+              handleItemClick,
+              selectedItem?.id
+            );
+            
+            try {
+              const layoutedNodes = await calculateLayout(initialNodes, initialEdges);
+              setNodes(layoutedNodes);
+              setEdges(initialEdges);
+              
+              // Center on focal node after rendering
+              setTimeout(() => {
+                const focalNode = layoutedNodes.find(n => n.data.isFocal);
+                if (focalNode && reactFlowInstance) {
+                  // Get container dimensions
+                  const rfWrapper = document.querySelector('.react-flow');
+                  const containerWidth = rfWrapper?.clientWidth || 800;
+                  const containerHeight = rfWrapper?.clientHeight || 600;
+                  
+                  // Calculate center viewport
+                  const nodeWidth = focalNode.data.width || 304;
+                  const nodeHeight = focalNode.data.height || 60;
+                  const x = -(focalNode.position.x) + (containerWidth / 2) - (nodeWidth / 2);
+                  const y = -(focalNode.position.y) + (containerHeight / 2) - (nodeHeight / 2);
+                  
+                  reactFlowInstance.setViewport({ x, y, zoom: 1 }, { duration: 0 });
+                }
+              }, 100);
+            } catch (error) {
+              console.error('Layout error:', error);
+              setNodes(initialNodes);
+              setEdges(initialEdges);
+            }
+            setIsLoading(false);
+          }
+          
+          initLayout();
+        }, []);
+
+        // Update nodes when selection changes
+        useEffect(() => {
+          const currentSelectedId = selectedItem?.id || window.sharedSelection?.selectedItemId;
+          setNodes(nds => nds.map(node => ({
+            ...node,
+            data: {
+              ...node.data,
+              selectedItemId: currentSelectedId,
+            },
+          })));
+        }, [selectedItem, setNodes]);
+
+        // Expose global function to center on selected/focal node
+        useEffect(() => {
+          window.centerOnSelectedNode = () => {
+            if (!reactFlowInstance) return;
+            
+            const allNodes = reactFlowInstance.getNodes();
+            const currentSelectedId = selectedItem?.id || window.sharedSelection?.selectedItemId;
+            
+            let targetNode = null;
+            
+            // First try to find the selected node
+            if (currentSelectedId) {
+              targetNode = allNodes.find(node => {
+                if (node.data.item?.id === currentSelectedId) return true;
+                if (node.data.items?.some(item => item.id === currentSelectedId)) return true;
+                return false;
+              });
+            }
+            
+            // Fall back to focal node if no selection
+            if (!targetNode) {
+              targetNode = allNodes.find(node => 
+                node.data.isFocal || node.data.hasFocal || node.data.items?.some(item => item.isFocal)
+              );
+            }
+            
+            if (targetNode) {
+              const x = targetNode.position.x + (targetNode.width || targetNode.data.width || 304) / 2;
+              const y = targetNode.position.y + (targetNode.height || targetNode.data.height || 100) / 2;
+              reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
+            }
+          };
+          
+          return () => {
+            delete window.centerOnSelectedNode;
+          };
+        }, [reactFlowInstance, selectedItem]);
+
+        if (isLoading) {
+          return React.createElement('div', { className: 'graph-loading' },
+            React.createElement('div', { className: 'graph-loading-spinner' }),
+            'Loading graph...'
+          );
+        }
+
+        return React.createElement(ReactFlowComponent, {
+          nodes,
+          edges,
+          onNodesChange,
+          onEdgesChange,
+          nodeTypes,
+          defaultViewport: { x: 0, y: 0, zoom: 1 },
+          minZoom: 0.1,
+          maxZoom: 2,
+          defaultEdgeOptions: {
+            type: 'default',  // bezier curves
+          },
+          proOptions: { hideAttribution: true },
+        },
+          React.createElement(Background, {
+            variant: BackgroundVariant.Dots,
+            gap: 20,
+            size: 1.5,
+            color: 'rgba(213, 218, 228, 1)'
+          }),
+          React.createElement(Controls, { 
+            showInteractive: false,
+            position: 'bottom-left'
+          })
+        );
+      }
+
+      // =============================================
+      // Mount React App with Provider
+      // =============================================
+      const container = document.getElementById('lineage-graph-container');
+      if (container) {
+        const root = createRoot(container);
+        root.render(
+          React.createElement(ReactFlowProvider, null,
+            React.createElement(LineageGraph)
+          )
+        );
+      }
+      
+      }); // End DOMContentLoaded
+    </script>
   </body>
 </html>
