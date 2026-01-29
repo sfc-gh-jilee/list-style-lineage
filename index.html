@@ -122,6 +122,11 @@
             const data = headerData[index];
             if (!data) return;
             
+            // Recalculate natural positions if they are 0 (e.g., after switching from graph view)
+            if (data.naturalTop === 0 && index > 0) {
+              recalculateNaturalPositions();
+            }
+            
             // Scroll so this header is at the top, accounting for headers above
             const stickyOffset = index * HEADER_HEIGHT;
             const targetPosition = data.naturalTop - stickyOffset;
@@ -489,12 +494,17 @@
               lineageScroll.style.display = 'block';
               lineageGraph.style.display = 'none';
               
-              // Center on selected/focal item when switching to list view
+              // Recalculate natural positions after list view is visible
+              // This is needed because positions are 0 when list is hidden
               setTimeout(() => {
+                recalculateNaturalPositions();
+                updateStickyHeaders();
+                
+                // Center on selected/focal item when switching to list view
                 if (window.centerListOnSelected) {
                   window.centerListOnSelected();
                 }
-              }, 100);
+              }, 50);
             }
           });
         });
