@@ -1583,6 +1583,134 @@
       // Also available: window.columnLineage, window.findRelatedColumns, etc.
 
       // =============================================
+      // Data source color definitions
+      // =============================================
+      const NODE_COLORS = {
+        // Data Warehouses
+        snowflake: { primary: "#29B5E8", secondary: "#E7F6FD" },
+        databricks: { primary: "#475467", secondary: "#F2F5F9" },
+        bigquery: { primary: "#5086EC", secondary: "#F6F7FB" },
+        redshift: { primary: "#205B99", secondary: "#F6F7FB" },
+        
+        // Databases
+        postgres: { primary: "#336791", secondary: "#EFF2F3" },
+        mysql: { primary: "#00546B", secondary: "#E6EFF2" },
+        mssql: { primary: "#EA1B22", secondary: "#FCE9EA" },
+        oracle: { primary: "#EA1B22", secondary: "#FCE9EA" },
+        maria: { primary: "#32818E", secondary: "#EAF4F6" },
+        mongo: { primary: "#26BC6A", secondary: "#E9F9F0" },
+        cockroachdb: { primary: "#6431F9", secondary: "#F0EBFE" },
+        
+        // BI Tools
+        tableau: { primary: "#2A5875", secondary: "#F5F5F5" },
+        looker: { primary: "#33059F", secondary: "#F9F8FB" },
+        metabase: { primary: "#227DE1", secondary: "#EEF6FC" },
+        power_bi: { primary: "#F79009", secondary: "#FEF0C7" },
+        sigma: { primary: "#101828", secondary: "#F1FFFD" },
+        thoughtspot: { primary: "#4E55FD", secondary: "#E8EFFD" },
+        mode: { primary: "#1D5243", secondary: "#EEF2E3" },
+        hex: { primary: "#473982", secondary: "#F2F1F6" },
+        omni: { primary: "#0176D3", secondary: "#E6F0FA" },
+        periscope: { primary: "#F79009", secondary: "#FEF0C7" },
+        quicksight: { primary: "#00B7F4", secondary: "#EEF6FC" },
+        
+        // ETL/Orchestration
+        airflow: { primary: "#087B88", secondary: "#E6F4F5" },
+        dbt: { primary: "#FB6514", secondary: "#FFF6ED" },
+        fivetran: { primary: "#242527", secondary: "#F2F2F3" },
+        glue: { primary: "#FB6514", secondary: "#FFF6ED" },
+        
+        // CRM/Marketing
+        salesforce: { primary: "#00A1E0", secondary: "#E6F5FF" },
+        hubspot: { primary: "#FF7A59", secondary: "#FFF2EE" },
+        marketo: { primary: "#473866", secondary: "#F2F0F5" },
+        braze: { primary: "#801ED7", secondary: "#F5EBFC" },
+        
+        // Cloud/Azure
+        azure: { primary: "#2687CF", secondary: "#E8F4FC" },
+        azure_sql_data_warehouse: { primary: "#2687CF", secondary: "#E8F4FC" },
+        azure_sql_database: { primary: "#2687CF", secondary: "#E8F4FC" },
+        
+        // Google
+        google_sheets: { primary: "#0F9D58", secondary: "#E7F6EE" },
+        data_studio: { primary: "#1A73E8", secondary: "#EEF6FC" },
+        
+        // Other
+        splunk: { primary: "#242527", secondary: "#F2F2F3" },
+        workday: { primary: "#1565C0", secondary: "#E9F1FA" },
+        
+        // Default/fallback - neutral gray (equal R, G, B)
+        default: { 
+          primary: "#808080", 
+          secondary: "#F5F5F5",
+          bgColor: "rgba(128, 128, 128, 0.02)",
+          borderColor: "rgba(128, 128, 128, 0.12)"
+        },
+        ml_models: { primary: "#7C3AED", secondary: "#F3E8FF" },
+        exports: { 
+          primary: "#808080", 
+          secondary: "#F5F5F5",
+          bgColor: "rgba(128, 128, 128, 0.02)",
+          borderColor: "rgba(128, 128, 128, 0.12)"
+        },
+        external_apis: { 
+          primary: "#808080", 
+          secondary: "#F5F5F5",
+          bgColor: "rgba(128, 128, 128, 0.02)",
+          borderColor: "rgba(128, 128, 128, 0.12)"
+        },
+      };
+
+      // Helper: Convert hex to RGB
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!result) return null;
+        return {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        };
+      }
+
+      // Helper: Get source colors with fallback
+      function getSourceColors(sourceId) {
+        const normalizedId = (sourceId || '').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        return NODE_COLORS[normalizedId] || NODE_COLORS.default;
+      }
+
+      // Helper: Extract source type from icon path
+      function getSourceFromIcon(iconPath) {
+        if (!iconPath) return 'default';
+        // Extract filename from path like './img/logo-snowflake.svg' -> 'snowflake'
+        const match = iconPath.match(/logo[_-]?([a-z0-9_]+)\.svg$/i) || 
+                      iconPath.match(/([a-z0-9_]+)\.svg$/i);
+        if (match) {
+          return match[1].toLowerCase();
+        }
+        return 'default';
+      }
+
+      // Helper: Create background color with opacity
+      function getSourceBgColor(sourceId, opacity = 0.03) {
+        const colors = getSourceColors(sourceId);
+        // Use pre-defined bgColor if available (for default/external_apis)
+        if (colors.bgColor) return colors.bgColor;
+        const rgb = hexToRgb(colors.primary);
+        if (!rgb) return 'rgba(175, 206, 252, 0.04)'; // fallback to default
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+      }
+
+      // Helper: Create border color with opacity
+      function getSourceBorderColor(sourceId, opacity = 0.12) {
+        const colors = getSourceColors(sourceId);
+        // Use pre-defined borderColor if available (for default/external_apis)
+        if (colors.borderColor) return colors.borderColor;
+        const rgb = hexToRgb(colors.primary);
+        if (!rgb) return 'rgba(26, 108, 231, 0.20)'; // fallback to default
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+      }
+
+      // =============================================
       // Helper: Get column type icon image path
       // =============================================
       function getColumnTypeIcon(type) {
@@ -1994,12 +2122,16 @@
       // =============================================
       function GroupNode({ data, id }) {
         const { 
-          database, schema, icon, items, onItemClick, selectedItemId, 
+          database, schema, icon, sourceId, items, onItemClick, selectedItemId, 
           dbCollapsed, schemaCollapsed, onToggleDbCollapse, onToggleSchemaCollapse,
           expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
           selectedChildren, onChildClick, onChildHover,
           columnLineageMode, sourceColumn, relatedColumns
         } = data;
+        
+        // Get colors for this source
+        const bgColor = getSourceBgColor(sourceId, 0.03);
+        const borderColor = getSourceBorderColor(sourceId, 0.12);
         const isSingleItem = items.length === 1;
         const isCollapsed = dbCollapsed || schemaCollapsed;
 
@@ -2229,7 +2361,12 @@
           );
         };
 
-        return React.createElement('div', { className: 'graph-group-container' },
+        return React.createElement('div', { 
+          className: 'graph-group-container',
+          style: {
+            padding: '0'
+          }
+        },
           // Collapsed handles
           isCollapsed && items.map(item => 
             React.createElement(React.Fragment, { key: `collapsed-handles-${item.id}` },
@@ -2257,7 +2394,15 @@
             React.createElement('span', { className: 'graph-group-db-name' }, database)
           ),
           // Schema section
-          !dbCollapsed && React.createElement('div', { className: 'graph-group-schema-section' },
+          !dbCollapsed && React.createElement('div', { 
+            className: 'graph-group-schema-section',
+            style: {
+              background: bgColor,
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              padding: '8px'
+            }
+          },
             React.createElement('div', { 
               className: `graph-group-schema-header ${schemaCollapsed ? 'collapsed' : ''}`,
               onClick: handleSchemaHeaderClick
@@ -2462,7 +2607,19 @@
           );
         };
 
-        return React.createElement('div', { className: `graph-platform-container platform-${platformId}` },
+        // Get colors for this platform
+        const bgColor = getSourceBgColor(platformId, 0.03);
+        const borderColor = getSourceBorderColor(platformId, 0.12);
+
+        return React.createElement('div', { 
+          className: `graph-platform-container platform-${platformId}`,
+          style: {
+            background: bgColor,
+            border: `1px solid ${borderColor}`,
+            borderRadius: '12px',
+            padding: '8px'
+          }
+        },
           // Collapsed handles
           collapsed && items.map(item => 
             React.createElement(React.Fragment, { key: `collapsed-handles-${item.id}` },
@@ -2649,6 +2806,7 @@
                     database: group.database,
                     schema: schema.name,
                     icon: group.icon,
+                    sourceId: getSourceFromIcon(group.icon), // e.g., 'snowflake', 'databricks'
                     items: enrichedItems,
                     onItemClick,
                     selectedItemId,
