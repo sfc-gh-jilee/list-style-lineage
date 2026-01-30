@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Source Color Test - Lineage Graph</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./lineage-graph.css" />
+    <!-- React Flow CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/reactflow@11.11.4/dist/style.css" />
+    <style>
+      /* Page-specific styles */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f7f7f7;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .page-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      .page-header {
+        padding: 16px 24px;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-shrink: 0;
+      }
+
+      .page-header h1 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e252f;
+        margin: 0;
+      }
+
+      .page-header .meta {
+        font-size: 13px;
+        color: #5d6a85;
+      }
+
+      .slider-control {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-left: auto;
+        padding: 8px 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .slider-control label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #475569;
+        white-space: nowrap;
+      }
+
+      .slider-control input[type="range"] {
+        width: 120px;
+        height: 6px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: #e2e8f0;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+
+      .slider-control input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #3b82f6;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+
+      .slider-control input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        background: #3b82f6;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+
+      #opacity-value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+        min-width: 36px;
+      }
+
+      .graph-container {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+
+      #lineage-graph-container {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Placeholder icon for missing icons */
+      .placeholder-icon {
+        width: 16px;
+        height: 16px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        color: #94a3b8;
+        font-weight: 600;
+      }
+
+      /* Dynamic data source container backgrounds */
+      .graph-datasource-container {
+        border-radius: 8px;
+        padding: 8px;
+        min-width: 340px;
+        z-index: 1;
+      }
+
+      .graph-datasource-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.15s;
+      }
+
+      .graph-datasource-header:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+      }
+
+      .graph-datasource-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        object-fit: contain;
+      }
+
+      .graph-datasource-name {
+        color: #5D6A85;
+        font-family: Inter, sans-serif;
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 500;
+        line-height: 20px;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .graph-datasource-items {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 24px;
+      }
+
+      .graph-datasource-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: #FFF;
+        border: 1px solid #D5DAE4;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        position: relative;
+        width: 280px;
+      }
+
+      .graph-datasource-item:hover {
+        border-color: #9FABC1;
+      }
+
+      .graph-datasource-item.selected {
+        border: 2.5px solid #1A6CE7;
+        background: #FFF;
+      }
+
+      .graph-datasource-item-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        object-fit: contain;
+        filter: invert(43%) sepia(12%) saturate(749%) hue-rotate(186deg) brightness(93%) contrast(89%);
+      }
+
+      /* Color info badge */
+      .color-info {
+        position: absolute;
+        bottom: -20px;
+        left: 8px;
+        font-size: 10px;
+        font-family: monospace;
+        color: #94a3b8;
+        white-space: nowrap;
+      }
+
+      .graph-datasource-container:hover .color-info {
+        color: #5d6a85;
+      }
+
+      /* Group label */
+      .group-label {
+        position: absolute;
+        top: -20px;
+        left: 8px;
+        font-size: 11px;
+        font-weight: 500;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .graph-datasource-item-name {
+        overflow: hidden;
+        color: #1E252F;
+        text-overflow: ellipsis;
+        font-family: Inter, sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 20px;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-container">
+      <header class="page-header">
+        <h1>Data Source Color Test</h1>
+        <span class="meta">Testing color combinations for external data sources in lineage graph view</span>
+        <div class="slider-control">
+          <label for="opacity-slider">Background Opacity:</label>
+          <input type="range" id="opacity-slider" min="0" max="100" value="8" />
+          <span id="opacity-value">8%</span>
+        </div>
+      </header>
+      <div class="graph-container">
+        <div id="lineage-graph-container"></div>
+      </div>
+    </div>
+
+    <!-- React Flow Graph View - UMD builds -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/reactflow@11.11.4/dist/umd/index.js"></script>
+    <script src="https://unpkg.com/elkjs@0.9.3/lib/elk.bundled.js"></script>
+
+    <script>
+      // Helper: Convert hex to RGB
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!result) return null;
+        return {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        };
+      }
+
+      // Helper: Convert RGB to HSL
+      function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+
+        if (max === min) {
+          h = s = 0;
+        } else {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+          }
+        }
+        return { h: h * 360, s: s * 100, l: l * 100 };
+      }
+
+      // Helper: Convert HSL to RGB
+      function hslToRgb(h, s, l) {
+        h /= 360; s /= 100; l /= 100;
+        let r, g, b;
+
+        if (s === 0) {
+          r = g = b = l;
+        } else {
+          const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+          };
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+          const p = 2 * l - q;
+          r = hue2rgb(p, q, h + 1/3);
+          g = hue2rgb(p, q, h);
+          b = hue2rgb(p, q, h - 1/3);
+        }
+        return {
+          r: Math.round(r * 255),
+          g: Math.round(g * 255),
+          b: Math.round(b * 255)
+        };
+      }
+
+      // Helper: Convert hex color to rgba with transparency
+      // When alpha decreases, increase saturation and decrease lightness to keep color visible
+      function hexToRgba(hex, alpha = 0.65) {
+        const rgb = hexToRgb(hex);
+        if (!rgb) return hex;
+        
+        // Convert to HSL to adjust saturation and lightness
+        const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+        
+        // Calculate adjustment factor (more adjustment when alpha is lower)
+        // At alpha=1, no adjustment. At alpha=0, maximum adjustment.
+        const adjustmentFactor = 1 - alpha;
+        
+        // Increase saturation (up to +40% when fully transparent)
+        const saturationBoost = adjustmentFactor * 40;
+        const newSaturation = Math.min(100, hsl.s + saturationBoost);
+        
+        // Decrease lightness (up to -20% when fully transparent)
+        const lightnessDecrease = adjustmentFactor * 20;
+        const newLightness = Math.max(0, hsl.l - lightnessDecrease);
+        
+        // Convert back to RGB
+        const adjustedRgb = hslToRgb(hsl.h, newSaturation, newLightness);
+        
+        return `rgba(${adjustedRgb.r}, ${adjustedRgb.g}, ${adjustedRgb.b}, ${alpha})`;
+      }
+
+      // Data source color definitions
+      const NODE_COLORS = {
+        airflow: { primary: "#087B88", secondary: "#E6F4F5" },
+        azure_sql_data_warehouse: { primary: "#2687CF", secondary: "#E8F4FC" },
+        azure_sql_database: { primary: "#2687CF", secondary: "#E8F4FC" },
+        bigquery: { primary: "#5086EC", secondary: "#F6F7FB" },
+        braze: { primary: "#801ED7", secondary: "#F5EBFC" },
+        cockroachdb: { primary: "#6431F9", secondary: "#F0EBFE" },
+        cosmos: { primary: "#59B3D8", secondary: "#EBF7FC" },
+        data_studio: { primary: "#1A73E8", secondary: "#EEF6FC" },
+        databricks: { primary: "#475467", secondary: "#F2F5F9" },
+        db2: { primary: "#009A2C", secondary: "#E6F7EB" },
+        dbt: { primary: "#FB6514", secondary: "#FFF6ED" },
+        documentdb: { primary: "#242527", secondary: "#F2F2F3" },
+        dynamodb: { primary: "#242527", secondary: "#F2F2F3" },
+        ehr: { primary: "#242527", secondary: "#F2F2F3" },
+        fivetran: { primary: "#242527", secondary: "#F2F2F3" },
+        glue: { primary: "#FB6514", secondary: "#FFF6ED" },
+        google_sheets: { primary: "#0F9D58", secondary: "#E7F6EE" },
+        hex: { primary: "#473982", secondary: "#F2F1F6" },
+        hubspot: { primary: "#FF7A59", secondary: "#FFF2EE" },
+        intercom: { primary: "#081D34", secondary: "#E7EAF0" },
+        looker: { primary: "#33059F", secondary: "#F9F8FB" },
+        mailchimp: { primary: "#006F7B", secondary: "#E6F3F4" },
+        maria: { primary: "#32818E", secondary: "#EAF4F6" },
+        marketo: { primary: "#473866", secondary: "#F2F0F5" },
+        metabase: { primary: "#227DE1", secondary: "#EEF6FC" },
+        mode: { primary: "#1D5243", secondary: "#EEF2E3" },
+        mongo: { primary: "#26BC6A", secondary: "#E9F9F0" },
+        mssql: { primary: "#EA1B22", secondary: "#FCE9EA" },
+        mysql: { primary: "#00546B", secondary: "#E6EFF2" },
+        omni: { primary: "#0176D3", secondary: "#E6F0FA" },
+        oracle: { primary: "#EA1B22", secondary: "#FCE9EA" },
+        periscope: { primary: "#F79009", secondary: "#FEF0C7" },
+        postgres: { primary: "#336791", secondary: "#EFF2F3" },
+        power_bi: { primary: "#F79009", secondary: "#FEF0C7" },
+        quicksight: { primary: "#00B7F4", secondary: "#EEF6FC" },
+        redshift: { primary: "#205B99", secondary: "#F6F7FB" },
+        salesforce: { primary: "#00A1E0", secondary: "#E6F5FF" },
+        salesforce_crma: { primary: "#0176D3", secondary: "#E6F0FA" },
+        sap_hana_db: { primary: "#1161B7", secondary: "#E8F0F9" },
+        sigma: { primary: "#101828", secondary: "#F1FFFD" },
+        snowflake: { primary: "#29B5E8", secondary: "#E7F6FD" },
+        splunk: { primary: "#242527", secondary: "#F2F2F3" },
+        tableau: { primary: "#2A5875", secondary: "#F5F5F5" },
+        thoughtspot: { primary: "#4E55FD", secondary: "#E8EFFD" },
+        workday: { primary: "#1565C0", secondary: "#E9F1FA" },
+        zendesk: { primary: "#17494D", secondary: "#E8F0F1" },
+      };
+
+      // Generate mock data for each data source
+      function generateMockData() {
+        const mockData = {};
+        
+        Object.keys(NODE_COLORS).forEach(source => {
+          const sourceName = source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          mockData[source] = {
+            id: source,
+            name: sourceName,
+            colors: NODE_COLORS[source],
+            items: generateMockItems(source, sourceName)
+          };
+        });
+        
+        return mockData;
+      }
+
+      // Simple hash function for deterministic pseudo-random
+      function simpleHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          const char = str.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash = hash & hash;
+        }
+        return Math.abs(hash);
+      }
+
+      function generateMockItems(source, sourceName) {
+        // Generate 2-4 mock items per data source (deterministic based on source name)
+        const hash = simpleHash(source);
+        const itemCount = (hash % 3) + 2; // 2-4 items
+        const items = [];
+        
+        // Different item definitions with types
+        const itemDefs = [
+          { name: 'customers', type: 'table' },
+          { name: 'orders', type: 'table' },
+          { name: 'products', type: 'table' },
+          { name: 'transactions', type: 'view' },
+          { name: 'users', type: 'table' },
+          { name: 'events', type: 'table' },
+          { name: 'metrics_summary', type: 'view' },
+          { name: 'analytics_dashboard', type: 'dashboard' },
+          { name: 'revenue_report', type: 'dashboard' },
+          { name: 'user_model', type: 'model' },
+          { name: 'sales_dataset', type: 'dataset' },
+          { name: 'inventory', type: 'table' }
+        ];
+        
+        // Start at a deterministic index based on hash
+        const startIndex = hash % itemDefs.length;
+        
+        for (let i = 0; i < itemCount; i++) {
+          const itemDef = itemDefs[(startIndex + i) % itemDefs.length];
+          
+          items.push({
+            id: `${source}_${itemDef.name}`,
+            name: itemDef.name,
+            type: itemDef.type,
+            columns: generateMockColumns(source + itemDef.name)
+          });
+        }
+        
+        return items;
+      }
+
+      function generateMockColumns(seed) {
+        const columnDefs = [
+          { name: 'id', type: 'INTEGER', isPrimaryKey: true },
+          { name: 'created_at', type: 'TIMESTAMP' },
+          { name: 'updated_at', type: 'TIMESTAMP' },
+          { name: 'name', type: 'VARCHAR' },
+          { name: 'email', type: 'VARCHAR' },
+          { name: 'status', type: 'VARCHAR' },
+          { name: 'amount', type: 'DECIMAL' },
+          { name: 'quantity', type: 'INTEGER' },
+          { name: 'is_active', type: 'BOOLEAN' },
+          { name: 'metadata', type: 'JSON' }
+        ];
+        
+        // Return 3-6 columns (deterministic)
+        const hash = simpleHash(seed);
+        const count = (hash % 4) + 3;
+        return columnDefs.slice(0, count);
+      }
+
+      // Wait for DOM and libraries to load
+      document.addEventListener('DOMContentLoaded', function() {
+        const { useState, useCallback, useEffect, useMemo, createElement } = React;
+        const { createRoot } = ReactDOM;
+        
+        // Extract ReactFlow components
+        const ReactFlowComponent = window.ReactFlow.ReactFlow;
+        const Controls = window.ReactFlow.Controls;
+        const Background = window.ReactFlow.Background;
+        const useNodesState = window.ReactFlow.useNodesState;
+        const useEdgesState = window.ReactFlow.useEdgesState;
+        const Position = window.ReactFlow.Position;
+        const Handle = window.ReactFlow.Handle;
+        const ReactFlowProvider = window.ReactFlow.ReactFlowProvider;
+        const useReactFlow = window.ReactFlow.useReactFlow;
+        const BackgroundVariant = window.ReactFlow.BackgroundVariant;
+        
+        if (!ReactFlowComponent) {
+          console.error('ReactFlow not loaded');
+          return;
+        }
+        
+        const ELK = window.ELK;
+
+        // =============================================
+        // Placeholder Icon Component
+        // =============================================
+        function PlaceholderIcon({ label }) {
+          return createElement('div', { 
+            className: 'placeholder-icon',
+            title: label
+          }, label ? label.slice(0, 2).toUpperCase() : '??');
+        }
+
+        // =============================================
+        // Helper: Get column type icon image path
+        // =============================================
+        function getColumnTypeIcon(type) {
+          const normalizedType = (type || '').toUpperCase();
+          
+          if (['VARCHAR', 'TEXT', 'STRING', 'CHAR'].some(t => normalizedType.includes(t))) {
+            return 'img/text.svg';
+          }
+          if (['INTEGER', 'INT', 'BIGINT', 'NUMBER', 'SMALLINT', 'TINYINT'].some(t => normalizedType.includes(t))) {
+            return 'img/number.svg';
+          }
+          if (['DECIMAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'REAL'].some(t => normalizedType.includes(t))) {
+            return 'img/number.svg';
+          }
+          if (['BOOLEAN', 'BOOL'].some(t => normalizedType.includes(t))) {
+            return 'img/boolean.svg';
+          }
+          if (normalizedType.includes('DATE') && !normalizedType.includes('TIME')) {
+            return 'img/date.svg';
+          }
+          if (['TIMESTAMP', 'DATETIME', 'TIME'].some(t => normalizedType.includes(t))) {
+            return 'img/timestamp.svg';
+          }
+          if (['JSON', 'VARIANT'].some(t => normalizedType.includes(t))) {
+            return 'img/code.svg';
+          }
+          return 'img/column.svg';
+        }
+
+        // =============================================
+        // Component: Column Type Icon
+        // =============================================
+        function ColumnTypeIcon({ type }) {
+          const iconSrc = getColumnTypeIcon(type);
+          return React.createElement('img', { 
+            className: 'graph-child-type-icon',
+            src: iconSrc,
+            alt: type || 'column',
+            title: type,
+            width: 16,
+            height: 16
+          });
+        }
+
+        // =============================================
+        // Custom Node: Data Source Group
+        // =============================================
+        function DataSourceNode({ data, id }) {
+          const { source, items, colors, onItemClick, selectedItemId, bgOpacity = 0.08 } = data;
+          const sourceName = source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+          // Get logo icon for data source (returns null if no logo available)
+          const getDataSourceLogo = (sourceId) => {
+            const logoMap = {
+              'snowflake': 'img/logo-snowflake.svg',
+              'databricks': 'img/databricks.svg',
+              'bigquery': 'img/google-cloud.svg',
+              'looker': 'img/looker.svg',
+              'tableau': 'img/tableau.svg',
+              'redshift': 'img/aws-redshift-sub.svg',
+              'postgres': 'img/postgresql.svg',
+              'mysql': 'img/mysql.svg',
+              'google_sheets': 'img/google-cloud.svg',
+              'data_studio': 'img/google-cloud.svg',
+              'quicksight': 'img/aws-quicksight.svg',
+              'athena': 'img/aws-athena-sub.svg',
+              'sagemaker': 'img/aws-sagemaker-sub.svg',
+              's3': 'img/aws-s3-copy-and-transform-sub.svg',
+              'clickhouse': 'img/clickhouse-lightmode.svg',
+              'dremio': 'img/dremio.svg',
+              'duckdb': 'img/duckdb-lightmode.svg',
+              'spark': 'img/spark.svg',
+              'great_expectations': 'img/great-expectations.svg',
+              'gcs': 'img/google-cloud-storage-sub.svg',
+              'airflow': 'img/airflow-lightmode.svg',
+              'glue': 'img/aws-glue-sub.svg',
+              'azure_sql_data_warehouse': 'img/azure.svg',
+              'azure_sql_database': 'img/azure.svg',
+              'metabase': 'img/metabase.svg',
+              'mssql': 'img/ms-sql-server.svg',
+              'oracle': 'img/oracle.svg',
+              'power_bi': 'img/powerbi.svg',
+              'sigma': 'img/sigma-lightmode.svg',
+              'trino': 'img/trino-lightmode.svg',
+              'dbt': 'img/dbt.svg',
+              'flink': 'img/apache-flink.svg',
+              'apache_flink': 'img/apache-flink.svg',
+            };
+            return logoMap[sourceId] || null;
+          };
+
+          const dataSourceLogo = getDataSourceLogo(source);
+
+          // Get icon for item type
+          const getItemIcon = (itemType) => {
+            const iconMap = {
+              'table': 'img/table.svg',
+              'view': 'img/view.svg',
+              'dashboard': 'img/dashboard.svg',
+              'dataset': 'img/dataset.svg',
+              'model': 'img/model.svg',
+              'schema': 'img/schema.svg',
+              'database': 'img/database.svg',
+              'column': 'img/column.svg',
+              'function': 'img/function.svg',
+              'api': 'img/api.svg'
+            };
+            return iconMap[itemType] || 'img/table.svg';
+          };
+
+          const renderItem = (item, index) => {
+            const isSelected = selectedItemId === item.id;
+            const iconSrc = getItemIcon(item.type);
+            
+            return createElement('div', {
+              key: item.id,
+              className: `graph-datasource-item ${isSelected ? 'selected' : ''}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                onItemClick?.(item, id);
+              }
+            },
+              createElement(Handle, {
+                type: 'target',
+                position: Position.Left,
+                id: `left-${item.id}`,
+                style: { top: 'auto', bottom: 'auto' }
+              }),
+              // Use actual SVG icon - 16x16
+              createElement('img', { 
+                className: 'graph-datasource-item-icon',
+                src: iconSrc,
+                alt: item.type || 'table',
+                width: 16,
+                height: 16
+              }),
+              createElement('span', { className: 'graph-datasource-item-name' }, item.name),
+              createElement(Handle, {
+                type: 'source',
+                position: Position.Right,
+                id: `right-${item.id}`,
+                style: { top: 'auto', bottom: 'auto' }
+              })
+            );
+          };
+
+          return createElement('div', { 
+            className: 'graph-datasource-container',
+            style: { 
+              background: hexToRgba(colors.secondary, bgOpacity),
+              border: `1px solid ${colors.primary}18`,
+              position: 'relative'
+            }
+          },
+            // Color info (shown on hover)
+            createElement('div', { 
+              className: 'color-info'
+            }, `Primary: ${colors.primary} | Secondary: ${colors.secondary}`),
+            // Header
+            createElement('div', { className: 'graph-datasource-header' },
+              // Use logo if available, otherwise placeholder icon - 16x16
+              dataSourceLogo 
+                ? createElement('img', {
+                    className: 'graph-datasource-icon',
+                    src: dataSourceLogo,
+                    alt: sourceName,
+                    width: 16,
+                    height: 16
+                  })
+                : createElement('div', { 
+                    className: 'placeholder-icon',
+                    style: { background: colors.primary, color: '#fff' }
+                  }, source.slice(0, 2).toUpperCase()),
+              createElement('span', { 
+                className: 'graph-datasource-name',
+                style: { color: '#64748b' }
+              }, sourceName)
+            ),
+            // Items
+            createElement('div', { className: 'graph-datasource-items' },
+              items.map(renderItem)
+            )
+          );
+        }
+
+        // =============================================
+        // Node Types Registry
+        // =============================================
+        const nodeTypes = {
+          dataSourceNode: DataSourceNode,
+        };
+
+        // =============================================
+        // ELK Layout Configuration
+        // =============================================
+        const elk = new ELK();
+
+        const elkLayoutOptions = {
+          'elk.algorithm': 'layered',
+          'elk.direction': 'RIGHT',
+          'elk.spacing.nodeNode': '48',
+          'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+          'elk.layered.spacing.edgeNodeBetweenLayers': '40',
+          'elk.edgeRouting': 'SPLINES',
+          'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+          'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
+          'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+          'elk.contentAlignment': 'V_CENTER',
+        };
+
+        async function calculateLayout(nodes, edges) {
+          const elkGraph = {
+            id: 'root',
+            layoutOptions: elkLayoutOptions,
+            children: nodes.map(node => ({
+              id: node.id,
+              width: node.data.width || 320,
+              height: node.data.height || 200,
+              layoutOptions: {
+                'elk.layered.layerConstraint': node.data.layer !== undefined ? node.data.layer.toString() : undefined,
+              }
+            })),
+            edges: edges.map(edge => ({
+              id: edge.id,
+              sources: [edge.source],
+              targets: [edge.target],
+            })),
+          };
+
+          const layoutedGraph = await elk.layout(elkGraph);
+
+          const layoutedNodes = nodes.map(node => {
+            const layoutedNode = layoutedGraph.children.find(n => n.id === node.id);
+            return {
+              ...node,
+              position: {
+                x: layoutedNode?.x || 0,
+                y: layoutedNode?.y || 0,
+              },
+            };
+          });
+
+          return { nodes: layoutedNodes, edges };
+        }
+
+        // =============================================
+        // Transform mock data to ReactFlow nodes
+        // =============================================
+        function transformToNodes(mockData, callbacks) {
+          const nodes = [];
+          const sources = Object.keys(mockData);
+          
+          // Arrange in a grid layout (5 columns)
+          const columns = 5;
+          const nodeWidth = 340;
+          const gapX = 80;
+          const gapY = 60;
+          
+          // Calculate heights for each node
+          const nodeHeights = sources.map(source => {
+            const data = mockData[source];
+            const itemHeight = 48;
+            const headerHeight = 44;
+            const padding = 32;
+            return headerHeight + padding + (data.items.length * itemHeight);
+          });
+          
+          // Calculate row heights (max height in each row)
+          const rowHeights = [];
+          for (let i = 0; i < sources.length; i += columns) {
+            const rowNodeHeights = nodeHeights.slice(i, i + columns);
+            rowHeights.push(Math.max(...rowNodeHeights));
+          }
+          
+          // Calculate cumulative Y positions for each row
+          const rowYPositions = [0];
+          for (let i = 0; i < rowHeights.length - 1; i++) {
+            rowYPositions.push(rowYPositions[i] + rowHeights[i] + gapY);
+          }
+          
+          sources.forEach((source, index) => {
+            const data = mockData[source];
+            const col = index % columns;
+            const row = Math.floor(index / columns);
+            const calculatedHeight = nodeHeights[index];
+            
+            nodes.push({
+              id: source,
+              type: 'dataSourceNode',
+              position: { 
+                x: col * (nodeWidth + gapX), 
+                y: rowYPositions[row]
+              },
+              data: {
+                source: source,
+                items: data.items,
+                colors: data.colors,
+                width: nodeWidth,
+                height: calculatedHeight,
+                layer: col,
+                ...callbacks
+              }
+            });
+          });
+          
+          return nodes;
+        }
+
+        // =============================================
+        // Main Graph Component
+        // =============================================
+        function ColorTestGraph() {
+          const [nodes, setNodes, onNodesChange] = useNodesState([]);
+          const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+          const [selectedItemId, setSelectedItemId] = useState(null);
+          const [bgOpacity, setBgOpacity] = useState(0.08);
+          
+          const reactFlowInstance = useReactFlow();
+
+          const handleItemClick = useCallback((item, nodeId) => {
+            setSelectedItemId(prev => prev === item.id ? null : item.id);
+          }, []);
+
+          // Listen to slider changes
+          useEffect(() => {
+            const slider = document.getElementById('opacity-slider');
+            const valueDisplay = document.getElementById('opacity-value');
+            
+            const handleSliderChange = (e) => {
+              const value = e.target.value / 100;
+              setBgOpacity(value);
+              valueDisplay.textContent = `${e.target.value}%`;
+            };
+            
+            slider?.addEventListener('input', handleSliderChange);
+            return () => slider?.removeEventListener('input', handleSliderChange);
+          }, []);
+
+          // Initialize nodes
+          useEffect(() => {
+            const mockData = generateMockData();
+            const initialNodes = transformToNodes(mockData, {
+              onItemClick: handleItemClick,
+              selectedItemId: selectedItemId
+            });
+            setNodes(initialNodes);
+          }, []);
+
+          // Update nodes when selection or opacity changes
+          useEffect(() => {
+            setNodes(nds => nds.map(node => ({
+              ...node,
+              data: {
+                ...node.data,
+                selectedItemId: selectedItemId,
+                onItemClick: handleItemClick,
+                bgOpacity: bgOpacity
+              }
+            })));
+          }, [selectedItemId, handleItemClick, bgOpacity]);
+
+          // Handle wheel events: Command+scroll to zoom, regular scroll to pan
+          useEffect(() => {
+            const container = document.getElementById('lineage-graph-container');
+            const handleWheel = (e) => {
+              if (!reactFlowInstance) return;
+              
+              const { x, y, zoom } = reactFlowInstance.getViewport();
+              
+              if (e.metaKey || e.ctrlKey) {
+                // Command/Ctrl + scroll = zoom
+                const zoomSensitivity = 0.01;
+                const delta = -e.deltaY * zoomSensitivity;
+                const newZoom = Math.min(Math.max(zoom + delta, 0.1), 3);
+                
+                // Zoom towards cursor position
+                const rect = container.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Calculate new position to zoom towards cursor
+                const scale = newZoom / zoom;
+                const newX = mouseX - (mouseX - x) * scale;
+                const newY = mouseY - (mouseY - y) * scale;
+                
+                reactFlowInstance.setViewport({
+                  x: newX,
+                  y: newY,
+                  zoom: newZoom
+                });
+              } else {
+                // Regular scroll = pan
+                reactFlowInstance.setViewport({
+                  x: x - e.deltaX,
+                  y: y - e.deltaY,
+                  zoom: zoom
+                });
+              }
+              e.preventDefault();
+            };
+            
+            container?.addEventListener('wheel', handleWheel, { passive: false });
+            return () => container?.removeEventListener('wheel', handleWheel);
+          }, [reactFlowInstance]);
+
+          return createElement(ReactFlowComponent, {
+            nodes,
+            edges,
+            onNodesChange,
+            onEdgesChange,
+            nodeTypes,
+            fitView: false,
+            minZoom: 0.1,
+            maxZoom: 3,
+            defaultViewport: { x: 0, y: 0, zoom: 1 },
+            nodesDraggable: false,
+            nodesConnectable: false,
+            elementsSelectable: true,
+            panOnDrag: true,
+            zoomOnScroll: false,
+            zoomOnPinch: false,
+            zoomOnDoubleClick: false,
+            panOnScroll: true,
+            preventScrolling: false,
+            proOptions: { hideAttribution: true }
+          },
+            createElement(Controls, { showInteractive: false }),
+            createElement(Background, { variant: BackgroundVariant.Dots, gap: 20, size: 1.5, color: 'rgba(213, 218, 228, 1)' })
+          );
+        }
+
+        // =============================================
+        // Render the app
+        // =============================================
+        const container = document.getElementById('lineage-graph-container');
+        if (container) {
+          const root = createRoot(container);
+          root.render(
+            createElement(ReactFlowProvider, null,
+              createElement(ColorTestGraph)
+            )
+          );
+        }
+      });
+    </script>
+  </body>
+</html>
