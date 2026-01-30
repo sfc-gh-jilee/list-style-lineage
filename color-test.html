@@ -540,17 +540,17 @@
           <div class="control-group">
             <div class="control-label">
               <span>Background</span>
-              <span class="control-value" id="bg-opacity-value">4%</span>
+              <span class="control-value" id="bg-opacity-value">3%</span>
             </div>
-            <input type="range" class="control-slider" id="bg-opacity-slider" min="0" max="100" value="4" />
+            <input type="range" class="control-slider" id="bg-opacity-slider" min="0" max="100" value="3" />
           </div>
 
           <div class="control-group">
             <div class="control-label">
               <span>Border</span>
-              <span class="control-value" id="border-opacity-value">20%</span>
+              <span class="control-value" id="border-opacity-value">12%</span>
             </div>
-            <input type="range" class="control-slider" id="border-opacity-slider" min="0" max="100" value="20" />
+            <input type="range" class="control-slider" id="border-opacity-slider" min="0" max="100" value="12" />
           </div>
         </div>
 
@@ -1317,17 +1317,63 @@
         // =============================================
         // Main Graph Component
         // =============================================
+        // Theme presets for light and dark mode
+        const THEME_PRESETS = {
+          light: {
+            bgOpacity: 0.03,      // 3%
+            borderOpacity: 0.12,  // 12%
+            saturation: 40,       // +40%
+            brightness: 0         // 0%
+          },
+          dark: {
+            bgOpacity: 0.06,      // 6%
+            borderOpacity: 0.16,  // 16%
+            saturation: 60,       // +60%
+            brightness: 0         // 0%
+          }
+        };
+
         function ColorTestGraph() {
           const [nodes, setNodes, onNodesChange] = useNodesState([]);
           const [edges, setEdges, onEdgesChange] = useEdgesState([]);
           const [selectedItemId, setSelectedItemId] = useState(null);
-          const [bgOpacity, setBgOpacity] = useState(0.04);
-          const [borderOpacity, setBorderOpacity] = useState(0.20);
-          const [saturationAdjust, setSaturationAdjust] = useState(40);
-          const [brightnessAdjust, setBrightnessAdjust] = useState(0);
+          const [bgOpacity, setBgOpacity] = useState(THEME_PRESETS.light.bgOpacity);
+          const [borderOpacity, setBorderOpacity] = useState(THEME_PRESETS.light.borderOpacity);
+          const [saturationAdjust, setSaturationAdjust] = useState(THEME_PRESETS.light.saturation);
+          const [brightnessAdjust, setBrightnessAdjust] = useState(THEME_PRESETS.light.brightness);
           const [isDarkMode, setIsDarkMode] = useState(false);
           
           const reactFlowInstance = useReactFlow();
+
+          // Apply theme preset and update UI
+          const applyThemePreset = useCallback((dark) => {
+            const preset = dark ? THEME_PRESETS.dark : THEME_PRESETS.light;
+            
+            // Update state
+            setBgOpacity(preset.bgOpacity);
+            setBorderOpacity(preset.borderOpacity);
+            setSaturationAdjust(preset.saturation);
+            setBrightnessAdjust(preset.brightness);
+            
+            // Update slider UI elements
+            const bgSlider = document.getElementById('bg-opacity-slider');
+            const bgValue = document.getElementById('bg-opacity-value');
+            const borderSlider = document.getElementById('border-opacity-slider');
+            const borderValue = document.getElementById('border-opacity-value');
+            const satSlider = document.getElementById('saturation-slider');
+            const satValue = document.getElementById('saturation-value');
+            const brightSlider = document.getElementById('brightness-slider');
+            const brightValue = document.getElementById('brightness-value');
+            
+            if (bgSlider) bgSlider.value = preset.bgOpacity * 100;
+            if (bgValue) bgValue.textContent = `${preset.bgOpacity * 100}%`;
+            if (borderSlider) borderSlider.value = preset.borderOpacity * 100;
+            if (borderValue) borderValue.textContent = `${preset.borderOpacity * 100}%`;
+            if (satSlider) satSlider.value = preset.saturation;
+            if (satValue) satValue.textContent = preset.saturation >= 0 ? `+${preset.saturation}%` : `${preset.saturation}%`;
+            if (brightSlider) brightSlider.value = preset.brightness;
+            if (brightValue) brightValue.textContent = preset.brightness >= 0 ? `+${preset.brightness}%` : `${preset.brightness}%`;
+          }, []);
 
           const handleItemClick = useCallback((item, nodeId) => {
             setSelectedItemId(prev => prev === item.id ? null : item.id);
@@ -1390,8 +1436,10 @@
               const html = document.documentElement;
               const currentTheme = html.getAttribute('data-theme');
               const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-              html.setAttribute('data-theme', newTheme === 'dark' ? 'dark' : '');
-              setIsDarkMode(newTheme === 'dark');
+              const newIsDark = newTheme === 'dark';
+              html.setAttribute('data-theme', newIsDark ? 'dark' : '');
+              setIsDarkMode(newIsDark);
+              applyThemePreset(newIsDark);
             };
             
             themeToggle?.addEventListener('click', handleThemeToggle);
@@ -1400,7 +1448,7 @@
               themeToggle?.removeEventListener('click', handleThemeToggle);
               themeTogglePanel?.removeEventListener('click', handleThemeToggle);
             };
-          }, []);
+          }, [applyThemePreset]);
 
           // Initialize nodes
           useEffect(() => {
