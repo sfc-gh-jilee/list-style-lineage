@@ -1000,27 +1000,27 @@
           const normalizedType = (type || '').toUpperCase();
           
           if (['VARCHAR', 'TEXT', 'STRING', 'CHAR'].some(t => normalizedType.includes(t))) {
-            return 'img/text.svg';
+            return 'img/ui/text.svg';
           }
           if (['INTEGER', 'INT', 'BIGINT', 'NUMBER', 'SMALLINT', 'TINYINT'].some(t => normalizedType.includes(t))) {
-            return 'img/number.svg';
+            return 'img/ui/number.svg';
           }
           if (['DECIMAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'REAL'].some(t => normalizedType.includes(t))) {
-            return 'img/number.svg';
+            return 'img/ui/number.svg';
           }
           if (['BOOLEAN', 'BOOL'].some(t => normalizedType.includes(t))) {
-            return 'img/boolean.svg';
+            return 'img/ui/boolean.svg';
           }
           if (normalizedType.includes('DATE') && !normalizedType.includes('TIME')) {
-            return 'img/date.svg';
+            return 'img/ui/calendar.svg';
           }
           if (['TIMESTAMP', 'DATETIME', 'TIME'].some(t => normalizedType.includes(t))) {
-            return 'img/timestamp.svg';
+            return 'img/ui/calendar.svg';
           }
           if (['JSON', 'VARIANT'].some(t => normalizedType.includes(t))) {
-            return 'img/code.svg';
+            return 'img/ui/format-code.svg';
           }
-          return 'img/column.svg';
+          return 'img/ui/column-single.svg';
         }
 
         // =============================================
@@ -1123,18 +1123,19 @@
           // Get icon for item type
           const getItemIcon = (itemType) => {
             const iconMap = {
-              'table': 'img/table.svg',
-              'view': 'img/view.svg',
-              'dashboard': 'img/dashboard.svg',
-              'dataset': 'img/dataset.svg',
-              'model': 'img/model.svg',
-              'schema': 'img/schema.svg',
-              'database': 'img/database.svg',
-              'column': 'img/column.svg',
-              'function': 'img/function.svg',
-              'api': 'img/api.svg'
+              'table': 'img/ui/table.svg',
+              'view': 'img/ui/view.svg',
+              'dashboard': 'img/ui/dashboards.svg',
+              'dataset': 'img/ui/dataset.svg',
+              'model': 'img/ui/machine-learning-model.svg',
+              'schema': 'img/ui/schema.svg',
+              'database': 'img/ui/database.svg',
+              'column': 'img/ui/column-single.svg',
+              'function': 'img/ui/function.svg',
+              'api': 'img/ui/api.svg',
+              'semantic': 'img/ui/data-semantic.svg'
             };
-            return iconMap[itemType] || 'img/table.svg';
+            return iconMap[itemType] || 'img/ui/table.svg';
           };
 
           const renderItem = (item, index) => {

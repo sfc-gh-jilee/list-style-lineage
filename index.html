@@ -356,7 +356,7 @@
             upstreamSection.style.display = 'block';
             upstream.forEach(upItem => {
               const name = upItem.querySelector('.object-name')?.textContent || '';
-              const iconSrc = upItem.querySelector('.object-icon')?.src || './img/table.svg';
+              const iconSrc = upItem.querySelector('.object-icon')?.src || './img/ui/table.svg';
               const li = document.createElement('li');
               li.className = 'connection-popover-item';
               li.innerHTML = `
@@ -383,7 +383,7 @@
             downstreamSection.style.display = 'block';
             downstream.forEach(downItem => {
               const name = downItem.querySelector('.object-name')?.textContent || '';
-              const iconSrc = downItem.querySelector('.object-icon')?.src || './img/table.svg';
+              const iconSrc = downItem.querySelector('.object-icon')?.src || './img/ui/table.svg';
               const li = document.createElement('li');
               li.className = 'connection-popover-item';
               li.innerHTML = `
@@ -643,19 +643,19 @@
         // Helper: Get column type icon path (same logic as graph view)
         function getPanelColumnIcon(type) {
           const normalizedType = (type || '').toUpperCase();
-          if (['VARCHAR', 'TEXT', 'STRING', 'CHAR'].some(t => normalizedType.includes(t))) return 'img/text.svg';
-          if (['INTEGER', 'INT', 'BIGINT', 'NUMBER', 'SMALLINT', 'TINYINT'].some(t => normalizedType.includes(t))) return 'img/number.svg';
-          if (['DECIMAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'REAL'].some(t => normalizedType.includes(t))) return 'img/number.svg';
-          if (['BOOLEAN', 'BOOL'].some(t => normalizedType.includes(t))) return 'img/boolean.svg';
-          if (['BINARY', 'VARBINARY', 'BLOB', 'BYTES'].some(t => normalizedType.includes(t))) return 'img/binary.svg';
-          if (normalizedType.includes('DATE') && !normalizedType.includes('TIME')) return 'img/date.svg';
-          if (['TIMESTAMP', 'DATETIME', 'TIME'].some(t => normalizedType.includes(t))) return 'img/timestamp.svg';
-          if (['JSON', 'VARIANT'].some(t => normalizedType.includes(t))) return 'img/code.svg';
-          if (['OBJECT', 'STRUCT', 'MAP'].some(t => normalizedType.includes(t))) return 'img/object.svg';
-          if (normalizedType.includes('ARRAY')) return 'img/array.svg';
-          if (normalizedType === 'MEASURE') return 'img/number.svg';
-          if (normalizedType === 'DIMENSION') return 'img/object.svg';
-          return 'img/column.svg';
+          if (['VARCHAR', 'TEXT', 'STRING', 'CHAR'].some(t => normalizedType.includes(t))) return 'img/ui/text.svg';
+          if (['INTEGER', 'INT', 'BIGINT', 'NUMBER', 'SMALLINT', 'TINYINT'].some(t => normalizedType.includes(t))) return 'img/ui/number.svg';
+          if (['DECIMAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'REAL'].some(t => normalizedType.includes(t))) return 'img/ui/number.svg';
+          if (['BOOLEAN', 'BOOL'].some(t => normalizedType.includes(t))) return 'img/ui/boolean.svg';
+          if (['BINARY', 'VARBINARY', 'BLOB', 'BYTES'].some(t => normalizedType.includes(t))) return 'img/ui/binary.svg';
+          if (normalizedType.includes('DATE') && !normalizedType.includes('TIME')) return 'img/ui/calendar.svg';
+          if (['TIMESTAMP', 'DATETIME', 'TIME'].some(t => normalizedType.includes(t))) return 'img/ui/calendar.svg';
+          if (['JSON', 'VARIANT'].some(t => normalizedType.includes(t))) return 'img/ui/format-code.svg';
+          if (['OBJECT', 'STRUCT', 'MAP'].some(t => normalizedType.includes(t))) return 'img/ui/object.svg';
+          if (normalizedType.includes('ARRAY')) return 'img/ui/array.svg';
+          if (normalizedType === 'MEASURE') return 'img/ui/number.svg';
+          if (normalizedType === 'DIMENSION') return 'img/ui/object.svg';
+          return 'img/ui/column-single.svg';
         }
 
         // Global shared selection state (accessible by graph view)
@@ -696,7 +696,7 @@
             
             // Header
             panelTitle.textContent = itemData.name || 'Unknown';
-            panelIcon.src = itemData.icon || './img/table.svg';
+            panelIcon.src = itemData.icon || './img/ui/table.svg';
             
             // Database / Schema
             let schemaText = '-';
@@ -740,8 +740,8 @@
             if (columns.length > 0) {
               panelColumns.innerHTML = columns.map(col => {
                 const iconSrc = getPanelColumnIcon(col.type);
-                const keyIcon = col.isPrimaryKey ? '<img src="img/key.svg" class="panel-column-key" title="Primary Key">' :
-                               col.isForeignKey ? '<img src="img/link.svg" class="panel-column-key" title="Foreign Key">' : '';
+                const keyIcon = col.isPrimaryKey ? '<img src="img/ui/ownership.svg" class="panel-column-key" title="Primary Key">' :
+                               col.isForeignKey ? '<img src="img/ui/format-link.svg" class="panel-column-key" title="Foreign Key">' : '';
                 return `<div class="panel-column-item">
                   <img src="${iconSrc}" class="panel-column-icon" alt="${col.type || 'column'}">
                   <span class="panel-column-name">${col.name}</span>
@@ -802,7 +802,7 @@
           
           // Get object info from DOM
           const objectName = item.querySelector('.object-name')?.textContent || 'Unknown';
-          const objectIcon = item.querySelector('.object-icon')?.src || './img/table.svg';
+          const objectIcon = item.querySelector('.object-icon')?.src || './img/ui/table.svg';
           const groupName = item.closest('.object-group')?.querySelector('.group-name')?.textContent || '-';
           
           // Try to find full item data from mockLineageData
@@ -1025,15 +1025,15 @@
             <div class="depth-content" data-row="1">
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
-                  <img class="group-icon" src="./img/api.svg" alt="API">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
+                  <img class="group-icon" src="./img/ui/api.svg" alt="API">
                   <span class="group-name">External APIs</span>
                   <span class="group-count">6</span>
                 </div>
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="API">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="API">
                       <span class="object-name">Shopify Orders API</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1042,7 +1042,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="API">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="API">
                       <span class="object-name">Stripe Payments API</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1051,7 +1051,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="API">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="API">
                       <span class="object-name">Salesforce CRM</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1060,7 +1060,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="API">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="API">
                       <span class="object-name">Google Analytics 4</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1070,7 +1070,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="API">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="API">
                       <span class="object-name">Facebook Ads API</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1079,7 +1079,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="API">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="API">
                       <span class="object-name">Mixpanel Events</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1099,7 +1099,7 @@
               <!-- Snowflake: RAW_ECOMMERCE -->
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
                   <span class="group-name"><!--ACME_PROD /--> RAW_DB / RAW_ECOMMERCE</span>
                   <span class="group-count">3</span>
@@ -1107,7 +1107,7 @@
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">orders</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1116,7 +1116,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">payments</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1125,7 +1125,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">customers</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1139,7 +1139,7 @@
               <!-- Snowflake: RAW_MARKETING -->
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
                   <span class="group-name"><!--ACME_PROD /--> RAW_DB / RAW_MARKETING</span>
                   <span class="group-count">4</span>
@@ -1147,7 +1147,7 @@
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">ga_sessions</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1156,7 +1156,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">ga_events</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1165,7 +1165,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">ad_spend</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1174,7 +1174,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">product_events</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1194,7 +1194,7 @@
             <div class="depth-content" data-row="3">
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
                   <span class="group-name"><!--ACME_PROD /--> TRANSFORM_DB / STAGING</span>
                   <span class="group-count">6</span>
@@ -1202,7 +1202,7 @@
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/view.svg" alt="View">
+                      <img class="object-icon" src="./img/ui/view.svg" alt="View">
                       <span class="object-name">stg_orders</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1212,7 +1212,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/view.svg" alt="View">
+                      <img class="object-icon" src="./img/ui/view.svg" alt="View">
                       <span class="object-name">stg_payments</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1221,7 +1221,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/view.svg" alt="View">
+                      <img class="object-icon" src="./img/ui/view.svg" alt="View">
                       <span class="object-name">stg_customers</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1230,7 +1230,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/view.svg" alt="View">
+                      <img class="object-icon" src="./img/ui/view.svg" alt="View">
                       <span class="object-name">stg_sessions</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1240,7 +1240,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/view.svg" alt="View">
+                      <img class="object-icon" src="./img/ui/view.svg" alt="View">
                       <span class="object-name">stg_web_events</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1250,7 +1250,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/view.svg" alt="View">
+                      <img class="object-icon" src="./img/ui/view.svg" alt="View">
                       <span class="object-name">stg_ad_spend</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1269,7 +1269,7 @@
             <div class="depth-content depth-content--focal" data-row="4">
               <div class="object-group">
                 <div class="group-header group-header--focal">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
                   <span class="group-name"><!--ACME_ANALYTICS /--> ANALYTICS_DB / ANALYTICS</span>
                   <span class="group-count">1</span>
@@ -1300,7 +1300,7 @@
             <div class="depth-content" data-row="5">
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-snowflake.svg" alt="Snowflake">
                   <span class="group-name"><!--ACME_ANALYTICS /--> ANALYTICS_DB / MARTS</span>
                   <span class="group-count">4</span>
@@ -1308,7 +1308,7 @@
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">dim_customers</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1318,7 +1318,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">fct_daily_revenue</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1328,7 +1328,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">fct_attribution</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1338,7 +1338,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/table.svg" alt="Table">
+                      <img class="object-icon" src="./img/ui/table.svg" alt="Table">
                       <span class="object-name">user_journey_agg</span>
                     </div>
                     <div class="connections connections--downstream">
@@ -1358,7 +1358,7 @@
               <!-- Tableau -->
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-tableau.svg" alt="Tableau">
                   <span class="group-name">Tableau</span>
                   <span class="group-count">1</span>
@@ -1366,7 +1366,7 @@
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/dashboard.svg" alt="Dashboard">
+                      <img class="object-icon" src="./img/ui/dashboards.svg" alt="Dashboard">
                       <span class="object-name">Exec Revenue Dashboard</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1379,7 +1379,7 @@
               <!-- Looker -->
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                   <img class="group-icon" src="./img/logo-looker.svg" alt="Looker">
                   <span class="group-name">Looker</span>
                   <span class="group-count">2</span>
@@ -1387,7 +1387,7 @@
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/dashboard.svg" alt="Dashboard">
+                      <img class="object-icon" src="./img/ui/dashboards.svg" alt="Dashboard">
                       <span class="object-name">Customer 360 Dashboard</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1396,7 +1396,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/dashboard.svg" alt="Dashboard">
+                      <img class="object-icon" src="./img/ui/dashboards.svg" alt="Dashboard">
                       <span class="object-name">Marketing ROI Dashboard</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1409,15 +1409,15 @@
               <!-- ML Models -->
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
-                  <img class="group-icon" src="./img/model.svg" alt="Model">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
+                  <img class="group-icon" src="./img/ui/machine-learning-model.svg" alt="Model">
                   <span class="group-name">ML Models</span>
                   <span class="group-count">2</span>
                 </div>
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/model.svg" alt="Model">
+                      <img class="object-icon" src="./img/ui/machine-learning-model.svg" alt="Model">
                       <span class="object-name">churn_prediction_model</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1426,7 +1426,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/model.svg" alt="Model">
+                      <img class="object-icon" src="./img/ui/machine-learning-model.svg" alt="Model">
                       <span class="object-name">attribution_model</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1445,15 +1445,15 @@
             <div class="depth-content" data-row="7">
               <div class="object-group">
                 <div class="group-header">
-                  <img class="chevron" src="./img/chevron-down-small.svg" alt="">
-                  <img class="group-icon" src="./img/api.svg" alt="Export">
+                  <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
+                  <img class="group-icon" src="./img/ui/api.svg" alt="Export">
                   <span class="group-name">Exports</span>
                   <span class="group-count">2</span>
                 </div>
                 <ul class="group-list">
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="Email">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="Email">
                       <span class="object-name">Finance Weekly Report</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1462,7 +1462,7 @@
                   </li>
                   <li>
                     <div class="object-info">
-                      <img class="object-icon" src="./img/api.svg" alt="Export">
+                      <img class="object-icon" src="./img/ui/api.svg" alt="Export">
                       <span class="object-name">Investor Data Room</span>
                     </div>
                     <div class="connections connections--upstream">
@@ -1484,7 +1484,7 @@
     <!-- Side Panel -->
     <aside class="side-panel hidden" id="sidePanel">
       <div class="panel-header">
-        <img class="panel-header-icon" id="panelIcon" src="./img/table.svg" alt="">
+        <img class="panel-header-icon" id="panelIcon" src="./img/ui/table.svg" alt="">
         <span class="panel-header-title" id="panelTitle">Object Name</span>
         <span class="panel-close" id="panelClose">✕</span>
       </div>
@@ -1590,58 +1590,58 @@
         
         // String types
         if (['VARCHAR', 'TEXT', 'STRING', 'CHAR'].some(t => normalizedType.includes(t))) {
-          return 'img/text.svg';
+          return 'img/ui/text.svg';
         }
         // Integer/Number types
         if (['INTEGER', 'INT', 'BIGINT', 'NUMBER', 'SMALLINT', 'TINYINT'].some(t => normalizedType.includes(t))) {
-          return 'img/number.svg';
+          return 'img/ui/number.svg';
         }
         // Decimal/Float types
         if (['DECIMAL', 'FLOAT', 'DOUBLE', 'NUMERIC', 'REAL'].some(t => normalizedType.includes(t))) {
-          return 'img/number.svg';
+          return 'img/ui/number.svg';
         }
         // Boolean types
         if (['BOOLEAN', 'BOOL'].some(t => normalizedType.includes(t))) {
-          return 'img/boolean.svg';
+          return 'img/ui/boolean.svg';
         }
         // Binary types
         if (['BINARY', 'VARBINARY', 'BLOB', 'BYTES'].some(t => normalizedType.includes(t))) {
-          return 'img/binary.svg';
+          return 'img/ui/binary.svg';
         }
         // Date types
         if (normalizedType.includes('DATE') && !normalizedType.includes('TIME')) {
-          return 'img/date.svg';
+          return 'img/ui/calendar.svg';
         }
         // Timestamp types
         if (['TIMESTAMP', 'DATETIME', 'TIME'].some(t => normalizedType.includes(t))) {
-          return 'img/timestamp.svg';
+          return 'img/ui/calendar.svg';
         }
         // JSON/Code types
         if (['JSON', 'VARIANT'].some(t => normalizedType.includes(t))) {
-          return 'img/code.svg';
+          return 'img/ui/format-code.svg';
         }
         // Object types
         if (['OBJECT', 'STRUCT', 'MAP'].some(t => normalizedType.includes(t))) {
-          return 'img/object.svg';
+          return 'img/ui/object.svg';
         }
         // Array types
         if (normalizedType.includes('ARRAY')) {
-          return 'img/array.svg';
+          return 'img/ui/array.svg';
         }
         // Measure (BI) - numeric
         if (normalizedType === 'MEASURE') {
-          return 'img/number.svg';
+          return 'img/ui/number.svg';
         }
         // Dimension (BI) - object-like
         if (normalizedType === 'DIMENSION') {
-          return 'img/object.svg';
+          return 'img/ui/object.svg';
         }
         // ML Feature types
         if (normalizedType === 'CATEGORICAL' || normalizedType === 'SEQUENCE') {
-          return 'img/object.svg';
+          return 'img/ui/object.svg';
         }
         // Default
-        return 'img/column.svg';
+        return 'img/ui/column-single.svg';
       }
 
       // =============================================
@@ -1666,7 +1666,7 @@
         if (isPrimaryKey) {
           return React.createElement('img', { 
             className: 'graph-child-key-icon primary-key',
-            src: 'img/key.svg',
+            src: 'img/ui/ownership.svg',
             alt: 'Primary Key',
             title: 'Primary Key',
             width: 16,
@@ -1676,7 +1676,7 @@
         if (isForeignKey) {
           return React.createElement('img', { 
             className: 'graph-child-key-icon foreign-key',
-            src: 'img/link.svg',
+            src: 'img/ui/format-link.svg',
             alt: 'Foreign Key',
             title: 'Foreign Key',
             width: 16,
@@ -2253,7 +2253,7 @@
             onClick: handleDbHeaderClick
           },
             React.createElement('img', { className: 'graph-group-db-icon', src: icon, alt: '' }),
-            React.createElement('img', { className: 'graph-group-db-icon', src: './img/database.svg', alt: '' }),
+            React.createElement('img', { className: 'graph-group-db-icon', src: './img/ui/database.svg', alt: '' }),
             React.createElement('span', { className: 'graph-group-db-name' }, database)
           ),
           // Schema section
@@ -2262,7 +2262,7 @@
               className: `graph-group-schema-header ${schemaCollapsed ? 'collapsed' : ''}`,
               onClick: handleSchemaHeaderClick
             },
-              React.createElement('img', { className: 'graph-group-schema-icon', src: './img/schema.svg', alt: '' }),
+              React.createElement('img', { className: 'graph-group-schema-icon', src: './img/ui/schema.svg', alt: '' }),
               React.createElement('span', { className: 'graph-group-schema-name' }, schema)
             ),
             !schemaCollapsed && React.createElement('div', { className: 'graph-group-items' },
