@@ -494,6 +494,40 @@
       .header-controls {
         display: none;
       }
+
+      /* Copy button styles */
+      .copy-colors-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 500;
+        background: var(--bg-control);
+        border: 1px solid var(--border-control);
+        border-radius: 4px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s ease, background 0.2s ease;
+        color: var(--text-secondary);
+        z-index: 10;
+      }
+
+      .graph-datasource-container:hover .copy-colors-btn {
+        opacity: 1;
+      }
+
+      .copy-colors-btn:hover {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+
+      .copy-colors-btn.copied {
+        background: #22c55e;
+        color: white;
+        border-color: #22c55e;
+      }
     </style>
   </head>
   <body>
@@ -593,6 +627,14 @@
           g: parseInt(result[2], 16),
           b: parseInt(result[3], 16)
         };
+      }
+
+      // Helper: Convert hex to HSLA CSS string
+      function hexToHsla(hex, alpha = 1) {
+        const rgb = hexToRgb(hex);
+        if (!rgb) return null;
+        const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+        return `hsla(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%, ${alpha})`;
       }
 
       // Helper: Convert RGB to HSL
@@ -1195,6 +1237,38 @@
             return `${adjustedColors.primary}${hexOpacity}`;
           };
 
+          // Generate HSLA CSS for copying
+          const generateHslaCSS = () => {
+            const bgHsla = hexToHsla(adjustedColors.primary, bgOpacity);
+            const borderHsla = hexToHsla(adjustedColors.primary, borderOpacity);
+            const primaryHsla = hexToHsla(colors.primary, 1);
+            const secondaryHsla = hexToHsla(colors.secondary, 1);
+            
+            return `/* ${sourceName} */
+--${source}-primary: ${primaryHsla};
+--${source}-secondary: ${secondaryHsla};
+--${source}-bg: ${bgHsla};
+--${source}-border: ${borderHsla};`;
+          };
+
+          // Copy colors to clipboard
+          const handleCopyColors = async (e) => {
+            e.stopPropagation();
+            const css = generateHslaCSS();
+            try {
+              await navigator.clipboard.writeText(css);
+              const btn = e.target;
+              btn.textContent = 'Copied!';
+              btn.classList.add('copied');
+              setTimeout(() => {
+                btn.textContent = 'Copy HSLA';
+                btn.classList.remove('copied');
+              }, 1500);
+            } catch (err) {
+              console.error('Failed to copy:', err);
+            }
+          };
+
           return createElement('div', { 
             className: 'graph-datasource-container',
             style: { 
@@ -1203,12 +1277,15 @@
               position: 'relative'
             }
           },
+            // Copy button
+            createElement('button', {
+              className: 'copy-colors-btn',
+              onClick: handleCopyColors
+            }, 'Copy HSLA'),
             // Color info (shown on hover) - show original and adjusted colors
             createElement('div', { 
               className: 'color-info'
-            }, isDarkMode 
-              ? `Adj: ${adjustedColors.primary} (from ${colors.primary})`
-              : `Adj: ${adjustedColors.secondary} (from ${colors.secondary})`
+            }, `Adj: ${adjustedColors.primary} (from ${colors.primary})`
             ),
             // Header
             createElement('div', { className: 'graph-datasource-header' },
