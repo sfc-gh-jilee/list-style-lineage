@@ -1183,7 +1183,8 @@
               // In dark mode, use adjusted primary color
               return hexToRgba(adjustedColors.primary, bgOpacity * 0.6, true, saturationAdjust);
             }
-            return hexToRgba(adjustedColors.secondary, bgOpacity, false, saturationAdjust);
+            // In light mode, also use primary color for background
+            return hexToRgba(adjustedColors.primary, bgOpacity, false, saturationAdjust);
           };
 
           // Calculate border color based on theme with adjusted colors
