@@ -1,0 +1,18 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    path.select-star-colored-icon {
+      fill: url(#paint0_linear_18357_2370) !important;
+    }
+  </style>
+  <path 
+    class="select-star-colored-icon"
+    d="M8.09004 10.3602L5.51068 14.7179L3.38028 13.5179L5.95922 9.15832H0.8V6.75958H5.95922L3.38028 2.40004L5.51068 1.2L8.09004 5.5577L10.66684 1.20006L12.79872 2.40004L10.21978 6.75958H15.37812V9.15832H10.21978L12.79872 13.5179L10.66684 14.71784L8.09004 10.3602Z"
+    fill="url(#paint0_linear_18357_2370)" />
+  <defs>
+    <linearGradient id="paint0_linear_18357_2370" x1="15.37812" y1="1.2" x2="0.8" y2="14.7179"
+      gradientUnits="userSpaceOnUse">
+      <stop offset="0.240963" stop-color="#875BF7" />
+      <stop offset="0.717862" stop-color="#FF559E" />
+    </linearGradient>
+  </defs>
+</svg>

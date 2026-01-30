@@ -1048,39 +1048,72 @@
           // Get logo icon for data source (returns null if no logo available)
           const getDataSourceLogo = (sourceId) => {
             const logoMap = {
+              // Cloud Data Warehouses
               'snowflake': 'img/logo-snowflake.svg',
               'databricks': 'img/databricks.svg',
-              'bigquery': 'img/google-cloud.svg',
-              'looker': 'img/looker.svg',
-              'tableau': 'img/tableau.svg',
+              'bigquery': 'img/big-query.svg',
               'redshift': 'img/aws-redshift-sub.svg',
+              
+              // Databases
               'postgres': 'img/postgresql.svg',
               'mysql': 'img/mysql.svg',
-              'google_sheets': 'img/google-cloud.svg',
-              'data_studio': 'img/google-cloud.svg',
-              'quicksight': 'img/aws-quicksight.svg',
-              'athena': 'img/aws-athena-sub.svg',
-              'sagemaker': 'img/aws-sagemaker-sub.svg',
-              's3': 'img/aws-s3-copy-and-transform-sub.svg',
-              'clickhouse': 'img/clickhouse-lightmode.svg',
-              'dremio': 'img/dremio.svg',
-              'duckdb': 'img/duckdb-lightmode.svg',
-              'spark': 'img/spark.svg',
-              'great_expectations': 'img/great-expectations.svg',
-              'gcs': 'img/google-cloud-storage-sub.svg',
-              'airflow': 'img/airflow-lightmode.svg',
-              'glue': 'img/aws-glue-sub.svg',
-              'azure_sql_data_warehouse': 'img/azure.svg',
-              'azure_sql_database': 'img/azure.svg',
-              'metabase': 'img/metabase.svg',
-              'mssql': 'img/ms-sql-server.svg',
+              'mssql': 'img/mssql.svg',
               'oracle': 'img/oracle.svg',
+              'maria': 'img/maria.svg',
+              'mongo': 'img/mongo.svg',
+              'cockroachdb': 'img/cockroachdb.svg',
+              'db2': 'img/db2.svg',
+              'documentdb': 'img/documentdb.svg',
+              'dynamodb': 'img/dynamodb.svg',
+              'cosmos': 'img/cosmos.svg',
+              'sap_hana_db': 'img/sap-hana.svg',
+              
+              // Azure
+              'azure_sql_data_warehouse': 'img/azure.svg',
+              'azure_sql_database': 'img/azure_sql_db.svg',
+              
+              // Google
+              'google_sheets': 'img/google_sheets.svg',
+              'data_studio': 'img/google.svg',
+              
+              // AWS
+              'quicksight': 'img/quicksight.svg',
+              'glue': 'img/glue.svg',
+              
+              // BI Tools
+              'looker': 'img/looker.svg',
+              'tableau': 'img/logo-tableau.svg',
+              'metabase': 'img/metabase.svg',
               'power_bi': 'img/powerbi.svg',
               'sigma': 'img/sigma-lightmode.svg',
-              'trino': 'img/trino-lightmode.svg',
+              'thoughtspot': 'img/thoughtspot.svg',
+              'omni': 'img/omni.svg',
+              'periscope': 'img/periscope.svg',
+              'mode': 'img/mode.svg',
+              'hex': 'img/hex.svg',
+              
+              // ETL/Orchestration
+              'airflow': 'img/airflow-lightmode.svg',
               'dbt': 'img/dbt.svg',
-              'flink': 'img/apache-flink.svg',
-              'apache_flink': 'img/apache-flink.svg',
+              'fivetran': 'img/fivetran.svg',
+              
+              // CRM/Marketing
+              'salesforce': 'img/salesforce.svg',
+              'salesforce_crma': 'img/salesforce.svg',
+              'braze': 'img/braze.svg',
+              'marketo': 'img/marketo.svg',
+              'hubspot': 'img/hubspot.svg',
+              'mailchimp': 'img/mailchimp.svg',
+              'intercom': 'img/intercom.svg',
+              'zendesk': 'img/zendesk.svg',
+              
+              // Other
+              'splunk': 'img/splunk.svg',
+              'workday': 'img/workday.svg',
+              'clickhouse': 'img/clickhouse-lightmode.svg',
+              'dremio': 'img/dremio.svg',
+              'trino': 'img/trino-lightmode.svg',
+              'ehr': 'img/ehr.svg',
             };
             return logoMap[sourceId] || null;
           };
