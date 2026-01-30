@@ -1148,7 +1148,7 @@
 
 .graph-expanded-card.selected {
   border: 2.5px solid #1A6CE7;
-  margin: 20px 0;
+  margin: 8px 0;
 }
 
 .graph-expanded-card.column-lineage-active {
