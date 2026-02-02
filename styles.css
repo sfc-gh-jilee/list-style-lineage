@@ -196,7 +196,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 20px 16px;
   /* border-bottom: 1px solid #D5DAE4; */
   min-height: 48px;
 }
@@ -208,9 +208,12 @@ body {
 }
 
 .panel-header-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1E252F;
+  color: #000;
+  font-family: var(--font-family-heading, Inter);
+  font-size: var(--font-size-large, 16px);
+  font-style: normal;
+  font-weight: var(--font-weight-semi-bold, 600);
+  line-height: var(--font-line-height-sub-header, 20px);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -218,7 +221,12 @@ body {
 }
 
 .panel-edge-title {
-  font-size: 12px;
+  color: #000;
+  font-family: var(--font-family-heading, Inter);
+  font-size: var(--font-size-large, 16px);
+  font-style: normal;
+  font-weight: var(--font-weight-semi-bold, 600);
+  line-height: var(--font-line-height-sub-header, 20px);
 }
 
 .panel-header-actions {
@@ -329,8 +337,10 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 6px 0;
-  gap: 12px;
+  padding: 0;
+  margin: 0 0 16px;
+  gap: 2px;
+  flex-direction: column;
 }
 
 .panel-detail-label {
@@ -341,18 +351,20 @@ body {
 
 .panel-detail-value {
   font-size: 12px;
+  line-height: 18px;;
   color: #1E252F;
-  text-align: right;
+  /* text-align: right; */
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  /* white-space: nowrap; */
 }
 
 .panel-detail-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  justify-content: flex-end;
+  padding: 4px 0;
+  /* justify-content: flex-end; */
 }
 
 /* External Tool in Edge Panel */
@@ -372,13 +384,14 @@ body {
 .panel-tag {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 4px 8px;
   border-radius: var(--Large, 16px);
   border: 1px solid var(--Reusable-Border, #D5DAE4);
   background: var(--Primitives-Level-2-background, #FBFBFB);
   font-size: 12px;
   color: #1E252F;
+  box-sizing: border-box;
 }
 
 .panel-tag-icon {
@@ -737,6 +750,11 @@ body {
 .dark-mode .panel-task-status.failed {
   background: #991B1B;
   color: #FECACA;
+}
+
+.dark-mode .panel-header-title,
+.dark-mode .panel-edge-title {
+  color: #F1F5F9;
 }
 
 /* ===========================================

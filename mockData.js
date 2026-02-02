@@ -43,13 +43,13 @@ const OBJ_TYPES = {
 // External Tool Definitions
 // =============================================
 const EXTERNAL_TOOLS = {
-  FIVETRAN: { name: 'Fivetran', icon: './img/logo-fivetran.svg' },
-  DBT: { name: 'dbt', icon: './img/logo-dbt.svg' },
-  AIRFLOW: { name: 'Airflow', icon: './img/logo-airflow.svg' },
-  STITCH: { name: 'Stitch', icon: './img/logo-stitch.svg' },
-  SNOWFLAKE: { name: 'Snowflake', icon: './img/logo-snowflake.svg' },
+  FIVETRAN: { name: 'Fivetran', icon: './img/fivetran.svg' },
+  DBT: { name: 'dbt', icon: './img/dbt-materialized.svg' },
+  AIRFLOW: { name: 'Airflow', icon: './img/airflow-lightmode.svg' },
+  STITCH: { name: 'Stitch', icon: './img/automation.svg' },
+  SNOWFLAKE: { name: 'Snowflake', icon: './img/snowflake.svg' },
   TABLEAU: { name: 'Tableau', icon: './img/logo-tableau.svg' },
-  LOOKER: { name: 'Looker', icon: './img/logo-looker.svg' },
+  LOOKER: { name: 'Looker', icon: './img/looker.svg' },
 };
 
 // =============================================
@@ -1628,6 +1628,52 @@ GROUP BY CUSTOMER_KEY, CUSTOMER_ID;`
     duration: '18s',
     queryId: 'dbt_run_20260202_071000_fct_daily_revenue',
     rowCount: 945,
+    storedProcedures: [
+      {
+        name: 'SP_CALC_DAILY_METRICS',
+        schema: 'ACME_ANALYTICS.PROCS',
+        lastModified: '2026-01-10',
+        owner: 'Analytics Team'
+      },
+      {
+        name: 'SP_REVENUE_FORECAST',
+        schema: 'ACME_ANALYTICS.PROCS',
+        lastModified: '2026-01-18',
+        owner: 'Finance Analytics'
+      },
+      {
+        name: 'SP_ANOMALY_DETECTION',
+        schema: 'ACME_ANALYTICS.ML',
+        lastModified: '2026-01-25',
+        owner: 'Data Science'
+      }
+    ],
+    tasks: [
+      {
+        name: 'dbt_mart_models',
+        type: 'dbt Cloud Job',
+        schedule: 'Daily at 7:10 AM UTC',
+        lastRun: '2026-02-02 07:10:00',
+        status: 'success',
+        owner: 'Data Engineering'
+      },
+      {
+        name: 'revenue_metrics_daily',
+        type: 'Airflow DAG',
+        schedule: 'Daily at 7:30 AM UTC',
+        lastRun: '2026-02-02 07:30:00',
+        status: 'success',
+        owner: 'Analytics Engineering'
+      },
+      {
+        name: 'TASK_REVENUE_ANOMALY_CHECK',
+        type: 'Snowflake Task',
+        schedule: 'Daily at 8:00 AM UTC',
+        lastRun: '2026-02-02 08:00:00',
+        status: 'scheduled',
+        owner: 'Data Science'
+      }
+    ],
     sqlQuery: `-- dbt model: fct_daily_revenue
 -- Materialized: table
 
@@ -1731,6 +1777,32 @@ GROUP BY USER_ID, JOURNEY_DATE;`
     duration: '2m 15s',
     queryId: 'looker_explore_customer360_20260202',
     rowCount: 458723,
+    storedProcedures: [
+      {
+        name: 'SP_REFRESH_CUSTOMER_CACHE',
+        schema: 'ACME_PROD.BI_CACHE',
+        lastModified: '2026-01-28',
+        owner: 'BI Team'
+      }
+    ],
+    tasks: [
+      {
+        name: 'Looker PDT Rebuild',
+        type: 'Looker PDT',
+        schedule: 'Daily at 8:00 AM UTC',
+        lastRun: '2026-02-02 08:00:00',
+        status: 'success',
+        owner: 'BI Team'
+      },
+      {
+        name: 'customer_360_cache_warm',
+        type: 'Airflow DAG',
+        schedule: 'Daily at 8:30 AM UTC',
+        lastRun: '2026-02-02 08:30:00',
+        status: 'running',
+        owner: 'Platform Team'
+      }
+    ],
     sqlQuery: `-- Looker Explore: customer_360
 -- PDT refresh at 8:00 AM UTC
 
