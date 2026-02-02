@@ -1430,6 +1430,38 @@ LEFT JOIN ACME_PROD.RAW_ECOMMERCE.CUSTOMERS c
     duration: '45s',
     queryId: 'dbt_run_20260202_070500_fct_customer_orders',
     rowCount: 2847563,
+    storedProcedures: [
+      {
+        name: 'SP_VALIDATE_ORDER_DATA',
+        schema: 'ACME_PROD.ANALYTICS',
+        lastModified: '2026-01-15',
+        owner: 'Data Engineering'
+      },
+      {
+        name: 'SP_CALCULATE_ORDER_METRICS',
+        schema: 'ACME_PROD.ANALYTICS',
+        lastModified: '2026-01-20',
+        owner: 'Analytics Team'
+      }
+    ],
+    tasks: [
+      {
+        name: 'dbt_fact_models',
+        type: 'dbt Cloud Job',
+        schedule: 'Daily at 7:05 AM UTC',
+        lastRun: '2026-02-02 07:05:00',
+        status: 'success',
+        owner: 'Data Engineering'
+      },
+      {
+        name: 'TASK_REFRESH_FCT_ORDERS',
+        type: 'Snowflake Task',
+        schedule: 'AFTER TASK_STG_COMPLETE',
+        lastRun: '2026-02-02 07:04:45',
+        status: 'success',
+        owner: 'Snowflake Admin'
+      }
+    ],
     sqlQuery: `-- dbt model: fct_customer_orders
 -- Materialized: table (incremental)
 

@@ -648,18 +648,48 @@
 
         // Object selection and side panel
         const sidePanel = document.getElementById('sidePanel');
+        const panelObjectView = document.getElementById('panelObjectView');
+        const panelEdgeView = document.getElementById('panelEdgeView');
         const panelClose = document.getElementById('panelClose');
+        const panelEdgeClose = document.getElementById('panelEdgeClose');
         const panelIcon = document.getElementById('panelIcon');
         const panelTitle = document.getElementById('panelTitle');
-        const panelSchema = document.getElementById('panelSchema');
         const panelComment = document.getElementById('panelComment');
         const panelOwner = document.getElementById('panelOwner');
         const panelCreated = document.getElementById('panelCreated');
         const panelQuality = document.getElementById('panelQuality');
-        const panelRows = document.getElementById('panelRows');
+        const panelColumnCount = document.getElementById('panelColumnCount');
         const panelTags = document.getElementById('panelTags');
         const panelColumns = document.getElementById('panelColumns');
+        const panelColumnsSearch = document.getElementById('panelColumnsSearch');
+        // Edge panel elements
+        const panelEdgeTitle = document.getElementById('panelEdgeTitle');
+        const panelQueryType = document.getElementById('panelQueryType');
+        const panelRunBy = document.getElementById('panelRunBy');
+        const panelRunOn = document.getElementById('panelRunOn');
+        const panelDuration = document.getElementById('panelDuration');
+        const panelQueryId = document.getElementById('panelQueryId');
+        const panelRowCount = document.getElementById('panelRowCount');
+        const panelSqlQuery = document.getElementById('panelSqlQuery');
         let selectedListItem = null;
+        
+        // Setup collapsible section toggles
+        document.querySelectorAll('.panel-section-toggle').forEach(toggle => {
+          toggle.addEventListener('click', function() {
+            const group = this.closest('.panel-collapsible');
+            if (group) {
+              const isCollapsed = group.getAttribute('data-collapsed') === 'true';
+              group.setAttribute('data-collapsed', !isCollapsed);
+            }
+          });
+        });
+        
+        // Setup edge panel close button
+        if (panelEdgeClose) {
+          panelEdgeClose.addEventListener('click', () => {
+            window.sharedSelection.clearSelection();
+          });
+        }
 
         // Helper: Get column type icon path (same logic as graph view)
         function getPanelColumnIcon(type) {
@@ -677,6 +707,106 @@
           if (normalizedType === 'MEASURE') return 'img/ui/number.svg';
           if (normalizedType === 'DIMENSION') return 'img/ui/object.svg';
           return 'img/ui/column-single.svg';
+        }
+
+        // Helper: SQL syntax highlighter
+        function highlightSQL(sql) {
+          if (!sql) return '';
+          
+          // Escape HTML first
+          const escapeHtml = (str) => str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+          
+          // SQL keywords (case-insensitive)
+          const keywords = new Set([
+            'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'IS', 'NULL',
+            'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE',
+            'CREATE', 'ALTER', 'DROP', 'TABLE', 'VIEW', 'INDEX', 'DATABASE', 'SCHEMA',
+            'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'FULL', 'CROSS', 'ON',
+            'GROUP', 'BY', 'ORDER', 'ASC', 'DESC', 'HAVING', 'LIMIT', 'OFFSET',
+            'AS', 'DISTINCT', 'ALL', 'UNION', 'INTERSECT', 'EXCEPT',
+            'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+            'EXISTS', 'BETWEEN', 'LIKE', 'ILIKE',
+            'REPLACE', 'GRANTS', 'COPY', 'WITH', 'RECURSIVE',
+            'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'CONSTRAINT',
+            'TRUE', 'FALSE', 'DEFAULT', 'UNIQUE', 'CHECK'
+          ]);
+          
+          // SQL functions
+          const functions = new Set([
+            'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'COALESCE', 'NULLIF',
+            'CAST', 'CONVERT', 'TRIM', 'UPPER', 'LOWER', 'LENGTH', 'SUBSTRING',
+            'CONCAT', 'SPLIT', 'DATE', 'TIMESTAMP', 'DATEADD',
+            'DATEDIFF', 'GETDATE', 'NOW', 'CURRENT_DATE', 'CURRENT_TIMESTAMP',
+            'ROW_NUMBER', 'RANK', 'DENSE_RANK', 'LAG', 'LEAD', 'FIRST_VALUE',
+            'LAST_VALUE', 'NVL', 'IFNULL', 'IFF', 'DECODE'
+          ]);
+          
+          // Tokenize the SQL - split by word boundaries while preserving structure
+          const tokens = [];
+          const tokenRegex = /(\s+|[.,;()*=<>!]+|'[^']*'|--[^\n]*|\w+)/g;
+          let match;
+          let lastIndex = 0;
+          
+          while ((match = tokenRegex.exec(sql)) !== null) {
+            // Add any skipped characters
+            if (match.index > lastIndex) {
+              tokens.push({ type: 'other', value: sql.slice(lastIndex, match.index) });
+            }
+            
+            const value = match[1];
+            const upperValue = value.toUpperCase();
+            
+            if (/^\s+$/.test(value)) {
+              tokens.push({ type: 'whitespace', value });
+            } else if (/^--/.test(value)) {
+              tokens.push({ type: 'comment', value });
+            } else if (/^'/.test(value)) {
+              tokens.push({ type: 'string', value });
+            } else if (/^\d+(\.\d+)?$/.test(value)) {
+              tokens.push({ type: 'number', value });
+            } else if (keywords.has(upperValue)) {
+              tokens.push({ type: 'keyword', value });
+            } else if (functions.has(upperValue)) {
+              tokens.push({ type: 'function', value });
+            } else if (/^[.,;()*=<>!]+$/.test(value)) {
+              tokens.push({ type: 'operator', value });
+            } else {
+              tokens.push({ type: 'identifier', value });
+            }
+            
+            lastIndex = tokenRegex.lastIndex;
+          }
+          
+          // Add remaining text
+          if (lastIndex < sql.length) {
+            tokens.push({ type: 'other', value: sql.slice(lastIndex) });
+          }
+          
+          // Build highlighted HTML
+          return tokens.map(token => {
+            const escaped = escapeHtml(token.value);
+            switch (token.type) {
+              case 'keyword':
+                return `<span class="sql-keyword">${escaped}</span>`;
+              case 'function':
+                return `<span class="sql-function">${escaped}</span>`;
+              case 'string':
+                return `<span class="sql-string">${escaped}</span>`;
+              case 'number':
+                return `<span class="sql-number">${escaped}</span>`;
+              case 'comment':
+                return `<span class="sql-comment">${escaped}</span>`;
+              case 'operator':
+                return `<span class="sql-operator">${escaped}</span>`;
+              default:
+                return escaped;
+            }
+          }).join('');
         }
 
         // Global shared selection state (accessible by graph view)
@@ -715,49 +845,46 @@
           updateSidePanel: function(itemData) {
             if (!itemData) return;
             
+            // Show object view, hide edge view
+            panelObjectView.classList.remove('hidden');
+            panelEdgeView.classList.add('hidden');
+            
             // Header
             panelTitle.textContent = itemData.name || 'Unknown';
             panelIcon.src = itemData.icon || './img/ui/table.svg';
             
-            // Database / Schema
-            let schemaText = '-';
-            if (itemData.database && itemData.schemaName) {
-              schemaText = `${itemData.database} / ${itemData.schemaName}`;
-            } else if (itemData.schema) {
-              schemaText = itemData.schema;
-            } else if (itemData.platform) {
-              schemaText = itemData.platform;
-            }
-            panelSchema.textContent = schemaText;
-            
             // Comment/Description
-            panelComment.textContent = itemData.description || itemData.comment || '-';
+            panelComment.textContent = itemData.description || itemData.comment || '—';
             
             // Owner
-            panelOwner.textContent = itemData.owner || 'ACCOUNTADMIN';
+            panelOwner.textContent = itemData.owner || '—';
             
             // Created date
-            panelCreated.textContent = itemData.createdAt || itemData.created || '-';
+            panelCreated.textContent = itemData.createdAt || itemData.created || '—';
             
             // Data quality
-            panelQuality.textContent = itemData.dataQuality || '-';
+            panelQuality.textContent = itemData.dataQuality || '—';
             
-            // Row count
-            panelRows.textContent = itemData.rowCount ? itemData.rowCount.toLocaleString() : '-';
+            // Column count
+            const columns = itemData.columns || itemData.features || [];
+            panelColumnCount.textContent = columns.length > 0 ? columns.length.toString() : '—';
             
             // Tags
             if (itemData.tags && itemData.tags.length > 0) {
               panelTags.innerHTML = itemData.tags.map(tag => 
-                `<span class="panel-tag">${tag}</span>`
+                `<span class="panel-tag">
+                  <svg class="panel-tag-icon" viewBox="0 0 16 16" fill="none">
+                    <path d="M2.5 3.5C2.5 2.94772 2.94772 2.5 3.5 2.5H7.08579C7.35097 2.5 7.60532 2.60536 7.79289 2.79289L13.2071 8.20711C13.5976 8.59763 13.5976 9.23077 13.2071 9.6213L9.6213 13.2071C9.23077 13.5976 8.59763 13.5976 8.20711 13.2071L2.79289 7.79289C2.60536 7.60532 2.5 7.35097 2.5 7.08579V3.5Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="5.5" cy="5.5" r="1" fill="currentColor"/>
+                  </svg>
+                  <span class="panel-tag-value">${tag}</span>
+                </span>`
               ).join('');
-              panelTags.parentElement.style.display = 'block';
             } else {
-              panelTags.innerHTML = '';
-              panelTags.parentElement.style.display = 'none';
+              panelTags.textContent = '—';
             }
             
-            // Columns
-            const columns = itemData.columns || itemData.features || [];
+            // Columns list
             if (columns.length > 0) {
               panelColumns.innerHTML = columns.map(col => {
                 const iconSrc = getPanelColumnIcon(col.type);
@@ -769,69 +896,72 @@
                   ${keyIcon}
                 </div>`;
               }).join('');
-              panelColumns.parentElement.style.display = 'block';
             } else {
               panelColumns.innerHTML = '<div class="panel-column-empty">No columns</div>';
+            }
+            
+            // Setup column search filtering
+            if (panelColumnsSearch) {
+              panelColumnsSearch.value = '';
+              panelColumnsSearch.oninput = function() {
+                const query = this.value.toLowerCase();
+                const items = panelColumns.querySelectorAll('.panel-column-item');
+                items.forEach(item => {
+                  const name = item.querySelector('.panel-column-name')?.textContent.toLowerCase() || '';
+                  item.style.display = name.includes(query) ? 'flex' : 'none';
+                });
+              };
             }
             
             sidePanel.classList.remove('hidden');
           },
           
           // Update side panel with edge info (source -> target connection)
-          updateEdgeSidePanel: function(sourceItem, targetItem) {
+          updateEdgeSidePanel: function(sourceItem, targetItem, edgeData) {
             if (!sourceItem || !targetItem) return;
             
-            // Header - show as connection
-            panelTitle.textContent = 'Connection';
-            panelIcon.src = './img/ui/format-link.svg';
+            // Show edge view, hide object view
+            panelObjectView.classList.add('hidden');
+            panelEdgeView.classList.remove('hidden');
             
-            // Build edge info HTML
-            const edgeInfoHtml = `
-              <div class="panel-edge-info">
-                <div class="panel-edge-node">
-                  <div class="panel-edge-label">Source</div>
-                  <div class="panel-edge-item">
-                    <img src="${sourceItem.icon || './img/ui/table.svg'}" class="panel-edge-icon" alt="">
-                    <span class="panel-edge-name">${sourceItem.name}</span>
-                  </div>
-                  <div class="panel-edge-path">${sourceItem.database ? sourceItem.database + ' / ' : ''}${sourceItem.schemaName || sourceItem.schema || sourceItem.platform || ''}</div>
-                </div>
-                <div class="panel-edge-arrow">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="#5D6A85" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </div>
-                <div class="panel-edge-node">
-                  <div class="panel-edge-label">Target</div>
-                  <div class="panel-edge-item">
-                    <img src="${targetItem.icon || './img/ui/table.svg'}" class="panel-edge-icon" alt="">
-                    <span class="panel-edge-name">${targetItem.name}</span>
-                  </div>
-                  <div class="panel-edge-path">${targetItem.database ? targetItem.database + ' / ' : ''}${targetItem.schemaName || targetItem.schema || targetItem.platform || ''}</div>
-                </div>
-              </div>
-            `;
+            // Truncate names for title
+            const truncate = (str, len) => str && str.length > len ? str.substring(0, len) + '...' : str;
+            const sourceName = truncate(sourceItem.name, 15) || 'Source';
+            const targetName = truncate(targetItem.name, 15) || 'Target';
+            panelEdgeTitle.textContent = `${sourceName} to ${targetName}`;
             
-            // Hide regular item fields
-            panelSchema.textContent = '-';
-            panelComment.textContent = '-';
-            panelOwner.textContent = '-';
-            panelCreated.textContent = '-';
-            panelQuality.textContent = '-';
-            panelRows.textContent = '-';
-            panelTags.innerHTML = '';
-            panelTags.parentElement.style.display = 'none';
+            // Edge details - use edgeData if available, otherwise defaults
+            const data = edgeData || {};
+            panelQueryType.textContent = data.queryType || '—';
+            panelRunBy.textContent = data.runBy || '—';
+            panelRunOn.textContent = data.runOn || data.createdAt || '—';
+            panelDuration.textContent = data.duration || '—';
+            panelQueryId.textContent = data.queryId || '—';
+            panelRowCount.textContent = data.rowCount ? data.rowCount.toLocaleString() : '—';
             
-            // Show edge info in columns area (repurposed)
-            panelColumns.innerHTML = edgeInfoHtml;
-            panelColumns.parentElement.style.display = 'block';
-            
-            // Update section labels for edge view
-            const schemaSection = panelSchema.closest('.panel-section');
-            if (schemaSection) {
-              const label = schemaSection.querySelector('.panel-label');
-              if (label) label.textContent = 'Connection Details';
+            // External Tool display
+            const externalToolRow = document.getElementById('panelExternalToolRow');
+            const externalToolIcon = document.getElementById('panelExternalToolIcon');
+            const externalToolName = document.getElementById('panelExternalToolName');
+            if (data.externalTool && data.externalTool.name) {
+              externalToolRow.style.display = 'flex';
+              externalToolIcon.src = data.externalTool.icon || '';
+              externalToolIcon.style.display = data.externalTool.icon ? 'inline' : 'none';
+              externalToolName.textContent = data.externalTool.name;
+            } else {
+              externalToolRow.style.display = 'none';
             }
+            
+            // SQL Query with syntax highlighting
+            let sqlCode = data.sqlQuery;
+            if (!sqlCode) {
+              // Generate a mock SQL query based on source/target
+              sqlCode = `CREATE OR REPLACE VIEW
+${targetItem.database || 'DATABASE'}.${targetItem.schemaName || 'SCHEMA'}.${targetItem.name || 'TARGET'}
+COPY GRANTS AS SELECT * FROM
+${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sourceItem.name || 'SOURCE'};`;
+            }
+            panelSqlQuery.innerHTML = highlightSQL(sqlCode);
             
             sidePanel.classList.remove('hidden');
           }
@@ -1563,58 +1693,149 @@
 
     <!-- Side Panel -->
     <aside class="side-panel hidden" id="sidePanel">
-      <div class="panel-header">
-        <img class="panel-header-icon" id="panelIcon" src="./img/ui/table.svg" alt="">
-        <span class="panel-header-title" id="panelTitle">Object Name</span>
-        <button class="panel-close" id="panelClose" aria-label="Close panel">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+      <!-- Object Panel View -->
+      <div class="panel-view panel-object-view" id="panelObjectView">
+        <div class="panel-header">
+          <img class="panel-header-icon" id="panelIcon" src="./img/ui/table.svg" alt="">
+          <span class="panel-header-title" id="panelTitle">Object Name</span>
+          <div class="panel-header-actions">
+            <button class="panel-close" id="panelClose" aria-label="Close panel">
+              <img src="./img/ui/clear.svg" width="16" height="16" alt="Close">
+            </button>
+          </div>
+        </div>
+        <div class="panel-content">
+          <!-- Details Section -->
+          <div class="panel-section-group">
+            <div class="panel-section-header">
+              <span class="panel-section-title">Details</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+            </div>
+            <div class="panel-details-grid">
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Comment</span>
+                <span class="panel-detail-value" id="panelComment">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Owner</span>
+                <span class="panel-detail-value" id="panelOwner">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Created</span>
+                <span class="panel-detail-value" id="panelCreated">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Data Quality</span>
+                <span class="panel-detail-value" id="panelQuality">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Columns</span>
+                <span class="panel-detail-value" id="panelColumnCount">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Tags</span>
+                <span class="panel-detail-value panel-detail-tags" id="panelTags">—</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Columns Section -->
+          <div class="panel-section-group panel-columns-section">
+            <div class="panel-section-header">
+              <span class="panel-section-title">Columns</span>
+            </div>
+            <div class="panel-search">
+              <input type="text" placeholder="Search columns" id="panelColumnsSearch">
+            </div>
+            <div class="panel-column-list" id="panelColumns">
+              <div class="panel-column-item"><span class="panel-column-icon">⏱</span> PTIME</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="panel-content">
-        <div class="panel-section">
-          <div class="panel-label">Database / schema</div>
-          <div class="panel-value" id="panelSchema">-</div>
-        </div>
-        <div class="panel-section">
-          <div class="panel-label">Comment</div>
-          <div class="panel-value" id="panelComment">-</div>
-        </div>
-        <div class="panel-section">
-          <div class="panel-label">Owner</div>
-          <div class="panel-value" id="panelOwner">ACCOUNTADMIN</div>
-        </div>
-        <div class="panel-section">
-          <div class="panel-label">Created</div>
-          <div class="panel-value" id="panelCreated">-</div>
-        </div>
-        <div class="panel-section">
-          <div class="panel-label">Data quality</div>
-          <div class="panel-value" id="panelQuality">-</div>
-        </div>
-        <div class="panel-section">
-          <div class="panel-label">Rows</div>
-          <div class="panel-value" id="panelRows">-</div>
-        </div>
-        <div class="panel-section">
-          <div class="panel-label">Tags</div>
-          <div class="panel-tags" id="panelTags">
-            <span class="panel-tag">⟨⟩ SEMANTIC_CATEGORY | EMAIL</span>
-            <span class="panel-tag">🏢 COST_CENTER | PRODUCT</span>
-            <span class="panel-tag">🔒 PII | DATA</span>
+      
+      <!-- Edge Panel View -->
+      <div class="panel-view panel-edge-view hidden" id="panelEdgeView">
+        <div class="panel-header">
+          <span class="panel-header-title panel-edge-title" id="panelEdgeTitle">Source to Target</span>
+          <div class="panel-header-actions">
+            <button class="panel-close" id="panelEdgeClose" aria-label="Close panel">
+              <img src="./img/ui/clear.svg" width="16" height="16" alt="Close">
+            </button>
           </div>
         </div>
-        <div class="panel-section">
-          <div class="panel-columns-header">Columns</div>
-          <div class="panel-search">
-            <input type="text" placeholder="Search columns">
+        <div class="panel-content">
+          <!-- Details Section -->
+          <div class="panel-section-group">
+            <div class="panel-section-header">
+              <span class="panel-section-title">Details</span>
+            </div>
+            <div class="panel-details-grid">
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Query Type</span>
+                <span class="panel-detail-value" id="panelQueryType">—</span>
+              </div>
+              <div class="panel-detail-row" id="panelExternalToolRow" style="display: none;">
+                <span class="panel-detail-label">External Tool</span>
+                <span class="panel-detail-value panel-external-tool" id="panelExternalTool">
+                  <img class="panel-external-tool-icon" id="panelExternalToolIcon" src="" width="16" height="16" alt="">
+                  <span id="panelExternalToolName">—</span>
+                </span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Run By</span>
+                <span class="panel-detail-value" id="panelRunBy">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Run On</span>
+                <span class="panel-detail-value" id="panelRunOn">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Duration</span>
+                <span class="panel-detail-value" id="panelDuration">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Query ID</span>
+                <span class="panel-detail-value" id="panelQueryId">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Row Count</span>
+                <span class="panel-detail-value" id="panelRowCount">—</span>
+              </div>
+            </div>
           </div>
-          <div class="panel-column-list" id="panelColumns">
-            <div class="panel-column-item"><span class="panel-column-icon">⏱</span> PTIME</div>
-            <div class="panel-column-item"><span class="panel-column-icon">△</span> TOPIC</div>
-            <div class="panel-column-item"><span class="panel-column-icon">△</span> PRODUCT_KEY</div>
-            <div class="panel-column-item"><span class="panel-column-icon">△</span> CITY</div>
+          
+          <!-- SQL Query Section -->
+          <div class="panel-section-group panel-collapsible" data-collapsed="false">
+            <div class="panel-section-header panel-section-toggle">
+              <span class="panel-section-title">SQL Query</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+            </div>
+            <div class="panel-section-content">
+              <pre class="panel-sql-code" id="panelSqlQuery">SELECT * FROM table;</pre>
+            </div>
+          </div>
+          
+          <!-- Stored Procedures Section -->
+          <div class="panel-section-group panel-collapsible" data-collapsed="true" id="panelStoredProcsSection">
+            <div class="panel-section-header panel-section-toggle">
+              <span class="panel-section-title">Stored Procedures</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+            </div>
+            <div class="panel-section-content" id="panelStoredProcsContent">
+              <div class="panel-empty-state">No stored procedures</div>
+            </div>
+          </div>
+          
+          <!-- Tasks Section -->
+          <div class="panel-section-group panel-collapsible" data-collapsed="true" id="panelTasksSection">
+            <div class="panel-section-header panel-section-toggle">
+              <span class="panel-section-title">Tasks</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+            </div>
+            <div class="panel-section-content" id="panelTasksContent">
+              <div class="panel-empty-state">No tasks</div>
+            </div>
           </div>
         </div>
       </div>
@@ -2644,7 +2865,12 @@
           // Database header
           React.createElement('div', { 
             className: `graph-group-db-header ${dbCollapsed ? 'collapsed' : ''}`,
-            onClick: handleDbHeaderClick
+            onClick: handleDbHeaderClick,
+            style: dbCollapsed ? {
+              border: `1px solid ${borderColor}`,
+              borderRadius: '12px',
+              padding: '8px 12px'
+            } : undefined
           },
             React.createElement('img', { className: 'graph-group-db-icon', src: icon, alt: '' }),
             React.createElement('img', { className: 'graph-group-db-icon', src: './img/ui/database.svg', alt: '' }),
@@ -2656,7 +2882,7 @@
             style: {
               background: bgColor,
               border: `1px solid ${borderColor}`,
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '8px'
             }
           },
@@ -2680,6 +2906,7 @@
       function PlatformGroupNode({ data, id }) {
         const { 
           name, icon, items, platformId, onItemClick, selectedItemId, collapsed, onToggleCollapse,
+          schemaCollapsed, onToggleSchemaCollapse,
           expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
           selectedChildren, onChildClick, onChildHover,
           columnLineageMode, sourceColumn, relatedColumns,
@@ -2693,7 +2920,12 @@
           onToggleCollapse?.(id);
         };
 
-        const collapsedHandleTop = '24px';
+        const handleSchemaHeaderClick = (e) => {
+          e.stopPropagation();
+          onToggleSchemaCollapse?.(id);
+        };
+
+        const collapsedHandleTop = collapsed ? '24px' : (schemaCollapsed ? '62px' : '24px');
 
         // Render an item - either expanded or compact
         const renderItem = (item, index) => {
@@ -2936,7 +3168,7 @@
           }
         },
           // Collapsed handles
-          collapsed && items.map(item => 
+          (collapsed || schemaCollapsed) && items.map(item => 
             React.createElement(React.Fragment, { key: `collapsed-handles-${item.id}` },
               React.createElement(Handle, {
                 type: 'target',
@@ -2955,7 +3187,12 @@
           // Platform header (outside colored section - like db header)
           React.createElement('div', { 
             className: `graph-group-db-header ${collapsed ? 'collapsed' : ''}`,
-            onClick: handleHeaderClick
+            onClick: handleHeaderClick,
+            style: collapsed ? {
+              border: `1px solid ${borderColor}`,
+              borderRadius: '12px',
+              padding: '8px 12px'
+            } : undefined
           },
             React.createElement('img', { className: 'graph-group-db-icon', src: icon, alt: '' }),
             React.createElement('span', { className: 'graph-group-db-name' }, name)
@@ -2966,20 +3203,21 @@
             style: {
               background: bgColor,
               border: `1px solid ${borderColor}`,
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '8px'
             }
           },
             // Group type header (like schema header)
             React.createElement('div', { 
-              className: 'graph-group-schema-header'
+              className: `graph-group-schema-header ${schemaCollapsed ? 'collapsed' : ''}`,
+              onClick: handleSchemaHeaderClick
             },
               React.createElement('img', { className: 'graph-group-schema-icon', src: groupIcon, alt: '' }),
               React.createElement('span', { className: 'graph-group-schema-name' }, groupLabel),
               React.createElement('span', { className: 'graph-group-schema-count' }, items.length)
             ),
             // Items list
-            React.createElement('div', { className: 'graph-platform-items' },
+            !schemaCollapsed && React.createElement('div', { className: 'graph-platform-items' },
               items.map(renderItem)
             )
           )
@@ -3228,7 +3466,9 @@
                   width: 340,
                   height: nodeHeight,
                   collapsed: false,
+                  schemaCollapsed: false,
                   onToggleCollapse: onTogglePlatformCollapse,
+                  onToggleSchemaCollapse,
                 },
               });
               
@@ -3262,6 +3502,9 @@
                 // Find target item data for edge info
                 const targetItem = allItems.find(i => i.id === targetItemId);
                 
+                // Look up edge metadata from objectEdges if available
+                const edgeMeta = window.getEdgeMetadata ? window.getEdgeMetadata(item.id, targetItemId) : null;
+                
                 edges.push({
                   id: `edge-${item.id}-${targetItemId}`,
                   source: sourceMapping.nodeId,
@@ -3281,6 +3524,15 @@
                     targetItemId: targetItemId,
                     sourceItem: item,
                     targetItem: targetItem,
+                    // Include edge metadata
+                    queryType: edgeMeta?.queryType || null,
+                    runBy: edgeMeta?.runBy || null,
+                    runOn: edgeMeta?.runOn || null,
+                    duration: edgeMeta?.duration || null,
+                    queryId: edgeMeta?.queryId || null,
+                    rowCount: edgeMeta?.rowCount || null,
+                    sqlQuery: edgeMeta?.sqlQuery || null,
+                    externalTool: edgeMeta?.externalTool || null,
                   },
                 });
               }
@@ -3399,6 +3651,9 @@
             // container > db-header > schema-section > schema-header > items
             if (collapseInfo?.collapsed) {
               return dbHeaderHeight + containerPadding;
+            }
+            if (collapseInfo?.schemaCollapsed) {
+              return dbHeaderHeight + schemaHeaderHeight + schemaPadding + containerPadding;
             }
             const itemsHeight = calculateItemsHeight(items || []);
             // Same formula as groupNode since they share the same DOM structure
@@ -4020,8 +4275,20 @@
             window.sharedSelection.selectedItemId = null;
             window.sharedSelection.selectedItemData = null;
             
+            // Build edge metadata for the side panel
+            const edgeMeta = {
+              queryType: edgeData.queryType || null,
+              runBy: edgeData.runBy || null,
+              runOn: edgeData.runOn || edgeData.sourceItem?.createdAt || null,
+              duration: edgeData.duration || null,
+              queryId: edgeData.queryId || null,
+              rowCount: edgeData.rowCount || null,
+              sqlQuery: edgeData.sqlQuery || null,
+              externalTool: edgeData.externalTool || null,
+            };
+            
             // Show edge info in side panel
-            window.sharedSelection.updateEdgeSidePanel(edgeData.sourceItem, edgeData.targetItem);
+            window.sharedSelection.updateEdgeSidePanel(edgeData.sourceItem, edgeData.targetItem, edgeMeta);
           }
           
           // Center view on the edge (midpoint between source and target nodes)
@@ -4222,29 +4489,40 @@
         // Update nodes when selection or expanded state changes
         useEffect(() => {
           const currentSelectedId = columnLineageMode ? null : (selectedItem?.id || window.sharedSelection?.selectedItemId);
-          setNodes(nds => nds.map(node => ({
-            ...node,
-            data: {
-              ...node.data,
-              selectedItemId: currentSelectedId,
-              expandedItems: expandedItems,
-              itemSearchQueries: itemSearchQueries,
-              selectedChildren: selectedChildren,
-              onToggleItemExpand: handleToggleItemExpand,
-              onItemSearchChange: handleItemSearchChange,
-              onChildClick: handleChildClick,
-              onChildHover: handleChildHover,
-              columnLineageMode: columnLineageMode,
-              sourceColumn: selectedColumnLineage,
-              relatedColumns: relatedColumns,
-              columnLeafStatus: columnLeafStatus,
-              showAllColumnsItems: showAllColumnsItems,
-              onShowAllColumns: handleShowAllColumns,
-              itemActiveTabs: itemActiveTabs,
-              onTabChange: handleTabChange,
-            },
-          })));
-        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, columnLineageMode, selectedColumnLineage, relatedColumns, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, showAllColumnsItems, handleShowAllColumns, itemActiveTabs, handleTabChange]);
+          setNodes(nds => nds.map(node => {
+            const nodeCollapseInfo = collapseState[node.id] || {};
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                selectedItemId: currentSelectedId,
+                expandedItems: expandedItems,
+                itemSearchQueries: itemSearchQueries,
+                selectedChildren: selectedChildren,
+                onToggleItemExpand: handleToggleItemExpand,
+                onItemSearchChange: handleItemSearchChange,
+                onChildClick: handleChildClick,
+                onChildHover: handleChildHover,
+                columnLineageMode: columnLineageMode,
+                sourceColumn: selectedColumnLineage,
+                relatedColumns: relatedColumns,
+                columnLeafStatus: columnLeafStatus,
+                showAllColumnsItems: showAllColumnsItems,
+                onShowAllColumns: handleShowAllColumns,
+                itemActiveTabs: itemActiveTabs,
+                onTabChange: handleTabChange,
+                adjacentItemIds: adjacentItemIds,
+                // Ensure collapse handlers and state are always present
+                dbCollapsed: !!nodeCollapseInfo.dbCollapsed,
+                schemaCollapsed: !!nodeCollapseInfo.schemaCollapsed,
+                collapsed: !!nodeCollapseInfo.collapsed,
+                onToggleDbCollapse: handleToggleDbCollapse,
+                onToggleSchemaCollapse: handleToggleSchemaCollapse,
+                onToggleCollapse: handleTogglePlatformCollapse,
+              },
+            };
+          }));
+        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, columnLineageMode, selectedColumnLineage, relatedColumns, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, showAllColumnsItems, handleShowAllColumns, itemActiveTabs, handleTabChange, collapseState, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, adjacentItemIds]);
 
         // Layout version counter to prevent stale updates
         const layoutVersionRef = React.useRef(0);
@@ -4271,9 +4549,9 @@
                 ...node,
                 data: {
                   ...node.data,
-                  dbCollapsed: nodeCollapseInfo.dbCollapsed,
-                  schemaCollapsed: nodeCollapseInfo.schemaCollapsed,
-                  collapsed: nodeCollapseInfo.collapsed,
+                  dbCollapsed: !!nodeCollapseInfo.dbCollapsed,
+                  schemaCollapsed: !!nodeCollapseInfo.schemaCollapsed,
+                  collapsed: !!nodeCollapseInfo.collapsed,
                   onToggleDbCollapse: handleToggleDbCollapse,
                   onToggleSchemaCollapse: handleToggleSchemaCollapse,
                   onToggleCollapse: handleTogglePlatformCollapse,
