@@ -347,6 +347,82 @@ body {
 }
 
 /* ===========================================
+   Edge Info Panel (Connection Details)
+   =========================================== */
+.panel-edge-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.panel-edge-node {
+  width: 100%;
+  padding: 12px;
+  background: #F8FAFC;
+  border-radius: 8px;
+  border: 1px solid #E8ECF1;
+}
+
+.panel-edge-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #5D6A85;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.panel-edge-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.panel-edge-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.panel-edge-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1E252F;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-edge-path {
+  font-size: 11px;
+  color: #5D6A85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-edge-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #FFF;
+  border: 1px solid #E8ECF1;
+  border-radius: 50%;
+}
+
+.panel-edge-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===========================================
    Main Container
    =========================================== */
 .lineage-table {
@@ -616,6 +692,52 @@ img.group-icon:not([src*="logo-"]) {
   /* transition: background 0.15s; */
   box-sizing: border-box;
   border-radius: 4px;
+  position: relative;
+}
+
+/* ===========================================
+   Leaf Node Indicators
+   Visual indicator for nodes without upstream/downstream lineage
+   =========================================== */
+
+/* Default pattern color (inherits from element's --leaf-pattern-color or falls back) */
+.group-list li {
+  --leaf-pattern-color: #D5DAE4;
+}
+
+/* Override pattern color for selected state */
+.group-list li.selected {
+  --leaf-pattern-color: #1A6CE7;
+}
+
+/* Base styles for leaf indicator strips */
+.group-list li.leaf-upstream::before,
+.group-list li.leaf-downstream::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: repeating-linear-gradient(
+    -55deg,
+    transparent,
+    transparent 2px,
+    var(--leaf-pattern-color) 2px,
+    var(--leaf-pattern-color) 3px
+  );
+  pointer-events: none;
+}
+
+/* Left strip for upstream leaf (no sources feeding into this node) */
+.group-list li.leaf-upstream::before {
+  left: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+/* Right strip for downstream leaf (no destinations from this node) */
+.group-list li.leaf-downstream::after {
+  right: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 .group-list li:hover {

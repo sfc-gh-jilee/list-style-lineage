@@ -209,6 +209,27 @@
           }
         });
 
+        // ===========================================
+        // Leaf Node Detection
+        // Mark nodes that don't have upstream or downstream lineage
+        // ===========================================
+        allItems.forEach(item => {
+          const hasUpstreamConnections = item.querySelector('.connections--upstream');
+          const hasDownstreamConnections = item.querySelector('.connections--downstream');
+          
+          // If no upstream connections element exists, this is an upstream leaf
+          // (no sources feeding into this node)
+          if (!hasUpstreamConnections) {
+            item.classList.add('leaf-upstream');
+          }
+          
+          // If no downstream connections element exists, this is a downstream leaf
+          // (no destinations from this node)
+          if (!hasDownstreamConnections) {
+            item.classList.add('leaf-downstream');
+          }
+        });
+
         // Get depth level of an item
         function getDepthRow(item) {
           const depthContent = item.closest('.depth-content');
@@ -754,6 +775,65 @@
             }
             
             sidePanel.classList.remove('hidden');
+          },
+          
+          // Update side panel with edge info (source -> target connection)
+          updateEdgeSidePanel: function(sourceItem, targetItem) {
+            if (!sourceItem || !targetItem) return;
+            
+            // Header - show as connection
+            panelTitle.textContent = 'Connection';
+            panelIcon.src = './img/ui/format-link.svg';
+            
+            // Build edge info HTML
+            const edgeInfoHtml = `
+              <div class="panel-edge-info">
+                <div class="panel-edge-node">
+                  <div class="panel-edge-label">Source</div>
+                  <div class="panel-edge-item">
+                    <img src="${sourceItem.icon || './img/ui/table.svg'}" class="panel-edge-icon" alt="">
+                    <span class="panel-edge-name">${sourceItem.name}</span>
+                  </div>
+                  <div class="panel-edge-path">${sourceItem.database ? sourceItem.database + ' / ' : ''}${sourceItem.schemaName || sourceItem.schema || sourceItem.platform || ''}</div>
+                </div>
+                <div class="panel-edge-arrow">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="#5D6A85" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="panel-edge-node">
+                  <div class="panel-edge-label">Target</div>
+                  <div class="panel-edge-item">
+                    <img src="${targetItem.icon || './img/ui/table.svg'}" class="panel-edge-icon" alt="">
+                    <span class="panel-edge-name">${targetItem.name}</span>
+                  </div>
+                  <div class="panel-edge-path">${targetItem.database ? targetItem.database + ' / ' : ''}${targetItem.schemaName || targetItem.schema || targetItem.platform || ''}</div>
+                </div>
+              </div>
+            `;
+            
+            // Hide regular item fields
+            panelSchema.textContent = '-';
+            panelComment.textContent = '-';
+            panelOwner.textContent = '-';
+            panelCreated.textContent = '-';
+            panelQuality.textContent = '-';
+            panelRows.textContent = '-';
+            panelTags.innerHTML = '';
+            panelTags.parentElement.style.display = 'none';
+            
+            // Show edge info in columns area (repurposed)
+            panelColumns.innerHTML = edgeInfoHtml;
+            panelColumns.parentElement.style.display = 'block';
+            
+            // Update section labels for edge view
+            const schemaSection = panelSchema.closest('.panel-section');
+            if (schemaSection) {
+              const label = schemaSection.querySelector('.panel-label');
+              if (label) label.textContent = 'Connection Details';
+            }
+            
+            sidePanel.classList.remove('hidden');
           }
         };
 
@@ -994,7 +1074,7 @@
               <button class="toggle-btn">List</button>
             </div>
             <button class="toolbar-btn">
-              <img src="./img/filter.svg" alt="" width="16" height="16">
+              <img src="./img/ui/filter.svg" alt="" width="16" height="16">
               Filter
             </button>
           </div>
@@ -1587,6 +1667,35 @@
       // Also available: window.columnLineage, window.findRelatedColumns, etc.
 
       // =============================================
+      // Column Leaf Status Helper
+      // Precompute which columns are leaf nodes (no upstream/downstream)
+      // =============================================
+      function buildColumnLeafStatus(lineage) {
+        // Track which columns have upstream/downstream connections
+        const hasUpstream = new Map(); // Map<itemId, Set<columnName>>
+        const hasDownstream = new Map(); // Map<itemId, Set<columnName>>
+        
+        lineage.forEach(edge => {
+          // Target columns have upstream connections (they receive data from source)
+          if (!hasUpstream.has(edge.targetTable)) {
+            hasUpstream.set(edge.targetTable, new Set());
+          }
+          hasUpstream.get(edge.targetTable).add(edge.targetColumn);
+          
+          // Source columns have downstream connections (they send data to target)
+          if (!hasDownstream.has(edge.sourceTable)) {
+            hasDownstream.set(edge.sourceTable, new Set());
+          }
+          hasDownstream.get(edge.sourceTable).add(edge.sourceColumn);
+        });
+        
+        return { hasUpstream, hasDownstream };
+      }
+      
+      // Build column leaf status from column lineage data
+      const columnLeafStatus = buildColumnLeafStatus(window.columnLineage || []);
+
+      // =============================================
       // Data source color definitions
       // =============================================
       const NODE_COLORS = {
@@ -1834,7 +1943,10 @@
         itemId,
         columnLineageMode,
         sourceColumn,
-        relatedColumns
+        relatedColumns,
+        columnLeafStatus,
+        showAllColumns,
+        onShowAllClick
       }) {
         // Determine if a child is the source column or a related column
         const getColumnLineageClass = (childName) => {
@@ -1852,12 +1964,27 @@
         const pinnedColumns = [];
         const regularColumns = [];
         
+        // Check if this is the source item (where the column was clicked)
+        const isSourceItem = sourceColumn?.itemId === itemId;
+        
+        // Count columns that would be hidden in lineage mode (for non-source items)
+        // This is calculated regardless of showAllColumns so we know the count for the toggle button
+        let hiddenableCount = 0;
+        
         (children || []).forEach(child => {
           const lineageClass = getColumnLineageClass(child.name);
           if (lineageClass) {
             pinnedColumns.push({ ...child, lineageClass });
           } else {
-            regularColumns.push(child);
+            // Track count of columns that would be hidden in lineage mode for non-source items
+            if (columnLineageMode && !isSourceItem) {
+              hiddenableCount++;
+            }
+            // In column lineage mode, only show regular columns for the source item
+            // Upstream/downstream items only show pinned (related) columns unless showAllColumns
+            if (!columnLineageMode || isSourceItem || showAllColumns) {
+              regularColumns.push(child);
+            }
           }
         });
         
@@ -1869,14 +1996,27 @@
                  (child.type && child.type.toLowerCase().includes(query));
         });
         
+        // Count of hidden columns for "Show N more" button (only when not showing all)
+        const hiddenCount = showAllColumns ? 0 : hiddenableCount;
+        
         // Render a single column item
         const renderColumnItem = (child, index, isPinned, lineageClass) => {
           const isSelected = selectedChildren?.has?.(child.name);
           const showHandles = isPinned; // Only render handles when in column lineage mode
           
+          // Determine column leaf status
+          const isLeafUpstream = !columnLeafStatus?.hasUpstream?.has(itemId) || 
+                                 !columnLeafStatus.hasUpstream.get(itemId).has(child.name);
+          const isLeafDownstream = !columnLeafStatus?.hasDownstream?.has(itemId) || 
+                                   !columnLeafStatus.hasDownstream.get(itemId).has(child.name);
+          const leafClasses = [
+            isLeafUpstream ? 'leaf-upstream' : '',
+            isLeafDownstream ? 'leaf-downstream' : ''
+          ].filter(Boolean).join(' ');
+          
           return React.createElement('div', {
             key: child.name + '-' + index + (isPinned ? '-pinned' : ''),
-            className: `graph-child-item ${isSelected ? 'selected' : ''} ${lineageClass || ''} ${isPinned ? 'pinned' : ''}`,
+            className: `graph-child-item ${isSelected ? 'selected' : ''} ${lineageClass || ''} ${isPinned ? 'pinned' : ''} ${leafClasses}`,
             onClick: (e) => {
               e.stopPropagation();
               onChildClick?.(child.name);
@@ -1964,8 +2104,8 @@
               onMouseDown: (e) => e.stopPropagation()
             })
           ),
-          // Regular children list (scrollable)
-          React.createElement('div', { 
+          // Regular children list (scrollable) - hide in column lineage mode when only pinned columns exist (non-source items)
+          !(columnLineageMode && pinnedColumns.length > 0 && filteredRegularChildren.length === 0 && !showAllColumns) && React.createElement('div', { 
             className: 'graph-children-list nowheel',
             style: { maxHeight: listHeight || 240 },
             onWheelCapture: (e) => {
@@ -1975,11 +2115,57 @@
           },
             filteredRegularChildren.length === 0 
               ? React.createElement('div', { className: 'graph-children-empty' }, 
-                  searchQuery ? 'No matches found' : (pinnedColumns.length > 0 ? '' : 'No columns')
+                  searchQuery ? 'No matches found' : 'No columns'
                 )
               : filteredRegularChildren.map((child, index) => 
                   renderColumnItem(child, index, false, '')
                 )
+          ),
+          // "Show N more" button - only show when there are hidden columns in lineage mode
+          hiddenCount > 0 && !showAllColumns && React.createElement('button', {
+            className: 'graph-show-more-btn',
+            onClick: (e) => {
+              e.stopPropagation();
+              onShowAllClick?.();
+            }
+          },
+            `Show ${hiddenCount} more`,
+            React.createElement('svg', { 
+              viewBox: '0 0 12 12', 
+              fill: 'none',
+              xmlns: 'http://www.w3.org/2000/svg'
+            },
+              React.createElement('path', {
+                d: 'M3 5l3 3 3-3',
+                stroke: 'currentColor',
+                strokeWidth: '1.5',
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round'
+              })
+            )
+          ),
+          // "Hide columns" button - only show when showAllColumns is true (to collapse back)
+          showAllColumns && hiddenableCount > 0 && React.createElement('button', {
+            className: 'graph-show-more-btn expanded',
+            onClick: (e) => {
+              e.stopPropagation();
+              onShowAllClick?.();
+            }
+          },
+            `Hide ${hiddenableCount} columns`,
+            React.createElement('svg', { 
+              viewBox: '0 0 12 12', 
+              fill: 'none',
+              xmlns: 'http://www.w3.org/2000/svg'
+            },
+              React.createElement('path', {
+                d: 'M3 5l3 3 3-3',
+                stroke: 'currentColor',
+                strokeWidth: '1.5',
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round'
+              })
+            )
           )
         );
       }
@@ -2002,7 +2188,12 @@
         columnLineageMode,
         sourceColumn,
         relatedColumns,
-        onItemClick
+        onItemClick,
+        isLeafUpstream,
+        isLeafDownstream,
+        columnLeafStatus,
+        showAllColumns,
+        onShowAllClick
       }) {
         const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
         const children = item.features || item.columns || [];
@@ -2014,9 +2205,15 @@
           sourceColumn?.itemId === item.id || 
           relatedColumns?.has?.(item.id)
         );
+        
+        // Build leaf classes
+        const leafClasses = [
+          isLeafUpstream ? 'leaf-upstream' : '',
+          isLeafDownstream ? 'leaf-downstream' : ''
+        ].filter(Boolean).join(' ');
 
         return React.createElement('div', { 
-          className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''} ${isLineageActive ? 'column-lineage-active' : ''}`
+          className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''} ${isLineageActive ? 'column-lineage-active' : ''} ${leafClasses}`
         },
           // Header (clickable to select item)
           React.createElement('div', { 
@@ -2046,7 +2243,10 @@
             itemId: item.id,
             columnLineageMode: columnLineageMode,
             sourceColumn: sourceColumn,
-            relatedColumns: relatedColumns
+            relatedColumns: relatedColumns,
+            columnLeafStatus: columnLeafStatus,
+            showAllColumns: showAllColumns,
+            onShowAllClick: onShowAllClick
           }),
           // Model outputs section (for ML models)
           childrenExpanded && item.outputs?.length > 0 && React.createElement('div', { className: 'graph-outputs-section' },
@@ -2059,33 +2259,11 @@
               itemId: item.id,
               columnLineageMode: columnLineageMode,
               sourceColumn: sourceColumn,
-              relatedColumns: relatedColumns
+              relatedColumns: relatedColumns,
+              columnLeafStatus: columnLeafStatus,
+              showAllColumns: showAllColumns,
+              onShowAllClick: onShowAllClick
             })
-          ),
-          // Toggle button
-          hasChildren && React.createElement('button', {
-            className: `graph-toggle-children-btn ${childrenExpanded ? 'expanded' : ''}`,
-            onClick: (e) => {
-              e.stopPropagation();
-              onToggleChildren?.();
-            }
-          },
-            childrenExpanded 
-              ? `Hide ${childLabel}` 
-              : `${children.length} ${childLabel}`,
-            React.createElement('svg', { 
-              viewBox: '0 0 12 12', 
-              fill: 'none',
-              xmlns: 'http://www.w3.org/2000/svg'
-            },
-              React.createElement('path', {
-                d: 'M3 5l3 3 3-3',
-                stroke: 'currentColor',
-                strokeWidth: '1.5',
-                strokeLinecap: 'round',
-                strokeLinejoin: 'round'
-              })
-            )
           )
         );
       }
@@ -2130,7 +2308,9 @@
           dbCollapsed, schemaCollapsed, onToggleDbCollapse, onToggleSchemaCollapse,
           expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
           selectedChildren, onChildClick, onChildHover,
-          columnLineageMode, sourceColumn, relatedColumns
+          columnLineageMode, sourceColumn, relatedColumns,
+          adjacentItemIds, columnLeafStatus,
+          showAllColumnsItems, onShowAllColumns
         } = data;
         
         // Get colors for this source
@@ -2202,7 +2382,12 @@
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
                 relatedColumns: relatedColumns,
-                onItemClick: () => onItemClick?.(item, id)
+                onItemClick: () => onItemClick?.(item, id),
+                isLeafUpstream: item.isLeafUpstream,
+                isLeafDownstream: item.isLeafDownstream,
+                columnLeafStatus: columnLeafStatus,
+                showAllColumns: showAllColumnsItems?.[item.id],
+                onShowAllClick: () => onShowAllColumns?.(item.id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2240,7 +2425,12 @@
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
                 relatedColumns: relatedColumns,
-                onItemClick: () => onItemClick?.(item, id)
+                onItemClick: () => onItemClick?.(item, id),
+                isLeafUpstream: item.isLeafUpstream,
+                isLeafDownstream: item.isLeafDownstream,
+                columnLeafStatus: columnLeafStatus,
+                showAllColumns: showAllColumnsItems?.[item.id],
+                onShowAllClick: () => onShowAllColumns?.(item.id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2256,9 +2446,14 @@
             const children = item.features || item.columns || [];
             const childLabel = item.features?.length > 0 ? 'features' : 'columns';
             
+            const leafClassesExpanded = [
+              item.isLeafUpstream ? 'leaf-upstream' : '',
+              item.isLeafDownstream ? 'leaf-downstream' : ''
+            ].filter(Boolean).join(' ');
+            
             return React.createElement('div', {
               key: item.id,
-              className: `graph-expanded-card selected ${item.isFocal ? 'focal' : ''}`,
+              className: `graph-expanded-card selected ${item.isFocal ? 'focal' : ''} ${leafClassesExpanded}`,
               onClick: (e) => {
                 e.stopPropagation();
                 onItemClick?.(item, id);
@@ -2311,9 +2506,15 @@
 
           // Default: Single item card or compact item
           if (isSingleItem) {
+            const isAdjacent = adjacentItemIds?.has?.(item.id);
+            const leafClasses = [
+              item.isLeafUpstream ? 'leaf-upstream' : '',
+              item.isLeafDownstream ? 'leaf-downstream' : ''
+            ].filter(Boolean).join(' ');
+            
             return React.createElement('div', {
               key: item.id,
-              className: `graph-group-card ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
+              className: `graph-group-card ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClasses}`,
               onClick: (e) => {
                 e.stopPropagation();
                 onItemClick?.(item, id);
@@ -2340,9 +2541,15 @@
           }
 
           // Multiple items - compact list item
+          const isAdjacent = adjacentItemIds?.has?.(item.id);
+          const leafClassesCompact = [
+            item.isLeafUpstream ? 'leaf-upstream' : '',
+            item.isLeafDownstream ? 'leaf-downstream' : ''
+          ].filter(Boolean).join(' ');
+          
           return React.createElement('div', {
             key: item.id,
-            className: `graph-group-item ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''}`,
+            className: `graph-group-item ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClassesCompact}`,
             onClick: (e) => {
               e.stopPropagation();
               onItemClick?.(item, id);
@@ -2429,7 +2636,9 @@
           name, icon, items, platformId, onItemClick, selectedItemId, collapsed, onToggleCollapse,
           expandedItems, onToggleItemExpand, itemSearchQueries, onItemSearchChange,
           selectedChildren, onChildClick, onChildHover,
-          columnLineageMode, sourceColumn, relatedColumns
+          columnLineageMode, sourceColumn, relatedColumns,
+          adjacentItemIds, columnLeafStatus,
+          showAllColumnsItems, onShowAllColumns
         } = data;
 
         const handleHeaderClick = (e) => {
@@ -2479,7 +2688,12 @@
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
                 relatedColumns: relatedColumns,
-                onItemClick: () => onItemClick?.(item, id)
+                onItemClick: () => onItemClick?.(item, id),
+                isLeafUpstream: item.isLeafUpstream,
+                isLeafDownstream: item.isLeafDownstream,
+                columnLeafStatus: columnLeafStatus,
+                showAllColumns: showAllColumnsItems?.[item.id],
+                onShowAllClick: () => onShowAllColumns?.(item.id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2517,7 +2731,12 @@
                 columnLineageMode: columnLineageMode,
                 sourceColumn: sourceColumn,
                 relatedColumns: relatedColumns,
-                onItemClick: () => onItemClick?.(item, id)
+                onItemClick: () => onItemClick?.(item, id),
+                isLeafUpstream: item.isLeafUpstream,
+                isLeafDownstream: item.isLeafDownstream,
+                columnLeafStatus: columnLeafStatus,
+                showAllColumns: showAllColumnsItems?.[item.id],
+                onShowAllClick: () => onShowAllColumns?.(item.id)
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2533,9 +2752,14 @@
             const children = item.features || item.columns || [];
             const childLabel = item.features?.length > 0 ? 'features' : 'columns';
             
+            const leafClassesPlatformExpanded = [
+              item.isLeafUpstream ? 'leaf-upstream' : '',
+              item.isLeafDownstream ? 'leaf-downstream' : ''
+            ].filter(Boolean).join(' ');
+            
             return React.createElement('div', {
               key: item.id,
-              className: 'graph-expanded-card selected',
+              className: `graph-expanded-card selected ${leafClassesPlatformExpanded}`,
               onClick: (e) => {
                 e.stopPropagation();
                 onItemClick?.(item, id);
@@ -2586,9 +2810,15 @@
           }
 
           // Default compact platform item
+          const isAdjacent = adjacentItemIds?.has?.(item.id);
+          const leafClassesPlatform = [
+            item.isLeafUpstream ? 'leaf-upstream' : '',
+            item.isLeafDownstream ? 'leaf-downstream' : ''
+          ].filter(Boolean).join(' ');
+          
           return React.createElement('div', {
             key: item.id,
-            className: `graph-platform-item ${isSelected ? 'selected' : ''}`,
+            className: `graph-platform-item ${isSelected ? 'selected' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClassesPlatform}`,
             onClick: (e) => {
               e.stopPropagation();
               onItemClick?.(item, id);
@@ -2733,6 +2963,83 @@
         'elk.nodeLabels.placement': 'INSIDE V_CENTER H_CENTER',
       };
 
+      // =============================================
+      // Measure Actual DOM Node Heights
+      // =============================================
+      function measureNodeHeight(nodeId) {
+        // Find the React Flow node DOM element
+        const nodeElement = document.querySelector(`[data-id="${nodeId}"]`);
+        if (!nodeElement) {
+          return null;
+        }
+        
+        // Get the actual rendered height of the node content
+        // React Flow nodes have the content as a child element
+        const contentElement = nodeElement.querySelector('.graph-group-container, .graph-platform-container, .graph-object-card');
+        if (contentElement) {
+          const rect = contentElement.getBoundingClientRect();
+          return rect.height;
+        }
+        
+        // Fallback to node element itself
+        const rect = nodeElement.getBoundingClientRect();
+        return rect.height;
+      }
+
+      // =============================================
+      // Center Columns Based on Measured Heights
+      // =============================================
+      function centerColumnsByMeasuredHeights(nodes, gap = 72) {
+        // Group nodes by layer
+        const nodesByLayer = {};
+        nodes.forEach(node => {
+          const layer = node.data.layer;
+          if (layer !== undefined) {
+            if (!nodesByLayer[layer]) {
+              nodesByLayer[layer] = [];
+            }
+            nodesByLayer[layer].push(node);
+          }
+        });
+
+        // Sort nodes within each layer by their current Y position to maintain order
+        Object.keys(nodesByLayer).forEach(layer => {
+          nodesByLayer[layer].sort((a, b) => a.position.y - b.position.y);
+        });
+
+        // Center each layer independently
+        Object.keys(nodesByLayer).forEach(layer => {
+          const layerNodes = nodesByLayer[layer];
+          
+          // Measure actual heights from DOM, fallback to data.height
+          const heights = layerNodes.map(node => {
+            const measuredHeight = measureNodeHeight(node.id);
+            return measuredHeight || node.data.height || 100;
+          });
+          
+          // Calculate total height for this layer
+          let totalHeight = 0;
+          heights.forEach((height, idx) => {
+            totalHeight += height;
+            if (idx < heights.length - 1) totalHeight += gap;
+          });
+          
+          // Position nodes centered around Y=0
+          let currentY = -totalHeight / 2;
+          layerNodes.forEach((node, idx) => {
+            node.position = {
+              ...node.position,
+              y: currentY
+            };
+            // Update the data.height to match measured height for future reference
+            node.data.height = heights[idx];
+            currentY += heights[idx] + gap;
+          });
+        });
+
+        return nodes;
+      }
+
       async function calculateLayout(nodes, edges) {
         const elkGraph = {
           id: 'root',
@@ -2767,54 +3074,9 @@
           };
         });
 
-        // Second pass: center each column vertically
-        // Group nodes by layer
-        const nodesByLayer = {};
-        layoutedNodes.forEach(node => {
-          const layer = node.data.layer;
-          if (layer !== undefined) {
-            if (!nodesByLayer[layer]) {
-              nodesByLayer[layer] = [];
-            }
-            nodesByLayer[layer].push(node);
-          }
-        });
-
-        // Find global min and max Y across all nodes to determine canvas height
-        let globalMinY = Infinity;
-        let globalMaxY = -Infinity;
-        layoutedNodes.forEach(node => {
-          const nodeHeight = node.data.height || 100;
-          globalMinY = Math.min(globalMinY, node.position.y);
-          globalMaxY = Math.max(globalMaxY, node.position.y + nodeHeight);
-        });
-        const canvasHeight = globalMaxY - globalMinY;
-        const canvasCenterY = globalMinY + canvasHeight / 2;
-
-        // Center each layer's nodes vertically
-        Object.keys(nodesByLayer).forEach(layer => {
-          const layerNodes = nodesByLayer[layer];
-          
-          // Find layer's vertical extent
-          let layerMinY = Infinity;
-          let layerMaxY = -Infinity;
-          layerNodes.forEach(node => {
-            const nodeHeight = node.data.height || 100;
-            layerMinY = Math.min(layerMinY, node.position.y);
-            layerMaxY = Math.max(layerMaxY, node.position.y + nodeHeight);
-          });
-          
-          const layerHeight = layerMaxY - layerMinY;
-          const layerCenterY = layerMinY + layerHeight / 2;
-          const offsetY = canvasCenterY - layerCenterY;
-          
-          // Apply offset to center the layer
-          layerNodes.forEach(node => {
-            node.position.y += offsetY;
-          });
-        });
-
-        return layoutedNodes;
+        // Second pass: center each column vertically around Y=0
+        // Use the centralized centering function
+        return centerColumnsByMeasuredHeights(layoutedNodes, 72);
       }
 
       // =============================================
@@ -2836,8 +3098,9 @@
               group.schemas.forEach((schema, schemaIndex) => {
                 const groupNodeId = `group-${group.id}-${schema.id}`;
                 const itemHeight = 40;
-                const headerHeight = 70;
-                const nodeHeight = headerHeight + (schema.items.length * itemHeight) + 24;
+                // Match calculateNodeHeight: dbHeaderHeight(32) + schemaHeaderHeight(40) + schemaPadding(16) + containerPadding(16)
+                const baseHeight = 32 + 40 + 16 + 16; // = 104
+                const nodeHeight = baseHeight + (schema.items.length * itemHeight);
                 
                 // Check if this group contains the focal item
                 const hasFocal = schema.items.some(item => item.isFocal);
@@ -2888,8 +3151,10 @@
               // Platform group (Tableau, Looker, etc)
               const platformNodeId = `platform-${group.id}`;
               const itemHeight = 40;
-              const headerHeight = 40;
-              const nodeHeight = headerHeight + (group.items.length * itemHeight) + 16;
+              // Platform nodes use same structure as group nodes, so use same height formula
+              // Match calculateNodeHeight: dbHeaderHeight(32) + schemaHeaderHeight(40) + schemaPadding(16) + containerPadding(16) + 24
+              const baseHeight = 32 + 40 + 16 + 16 + 24; // = 128
+              const nodeHeight = baseHeight + (group.items.length * itemHeight);
               
               // Enrich items with platform info
               const enrichedPlatformItems = group.items.map(item => ({
@@ -2930,13 +3195,22 @@
         });
 
         // Create edges between items using handle mapping
+        // Also build a set of items that have upstream connections (appear in someone's downstream)
+        const itemsWithUpstream = new Set();
+        
         allItems.forEach(item => {
           if (item.downstream && item.downstream.length > 0) {
             item.downstream.forEach(targetItemId => {
+              // Mark this target as having upstream connections
+              itemsWithUpstream.add(targetItemId);
+              
               const sourceMapping = itemToHandleMap.get(item.id);
               const targetMapping = itemToHandleMap.get(targetItemId);
               
               if (sourceMapping && targetMapping) {
+                // Find target item data for edge info
+                const targetItem = allItems.find(i => i.id === targetItemId);
+                
                 edges.push({
                   id: `edge-${item.id}-${targetItemId}`,
                   source: sourceMapping.nodeId,
@@ -2951,9 +3225,37 @@
                     height: 12,
                     color: '#BDC4D5',
                   },
+                  data: {
+                    sourceItemId: item.id,
+                    targetItemId: targetItemId,
+                    sourceItem: item,
+                    targetItem: targetItem,
+                  },
                 });
               }
             });
+          }
+        });
+
+        // Compute leaf status for each item and update nodes
+        // An item is a leaf-upstream if it has NO upstream connections (not in anyone's downstream)
+        // An item is a leaf-downstream if it has NO downstream connections
+        const leafStatus = new Map();
+        allItems.forEach(item => {
+          leafStatus.set(item.id, {
+            isLeafUpstream: !itemsWithUpstream.has(item.id),
+            isLeafDownstream: !item.downstream || item.downstream.length === 0
+          });
+        });
+
+        // Update nodes' items with leaf status
+        nodes.forEach(node => {
+          if (node.data.items) {
+            node.data.items = node.data.items.map(item => ({
+              ...item,
+              isLeafUpstream: leafStatus.get(item.id)?.isLeafUpstream || false,
+              isLeafDownstream: leafStatus.get(item.id)?.isLeafDownstream || false
+            }));
           }
         });
 
@@ -2975,6 +3277,11 @@
         const [itemSearchQueries, setItemSearchQueries] = useState({}); // { itemId: string }
         const [selectedChildren, setSelectedChildren] = useState({}); // { itemId: Set<string> }
         const [hoveredChild, setHoveredChild] = useState(null); // { itemId, childName }
+        const [showAllColumnsItems, setShowAllColumnsItems] = useState({}); // { itemId: boolean } - show all columns in lineage mode
+        
+        // Edge selection state
+        const [selectedEdge, setSelectedEdge] = useState(null); // { id, sourceItemId, targetItemId, sourceItem, targetItem }
+        const [adjacentItemIds, setAdjacentItemIds] = useState(new Set()); // Set of item IDs adjacent to selected edge
         
         // Column lineage mode state
         const [columnLineageMode, setColumnLineageMode] = useState(false);
@@ -2990,6 +3297,7 @@
         const calculateNodeHeight = useCallback((nodeType, items, collapseInfo, expandedItemsState, selectedItemId, columnLineageModeState, sourceColumnState, relatedColumnsState) => {
           const itemHeight = 40;
           const expandedItemHeight = 420; // Height when item is expanded with columns list (header + search + list + button + margins)
+          const columnLineageExpandedHeight = 340; // Height in column lineage mode (no search input, no margins)
           const selectedItemHeight = 100; // Height when item is selected but not expanded (card + margins)
           const dbHeaderHeight = 32;
           const schemaHeaderHeight = 40;
@@ -3012,7 +3320,8 @@
               
               // Item is expanded if: (selected AND expanded) OR (in column lineage AND expanded)
               if ((isSelected || isInColumnLineage) && hasChildren && isExpanded) {
-                height += expandedItemHeight;
+                // Use smaller height for column lineage mode (no search input, no margins)
+                height += isInColumnLineage ? columnLineageExpandedHeight : expandedItemHeight;
               } else if (isSelected && hasChildren) {
                 height += selectedItemHeight;
               } else {
@@ -3034,12 +3343,14 @@
           }
           
           if (nodeType === 'platformGroup') {
-            const platformHeaderHeight = 40;
+            // Platform nodes use same structure as group nodes:
+            // container > db-header > schema-section > schema-header > items
             if (collapseInfo?.collapsed) {
-              return platformHeaderHeight + 16;
+              return dbHeaderHeight + containerPadding;
             }
             const itemsHeight = calculateItemsHeight(items || []);
-            return platformHeaderHeight + itemsHeight + 16;
+            // Same formula as groupNode since they share the same DOM structure
+            return dbHeaderHeight + schemaHeaderHeight + itemsHeight + schemaPadding + containerPadding + 24;
           }
           
           return 100;
@@ -3081,6 +3392,14 @@
         // Handle toggle item children expansion (columns/features)
         const handleToggleItemExpand = useCallback((itemId) => {
           setExpandedItems(prev => ({
+            ...prev,
+            [itemId]: !prev[itemId]
+          }));
+        }, []);
+
+        // Handle toggle show all columns (in column lineage mode)
+        const handleShowAllColumns = useCallback((itemId) => {
+          setShowAllColumnsItems(prev => ({
             ...prev,
             [itemId]: !prev[itemId]
           }));
@@ -3166,6 +3485,37 @@
               setExpandedItems({ [itemId]: true });
               setSelectedChildren({ [itemId]: new Set([childName]) });
             }
+            
+            // Always clear edge selection state and reset edge styles
+            setSelectedEdge(null);
+            setAdjacentItemIds(new Set());
+            setEdges(eds => eds.map(e => ({
+              ...e,
+              selected: false,
+              zIndex: 0,
+              markerEnd: {
+                ...e.markerEnd,
+                color: '#BDC4D5',
+              },
+            })));
+            
+            // Center view on the parent node containing the column
+            if (reactFlowInstance) {
+              const allNodes = reactFlowInstance.getNodes();
+              const targetNode = allNodes.find(node => {
+                if (node.data?.items) {
+                  return node.data.items.some(item => item.id === itemId);
+                }
+                return false;
+              });
+              
+              if (targetNode) {
+                const currentZoom = reactFlowInstance.getZoom();
+                const x = targetNode.position.x + (targetNode.width || 304) / 2;
+                const y = targetNode.position.y + (targetNode.height || 100) / 2;
+                reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
+              }
+            }
             return;
           }
           
@@ -3186,6 +3536,19 @@
             window.sharedSelection.setSelection(null, null);
           }
           
+          // Always clear edge selection state and reset edge styles
+          setSelectedEdge(null);
+          setAdjacentItemIds(new Set());
+          setEdges(eds => eds.map(e => ({
+            ...e,
+            selected: false,
+            zIndex: 0,
+            markerEnd: {
+              ...e.markerEnd,
+              color: '#BDC4D5',
+            },
+          })));
+          
           // Set up expanded items and selected children for lineage view
           const newExpandedItems = { [itemId]: true };
           const newSelectedChildren = { [itemId]: new Set([childName]) };
@@ -3198,9 +3561,27 @@
           setExpandedItems(newExpandedItems);
           setSelectedChildren(newSelectedChildren);
           
+          // Center view on the parent node containing the selected column
+          if (reactFlowInstance) {
+            const allNodes = reactFlowInstance.getNodes();
+            const targetNode = allNodes.find(node => {
+              if (node.data?.items) {
+                return node.data.items.some(item => item.id === itemId);
+              }
+              return false;
+            });
+            
+            if (targetNode) {
+              const currentZoom = reactFlowInstance.getZoom();
+              const x = targetNode.position.x + (targetNode.width || 304) / 2;
+              const y = targetNode.position.y + (targetNode.height || 100) / 2;
+              reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
+            }
+          }
+          
           // Edge creation is handled by useEffect below after render
           
-        }, [columnLineageMode, selectedColumnLineage, reactFlowInstance]);
+        }, [columnLineageMode, selectedColumnLineage, reactFlowInstance, setEdges]);
         
         // Create column lineage edges AFTER items are expanded (handles must exist first)
         useEffect(() => {
@@ -3338,6 +3719,7 @@
           setColumnLineageEdges([]);
           setExpandedItems({});
           setSelectedChildren({});
+          setShowAllColumnsItems({}); // Reset show all columns state
         }, []);
 
         // Handle child hover - show preview of column lineage edges
@@ -3452,21 +3834,42 @@
 
         // Handle item click - update shared selection, expand to show columns, and center view
         const handleItemClick = useCallback((item, nodeId) => {
-          // Exit column lineage mode if active
-          if (columnLineageMode) {
-            exitColumnLineageMode();
-          }
+          // Always clear ALL column lineage state (unconditionally)
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          setShowAllColumnsItems({});
           
+          // Clear ALL previous selections and highlights
+          setSelectedEdge(null);
+          setAdjacentItemIds(new Set());
+          setSelectedChildren({});
+          setHoveredChild(null);
+          setHoverPreviewEdges([]);
+          
+          // Reset edge styles to default
+          setEdges(eds => eds.map(e => ({
+            ...e,
+            selected: false,
+            zIndex: 0,
+            className: '',
+            animated: false,
+            style: {},
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 10,
+              height: 10,
+              color: '#BDC4D5',
+            },
+          })));
+          
+          // Set the new selected item
           setSelectedItem(item);
           
-          // Auto-expand item to show columns/features if it has any
+          // Reset expanded items - only expand the newly selected item (collapse all others)
           const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
-          if (hasChildren) {
-            setExpandedItems(prev => ({
-              ...prev,
-              [item.id]: true
-            }));
-          }
+          setExpandedItems(hasChildren ? { [item.id]: true } : {});
           
           // Sync with global shared selection - pass all item data for side panel
           if (window.sharedSelection) {
@@ -3504,7 +3907,85 @@
               reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
             }
           }
-        }, [reactFlowInstance, columnLineageMode, exitColumnLineageMode]);
+        }, [reactFlowInstance, setEdges]);
+
+        // Handle edge click - select edge, deselect nodes/columns, highlight adjacent nodes
+        const handleEdgeClick = useCallback((event, edge) => {
+          event.stopPropagation();
+          
+          // Always clear ALL column lineage state (unconditionally)
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          setShowAllColumnsItems({});
+          setHoveredChild(null);
+          setHoverPreviewEdges([]);
+          
+          // Clear item selection
+          setSelectedItem(null);
+          setSelectedChildren({});
+          setExpandedItems({});
+          
+          // Set selected edge
+          const edgeData = edge.data || {};
+          setSelectedEdge({
+            id: edge.id,
+            sourceItemId: edgeData.sourceItemId,
+            targetItemId: edgeData.targetItemId,
+            sourceItem: edgeData.sourceItem,
+            targetItem: edgeData.targetItem,
+          });
+          
+          // Set adjacent item IDs for highlighting
+          const adjacent = new Set();
+          if (edgeData.sourceItemId) adjacent.add(edgeData.sourceItemId);
+          if (edgeData.targetItemId) adjacent.add(edgeData.targetItemId);
+          setAdjacentItemIds(adjacent);
+          
+          // Update edges to mark selected edge (bring to top via CSS z-index)
+          setEdges(eds => eds.map(e => ({
+            ...e,
+            selected: e.id === edge.id,
+            zIndex: e.id === edge.id ? 1000 : 0,
+            markerEnd: {
+              ...e.markerEnd,
+              color: e.id === edge.id ? '#1A6CE7' : '#BDC4D5',
+            },
+          })));
+          
+          // Update side panel with edge info
+          if (window.sharedSelection && edgeData.sourceItem && edgeData.targetItem) {
+            // Clear the regular selection first
+            window.sharedSelection.selectedItemId = null;
+            window.sharedSelection.selectedItemData = null;
+            
+            // Show edge info in side panel
+            window.sharedSelection.updateEdgeSidePanel(edgeData.sourceItem, edgeData.targetItem);
+          }
+          
+          // Center view on the edge (midpoint between source and target nodes)
+          if (reactFlowInstance) {
+            const sourceNode = reactFlowInstance.getNode(edge.source);
+            const targetNode = reactFlowInstance.getNode(edge.target);
+            
+            if (sourceNode && targetNode) {
+              const currentZoom = reactFlowInstance.getZoom();
+              
+              // Calculate center points of source and target nodes
+              const sourceX = sourceNode.position.x + (sourceNode.width || 304) / 2;
+              const sourceY = sourceNode.position.y + (sourceNode.height || 100) / 2;
+              const targetX = targetNode.position.x + (targetNode.width || 304) / 2;
+              const targetY = targetNode.position.y + (targetNode.height || 100) / 2;
+              
+              // Calculate midpoint of the edge
+              const midX = (sourceX + targetX) / 2;
+              const midY = (sourceY + targetY) / 2;
+              
+              reactFlowInstance.setCenter(midX, midY, { zoom: currentZoom, duration: 300 });
+            }
+          }
+        }, [setEdges, reactFlowInstance]);
 
         // Center on focal node when ReactFlow initializes and select the focal item
         const onInit = useCallback((instance) => {
@@ -3522,10 +4003,8 @@
             if (focalNode) {
               const x = focalNode.position.x + (focalNode.data.width || 304) / 2;
               const y = focalNode.position.y + (focalNode.data.height || 100) / 2;
-              console.log('onInit - centering to:', { x, y });
-              instance.setCenter(x, y, { zoom: 0.875, duration: 0 });
               
-              // Select the focal item on initial load
+              // Select the focal item on initial load (this will open the side panel)
               const focalItem = focalNode.data.items?.find(item => item.isFocal) || focalNode.data.item;
               if (focalItem) {
                 setSelectedItem(focalItem);
@@ -3539,7 +4018,7 @@
                   }));
                 }
                 
-                // Sync with global shared selection
+                // Sync with global shared selection (this opens the side panel)
                 if (window.sharedSelection) {
                   window.sharedSelection.setSelection(focalItem.id, {
                     id: focalItem.id,
@@ -3565,6 +4044,12 @@
                   });
                 }
               }
+              
+              // Center after a short delay to allow side panel to open and layout to settle
+              setTimeout(() => {
+                console.log('onInit - centering to:', { x, y });
+                instance.setCenter(x, y, { zoom: 0.875, duration: 300 });
+              }, 50);
             }
           }, 100);
         }, []);
@@ -3692,49 +4177,33 @@
               columnLineageMode: columnLineageMode,
               sourceColumn: selectedColumnLineage,
               relatedColumns: relatedColumns,
+              columnLeafStatus: columnLeafStatus,
+              showAllColumnsItems: showAllColumnsItems,
+              onShowAllColumns: handleShowAllColumns,
             },
           })));
-        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, columnLineageMode, selectedColumnLineage, relatedColumns, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover]);
+        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, columnLineageMode, selectedColumnLineage, relatedColumns, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, showAllColumnsItems, handleShowAllColumns]);
 
-        // Re-layout when collapse state or expanded items change
+        // Layout version counter to prevent stale updates
+        const layoutVersionRef = React.useRef(0);
+        
+        // Re-layout when any state changes that affects node heights
         useEffect(() => {
           const currentSelectedId = selectedItem?.id || window.sharedSelection?.selectedItemId;
           
-          // Update node data with collapse state and recalculate heights
+          // Increment layout version
+          layoutVersionRef.current += 1;
+          const currentVersion = layoutVersionRef.current;
+          
+          // First: Update node data with new state (without position changes)
           setNodes(nds => {
-            const gap = 72; // spacing between nodes
+            // Skip if no nodes yet
+            if (!nds || nds.length === 0) return nds;
             
-            // FIRST: Calculate old layer centers BEFORE updating heights
-            // Group old nodes by layer
-            const oldNodesByLayer = {};
-            nds.forEach(node => {
-              const layer = node.data.layer;
-              if (layer !== undefined) {
-                if (!oldNodesByLayer[layer]) {
-                  oldNodesByLayer[layer] = [];
-                }
-                oldNodesByLayer[layer].push(node);
-              }
-            });
-            
-            // Sort by Y position and calculate old layer centers
-            const oldLayerCenters = {};
-            Object.keys(oldNodesByLayer).forEach(layer => {
-              const layerNodes = oldNodesByLayer[layer].sort((a, b) => a.position.y - b.position.y);
-              let layerMinY = Infinity;
-              let layerMaxY = -Infinity;
-              layerNodes.forEach(node => {
-                const oldHeight = node.data.height || 100;
-                layerMinY = Math.min(layerMinY, node.position.y);
-                layerMaxY = Math.max(layerMaxY, node.position.y + oldHeight);
-              });
-              oldLayerCenters[layer] = (layerMinY + layerMaxY) / 2;
-            });
-            
-            // SECOND: Update nodes with new heights and data
-            const updatedNodes = nds.map(node => {
+            // Update nodes with new data
+            return nds.map(node => {
               const nodeCollapseInfo = collapseState[node.id] || {};
-              const newHeight = calculateNodeHeight(node.type, node.data.items, nodeCollapseInfo, expandedItems, currentSelectedId, columnLineageMode, selectedColumnLineage, relatedColumns);
+              const estimatedHeight = calculateNodeHeight(node.type, node.data.items, nodeCollapseInfo, expandedItems, currentSelectedId, columnLineageMode, selectedColumnLineage, relatedColumns);
               
               return {
                 ...node,
@@ -3752,54 +4221,87 @@
                   onChildHover: handleChildHover,
                   expandedItems: expandedItems,
                   selectedItemId: currentSelectedId,
-                  height: newHeight,
+                  adjacentItemIds: adjacentItemIds,
+                  height: estimatedHeight,
+                  showAllColumnsItems: showAllColumnsItems,
+                  onShowAllColumns: handleShowAllColumns,
                 },
               };
             });
-            
-            // THIRD: Re-center nodes vertically per layer using OLD centers
-            const nodesByLayer = {};
-            updatedNodes.forEach(node => {
-              const layer = node.data.layer;
-              if (layer !== undefined) {
-                if (!nodesByLayer[layer]) {
-                  nodesByLayer[layer] = [];
-                }
-                nodesByLayer[layer].push(node);
-              }
-            });
-            
-            // Sort nodes by their original Y position within each layer
-            Object.keys(nodesByLayer).forEach(layer => {
-              nodesByLayer[layer].sort((a, b) => a.position.y - b.position.y);
-            });
-            
-            // Re-center each layer vertically, using pre-calculated old centers
-            Object.keys(nodesByLayer).forEach(layer => {
-              const layerNodes = nodesByLayer[layer];
-              const layerCenterY = oldLayerCenters[layer] || 0;
-              
-              // Calculate new layer height with updated node heights
-              let totalHeight = 0;
-              layerNodes.forEach((node, idx) => {
-                totalHeight += node.data.height || 100;
-                if (idx < layerNodes.length - 1) totalHeight += gap;
-              });
-              
-              // Position nodes centered around the layer's original center
-              let currentY = layerCenterY - totalHeight / 2;
-              layerNodes.forEach(node => {
-                node.position = {
-                  ...node.position,
-                  y: currentY
-                };
-                currentY += (node.data.height || 100) + gap;
-              });
-            });
-            
-            return updatedNodes;
           });
-        }, [collapseState, expandedItems, selectedItem, columnLineageMode, selectedColumnLineage, relatedColumns, calculateNodeHeight, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, setNodes]);
+          
+          // Second: Schedule deferred measurement and re-centering after DOM updates
+          // Use multiple frames to ensure DOM has fully rendered
+          const scheduleLayoutUpdate = () => {
+            requestAnimationFrame(() => {
+              // Check if this update is still current
+              if (layoutVersionRef.current !== currentVersion) return;
+              
+              // Wait one more frame to ensure CSS transitions have started
+              requestAnimationFrame(() => {
+                if (layoutVersionRef.current !== currentVersion) return;
+                
+                // Now measure and re-center
+                setNodes(nds => {
+                  if (!nds || nds.length === 0) return nds;
+                  
+                  // Create a copy of nodes to modify
+                  const nodesToUpdate = nds.map(n => ({
+                    ...n,
+                    position: { ...n.position },
+                    data: { ...n.data }
+                  }));
+                  
+                  // Use the centralized function to center columns based on measured heights
+                  return centerColumnsByMeasuredHeights(nodesToUpdate, 72);
+                });
+              });
+            });
+          };
+          
+          // Schedule the layout update
+          scheduleLayoutUpdate();
+          
+          // Also schedule delayed updates for cases where CSS transitions affect height
+          // CSS transitions on .graph-expanded-card take 200ms, so we need to measure after they complete
+          const timeoutId1 = setTimeout(() => {
+            if (layoutVersionRef.current !== currentVersion) return;
+            
+            setNodes(nds => {
+              if (!nds || nds.length === 0) return nds;
+              
+              const nodesToUpdate = nds.map(n => ({
+                ...n,
+                position: { ...n.position },
+                data: { ...n.data }
+              }));
+              
+              return centerColumnsByMeasuredHeights(nodesToUpdate, 72);
+            });
+          }, 50);
+          
+          // Second delayed update after CSS transitions complete
+          const timeoutId2 = setTimeout(() => {
+            if (layoutVersionRef.current !== currentVersion) return;
+            
+            setNodes(nds => {
+              if (!nds || nds.length === 0) return nds;
+              
+              const nodesToUpdate = nds.map(n => ({
+                ...n,
+                position: { ...n.position },
+                data: { ...n.data }
+              }));
+              
+              return centerColumnsByMeasuredHeights(nodesToUpdate, 72);
+            });
+          }, 250);
+          
+          return () => {
+            clearTimeout(timeoutId1);
+            clearTimeout(timeoutId2);
+          };
+        }, [collapseState, expandedItems, selectedItem, columnLineageMode, selectedColumnLineage, relatedColumns, adjacentItemIds, calculateNodeHeight, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, setNodes, showAllColumnsItems, handleShowAllColumns]);
 
         // Expose global function to center on selected/focal node
         useEffect(() => {
@@ -3840,12 +4342,35 @@
           };
         }, [reactFlowInstance, selectedItem]);
 
-        // Handle pane click - exit column lineage mode (must be before loading check)
+        // Handle pane click - exit column lineage mode and clear edge selection (must be before loading check)
         const handlePaneClick = useCallback(() => {
-          if (columnLineageMode) {
-            exitColumnLineageMode();
-          }
-        }, [columnLineageMode, exitColumnLineageMode]);
+          // Always clear ALL column lineage state (unconditionally)
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          setShowAllColumnsItems({});
+          setHoveredChild(null);
+          setHoverPreviewEdges([]);
+          
+          // Clear edge selection state and reset edge styles to default
+          setSelectedEdge(null);
+          setAdjacentItemIds(new Set());
+          setEdges(eds => eds.map(e => ({
+            ...e,
+            selected: false,
+            zIndex: 0,
+            className: '',
+            animated: false,
+            style: {},
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 10,
+              height: 10,
+              color: '#BDC4D5',
+            },
+          })));
+        }, [setEdges]);
 
         if (isLoading) {
           return React.createElement('div', { className: 'graph-loading' },
@@ -3860,7 +4385,7 @@
           ? [
               ...edges.map(edge => ({
                 ...edge,
-                style: { ...edge.style, opacity: 0.4 }
+                style: { ...edge.style, opacity: 0.2 }
               })),
               ...columnLineageEdges
             ]
@@ -3876,6 +4401,7 @@
           onEdgesChange,
           onInit,
           onPaneClick: handlePaneClick,
+          onEdgeClick: handleEdgeClick,
           nodeTypes,
           defaultViewport: { x: 0, y: 0, zoom: 0.875 },
           minZoom: 0.1,

@@ -69,20 +69,110 @@
   z-index: 0 !important;
 }
 
+/* --- Normal State (1px gray) --- */
 .react-flow__edge-path {
   stroke: #BDC4D5 !important;
   stroke-width: 1px !important;
   fill: none !important;
+  cursor: pointer;
 }
 
-.react-flow__edge.selected .react-flow__edge-path,
+/* --- Hover State (1px darker gray) --- */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #8A94A8 !important;
+  stroke-width: 1px !important;
+}
+
+/* --- Focused State (1px blue, dashed, animated) --- */
 .react-flow__edge:focus .react-flow__edge-path,
-.react-flow__edge:focus-visible .react-flow__edge-path {
-  stroke: #64748b;
-  stroke-width: 1.5;
+.react-flow__edge:focus-visible .react-flow__edge-path,
+.react-flow__edge.focused .react-flow__edge-path {
+  stroke: #1A6CE7 !important;
+  stroke-width: 1px !important;
+  stroke-dasharray: 8 6 !important;
+  animation: edgeFocusFlow 0.6s linear infinite !important;
 }
 
-/* Animated edge on hover */
+/* --- Selected State (2px blue, with dashed animation) --- */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #1A6CE7 !important;
+  stroke-width: 2px !important;
+  stroke-dasharray: 8 6 !important;
+  animation: edgeSelectedFlow 0.6s linear infinite !important;
+}
+
+/* --- Selected + Hover State (2px blue, solid, no animation) --- */
+.react-flow__edge.selected:hover .react-flow__edge-path {
+  stroke: #1A6CE7 !important;
+  stroke-width: 2px !important;
+  stroke-dasharray: none !important;
+  animation: none !important;
+}
+
+/* --- Error State (1px red) --- */
+.react-flow__edge.error .react-flow__edge-path {
+  stroke: #E54D4D !important;
+  stroke-width: 1px !important;
+}
+
+/* --- Error + Hover State (1px darker red) --- */
+.react-flow__edge.error:hover .react-flow__edge-path {
+  stroke: #C73E3E !important;
+  stroke-width: 1px !important;
+}
+
+/* --- Inactive State (1px light gray) --- */
+.react-flow__edge.inactive .react-flow__edge-path {
+  stroke: #D5DAE4 !important;
+  stroke-width: 1px !important;
+  opacity: 0.6;
+}
+
+/* --- Inactive + Hover State (1px gray) --- */
+.react-flow__edge.inactive:hover .react-flow__edge-path {
+  stroke: #BDC4D5 !important;
+  stroke-width: 1px !important;
+  opacity: 0.8;
+}
+
+/* --- Inactive + Selected State (2px blue dashed) --- */
+.react-flow__edge.inactive.selected .react-flow__edge-path {
+  stroke: #1A6CE7 !important;
+  stroke-width: 2px !important;
+  stroke-dasharray: 8 6 !important;
+  animation: edgeSelectedFlow 0.6s linear infinite !important;
+  opacity: 1;
+}
+
+/* --- Inactive + Selected + Hover State (2px blue solid) --- */
+.react-flow__edge.inactive.selected:hover .react-flow__edge-path {
+  stroke: #1A6CE7 !important;
+  stroke-width: 2px !important;
+  stroke-dasharray: none !important;
+  animation: none !important;
+  opacity: 1;
+}
+
+/* Edge animations */
+@keyframes edgeFocusFlow {
+  from {
+    stroke-dashoffset: 14;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes edgeSelectedFlow {
+  from {
+    stroke-dashoffset: 14;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Legacy animation support */
 .react-flow__edge.animated .react-flow__edge-path {
   stroke-dasharray: 5;
   animation: flowEdge 0.5s linear infinite;
@@ -96,8 +186,129 @@
 
 /* Edge highlight states */
 .react-flow__edge.highlighted .react-flow__edge-path {
-  stroke: #3b82f6;
-  stroke-width: 1.5;
+  stroke: #1A6CE7 !important;
+  stroke-width: 1px !important;
+}
+
+/* ===========================================
+   Edge Labels & Badges
+   =========================================== */
+
+/* Edge label container */
+.react-flow__edge-label {
+  pointer-events: all;
+}
+
+/* Edge text label (Normal / text state) */
+.edge-label-text {
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #5D6A85;
+  background: #FFF;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #E8ECF1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.react-flow__edge:hover .edge-label-text {
+  border-color: #BDC4D5;
+  color: #3D4758;
+}
+
+.react-flow__edge.selected .edge-label-text,
+.react-flow__edge.focused .edge-label-text {
+  background: #1A6CE7;
+  color: #FFF;
+  border-color: #1A6CE7;
+}
+
+/* Connector name badge (Selected state) */
+.edge-connector-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #1A6CE7;
+  background: #FFF;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #1A6CE7;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.react-flow__edge:hover .edge-connector-badge {
+  background: #EBF3FF;
+}
+
+.react-flow__edge.selected .edge-connector-badge {
+  background: #1A6CE7;
+  color: #FFF;
+}
+
+.react-flow__edge.selected:hover .edge-connector-badge {
+  background: #155ABD;
+  border-color: #155ABD;
+}
+
+/* Error badge on edge */
+.edge-error-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #E54D4D;
+  background: #FFF;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #E54D4D;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.edge-error-badge .edge-error-icon {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #E54D4D;
+  color: #FFF;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.react-flow__edge:hover .edge-error-badge {
+  background: #FEF2F2;
+}
+
+/* Error icon on edge (small circular indicator) */
+.edge-error-indicator {
+  width: 16px;
+  height: 16px;
+  background: #E54D4D;
+  border: 2px solid #FFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFF;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__edge:hover .edge-error-indicator {
+  background: #C73E3E;
 }
 
 /* ===========================================
@@ -174,7 +385,7 @@
 /* Schema Section */
 .graph-group-schema-section {
   background: rgba(46, 192, 245, 0.08);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 8px;
 }
 
@@ -371,6 +582,106 @@
 .graph-group-item.focal {
   border: 2px solid #1A6CE7;
   background: #FFF;
+}
+
+/* ===========================================
+   Leaf Node Indicators (Graph View)
+   Visual indicator for nodes without upstream/downstream lineage
+   =========================================== */
+
+/* Default pattern color (matches default border color) */
+.graph-group-card,
+.graph-group-item,
+.graph-platform-item,
+.graph-child-item,
+.graph-expanded-card {
+  --leaf-pattern-color: #D5DAE4;
+}
+
+/* Override pattern color for selected state (matches selected border) */
+.graph-group-card.selected,
+.graph-group-item.selected,
+.graph-platform-item.selected,
+.graph-child-item.selected,
+.graph-expanded-card.selected {
+  --leaf-pattern-color: #1A6CE7;
+}
+
+/* Override pattern color for focal state */
+.graph-group-card.focal,
+.graph-group-item.focal,
+.graph-platform-item.focal,
+.graph-expanded-card.focal {
+  --leaf-pattern-color: #1A6CE7;
+}
+
+/* Override for column lineage source/related states */
+.graph-child-item.column-lineage-source {
+  --leaf-pattern-color: #1A6CE7;
+}
+
+.graph-child-item.column-lineage-related {
+  --leaf-pattern-color: #5999F8;
+}
+
+/* Override pattern color for edge-adjacent (highlighted) state */
+.graph-group-card.edge-adjacent,
+.graph-group-item.edge-adjacent,
+.graph-platform-item.edge-adjacent,
+.graph-child-item.edge-adjacent,
+.graph-expanded-card.edge-adjacent {
+  --leaf-pattern-color: #5999F8;
+}
+
+/* Base styles for leaf indicator strips */
+.graph-group-card.leaf-upstream::before,
+.graph-group-card.leaf-downstream::after,
+.graph-group-item.leaf-upstream::before,
+.graph-group-item.leaf-downstream::after,
+.graph-platform-item.leaf-upstream::before,
+.graph-platform-item.leaf-downstream::after,
+.graph-child-item.leaf-upstream::before,
+.graph-child-item.leaf-downstream::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: repeating-linear-gradient(
+    -55deg,
+    transparent,
+    transparent 2px,
+    var(--leaf-pattern-color) 2px,
+    var(--leaf-pattern-color) 3px
+  );
+  pointer-events: none;
+}
+
+/* Left strip for upstream leaf (no sources feeding into this node) */
+.graph-group-card.leaf-upstream::before,
+.graph-group-item.leaf-upstream::before,
+.graph-platform-item.leaf-upstream::before {
+  left: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+/* Right strip for downstream leaf (no destinations from this node) */
+.graph-group-card.leaf-downstream::after,
+.graph-group-item.leaf-downstream::after,
+.graph-platform-item.leaf-downstream::after {
+  right: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Column/child item leaf indicators - smaller border radius to match */
+.graph-child-item.leaf-upstream::before {
+  left: 0;
+  border-radius: 4px 0 0 4px;
+}
+
+.graph-child-item.leaf-downstream::after {
+  right: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 .graph-group-item-icon {
@@ -884,6 +1195,30 @@
   opacity: 0.4;
 }
 
+/* ===========================================
+   Edge-Adjacent Node Highlight States
+   When an edge is selected, highlight its connected nodes
+   =========================================== */
+
+/* Highlight border for adjacent nodes when edge is selected */
+.graph-group-card.edge-adjacent,
+.graph-group-item.edge-adjacent,
+.graph-platform-item.edge-adjacent,
+.graph-expanded-card.edge-adjacent,
+.graph-child-item.edge-adjacent {
+  border: 1px solid #5999F8 !important;
+  box-shadow: none;
+}
+
+/* Ensure adjacent state doesn't override selected state */
+.graph-group-card.selected.edge-adjacent,
+.graph-group-item.selected.edge-adjacent,
+.graph-platform-item.selected.edge-adjacent,
+.graph-expanded-card.selected.edge-adjacent {
+  border: 2.5px solid #1A6CE7 !important;
+  box-shadow: none;
+}
+
 .react-flow__node.dimmed .graph-group-node,
 .react-flow__node.dimmed .graph-regular-card {
   filter: grayscale(0.3);
@@ -1111,7 +1446,11 @@
 .graph-group-items>div:last-child.graph-expanded-card.selected,
 .graph-group-items>div:last-child .graph-expanded-card.selected,
 .graph-platform-items>div:last-child.graph-expanded-card.selected,
-.graph-platform-items>div:last-child .graph-expanded-card.selected {
+.graph-platform-items>div:last-child .graph-expanded-card.selected,
+.graph-group-items>div:last-child.graph-expanded-card.column-lineage-active,
+.graph-group-items>div:last-child .graph-expanded-card.column-lineage-active,
+.graph-platform-items>div:last-child.graph-expanded-card.column-lineage-active,
+.graph-platform-items>div:last-child .graph-expanded-card.column-lineage-active {
   margin-bottom: 0 !important;
 }
       
@@ -1134,8 +1473,10 @@
   margin: 8px 0;
 }
 
-.graph-expanded-card.column-lineage-active {
-  margin: 20px 0;
+.graph-expanded-card.column-lineage-active,
+.graph-expanded-card.column-lineage-active.selected {
+  /* No extra margin - keep spacing consistent with normal state */
+  margin: 0 !important;
 }
 
 .graph-expanded-card.focal {
@@ -1145,6 +1486,35 @@
 /* Card header section */
 .graph-expanded-header {
   padding: 12px 16px;
+  position: relative;
+}
+
+/* Leaf indicator strips for expanded card header */
+.graph-expanded-card.leaf-upstream .graph-expanded-header::before,
+.graph-expanded-card.leaf-downstream .graph-expanded-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: repeating-linear-gradient(
+    -55deg,
+    transparent,
+    transparent 2px,
+    var(--leaf-pattern-color) 2px,
+    var(--leaf-pattern-color) 3px
+  );
+  pointer-events: none;
+}
+
+.graph-expanded-card.leaf-upstream .graph-expanded-header::before {
+  left: 0;
+  border-radius: 8px 0 0 0;
+}
+
+.graph-expanded-card.leaf-downstream .graph-expanded-header::after {
+  right: 0;
+  border-radius: 0 8px 0 0;
 }
 
 .graph-expanded-badge {
@@ -1216,7 +1586,10 @@
 
 /* Pinned columns container (above scrollable list) */
 .graph-children-pinned {
+  display: flex;
+  flex-direction: column;
   padding: 4px 8px;
+  gap: 2px;
   /* border-bottom: 1px solid #E8ECF1; */
   /* background: #FAFBFC; */
 }
@@ -1235,6 +1608,9 @@
   max-height: 240px;
   overflow-y: auto;
   padding: 4px 8px;
+  gap: 2px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Scrollbar styling */
@@ -1410,6 +1786,40 @@
   transform: rotate(180deg);
 }
 
+/* Show N more button (for column lineage mode) */
+.graph-show-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 12px;
+  /* margin-top: 8px; */
+  background: transparent;
+  border: none;
+  /* border-top: 1px solid rgba(0, 0, 0, 0.06); */
+  color: #5C6672;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.graph-show-more-btn:hover {
+  background-color: #F5F7FA;
+  color: #1E252F;
+}
+
+.graph-show-more-btn svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.2s ease;
+}
+
+.graph-show-more-btn.expanded svg {
+  transform: rotate(180deg);
+}
+
 /* Column type icons */
 .column-icon-string { color: #10B981; }
 .column-icon-number { color: #3B82F6; }
@@ -1428,8 +1838,9 @@
 .feature-icon-measure { color: #3B82F6; }
 .feature-icon-dimension { color: #10B981; }
 
-/* Key indicators */
+/* Key indicators - hidden for now */
 .graph-child-key-icon {
+  display: none;
   width: 16px;
   height: 16px;
   flex-shrink: 0;
@@ -1480,7 +1891,7 @@
 
 /* Outputs section (for ML models) */
 .graph-outputs-section {
-  border-top: 1px solid #E8ECF1;
+  /* border-top: 1px solid #E8ECF1; */
 }
 
 .graph-outputs-header {
