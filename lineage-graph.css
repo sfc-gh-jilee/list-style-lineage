@@ -398,29 +398,29 @@
    Platform Container (Tableau, Looker, etc)
    =========================================== */
 .graph-platform-container {
-  border-radius: 6px;
-  border: 0.75px solid rgba(26, 108, 231, 0.12);
-  background: rgba(26, 108, 231, 0.00);
+  border-radius: 8px;
+  background: transparent;
+  border: none;
   padding: 8px;
   min-width: 320px;
   z-index: 1;
 }
 
-/* Platform-specific background colors */
-.graph-platform-container.platform-looker {
-  background: #f9f8fb80;
-  border: 1px solid #33059f18;
+/* Platform-specific background colors - now applied to inner schema section */
+.graph-platform-container.platform-looker .graph-group-schema-section {
+  background: #f9f8fb80 !important;
+  border: 1px solid #33059f18 !important;
 }
 
-.graph-platform-container.platform-tableau {
-  background: #f5f5f580;
-  border: 1px solid #2A587518;
+.graph-platform-container.platform-tableau .graph-group-schema-section {
+  background: #f5f5f580 !important;
+  border: 1px solid #2A587518 !important;
 }
 
-.graph-platform-container.platform-powerbi,
-.graph-platform-container.platform-power-bi {
-  background: #FEF0C780;
-  border: none;
+.graph-platform-container.platform-powerbi .graph-group-schema-section,
+.graph-platform-container.platform-power-bi .graph-group-schema-section {
+  background: #FEF0C780 !important;
+  border: none !important;
 }
 
 .graph-platform-header {
@@ -436,30 +436,6 @@
 
 .graph-platform-header:hover {
   background-color: rgba(0, 0, 0, 0.04);
-}
-
-/* Chevron indicator for platform header collapse */
-.graph-platform-header::after {
-  content: '';
-  width: 12px;
-  height: 12px;
-  background-image: url('./img/chevron-down-small.svg');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  flex-shrink: 0;
-  margin-left: auto;
-  opacity: 0;
-  transition: transform 0.15s, opacity 0.15s;
-}
-
-.graph-platform-header:hover::after,
-.graph-platform-header.collapsed::after {
-  opacity: 1;
-}
-
-.graph-platform-header.collapsed::after {
-  transform: rotate(-90deg);
 }
 
 .graph-platform-header.collapsed {
@@ -1071,9 +1047,14 @@
 
 /* Source column (where lineage starts) - selected style */
 .graph-child-item.column-lineage-source,
-.graph-child-item.column-lineage-source.selected,
-.graph-child-item.column-lineage-source:hover {
+.graph-child-item.column-lineage-source.selected {
   background-color: #D6E6FF !important;
+}
+
+/* Source column hover state */
+.graph-child-item.column-lineage-source:hover {
+  border-radius: var(--XSmall, 4px);
+  background: var(--Reusable-Selected-background-hover, #BBD6FE) !important;
 }
 
 .graph-child-item.column-lineage-source .graph-child-name {
@@ -1089,11 +1070,13 @@
   color: #6B7897;
 }
 
-/* Related column (connected via lineage) - hover-like subtle style */
+/* Related column (connected via lineage) - focused/active state */
 .graph-child-item.column-lineage-related,
 .graph-child-item.column-lineage-related.selected,
 .graph-child-item.column-lineage-related:hover {
-  background-color: #ECEEF1 !important;
+  border-radius: var(--XSmall, 4px);
+  border: 1px solid var(--Reusable-Focused-active-item, #5999F8);
+  background: var(--Primitives-Level-1-background, #FFF) !important;
 }
 
 .graph-child-item.column-lineage-related .graph-child-name {
@@ -1216,7 +1199,7 @@
   font-size: 12px;
   font-family: Inter, sans-serif;
   color: #1E252F;
-  background: #FAFBFC url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%235D6A85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>') no-repeat 10px center;
+  background: #fff url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%235D6A85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>') no-repeat 10px center;
   outline: none;
   transition: border-color 0.15s, background-color 0.15s;
   box-sizing: border-box;

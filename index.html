@@ -1486,7 +1486,11 @@
       <div class="panel-header">
         <img class="panel-header-icon" id="panelIcon" src="./img/ui/table.svg" alt="">
         <span class="panel-header-title" id="panelTitle">Object Name</span>
-        <span class="panel-close" id="panelClose">✕</span>
+        <button class="panel-close" id="panelClose" aria-label="Close panel">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
       <div class="panel-content">
         <div class="panel-section">
@@ -1950,7 +1954,7 @@
             React.createElement('input', {
               type: 'text',
               className: 'graph-children-search-input',
-              placeholder: isFeatureList ? 'Search features...' : 'Search columns...',
+              placeholder: isFeatureList ? 'Features' : 'Columns.',
               value: searchQuery || '',
               onChange: (e) => {
                 e.stopPropagation();
@@ -2611,11 +2615,41 @@
         const bgColor = getSourceBgColor(platformId, 0.03);
         const borderColor = getSourceBorderColor(platformId, 0.12);
 
+        // Determine group label based on item types
+        const getGroupLabel = () => {
+          if (!items || items.length === 0) return 'Items';
+          const firstItem = items[0];
+          if (firstItem.type === 'dashboard' || firstItem.icon?.includes('dashboard')) return 'Dashboards';
+          if (firstItem.type === 'semantic_model' || firstItem.type === 'semanticModel') return 'Semantic models';
+          if (firstItem.type === 'report') return 'Reports';
+          if (firstItem.type === 'look') return 'Looks';
+          if (firstItem.type === 'explore') return 'Explores';
+          if (firstItem.type === 'worksheet') return 'Worksheets';
+          if (firstItem.type === 'workbook') return 'Workbooks';
+          return data.groupLabel || 'Items';
+        };
+
+        const groupLabel = getGroupLabel();
+
+        // Get icon for group label
+        const getGroupIcon = () => {
+          if (groupLabel === 'Dashboards') return './img/ui/dashboards.svg';
+          if (groupLabel === 'Semantic models') return './img/ui/data-semantic.svg';
+          if (groupLabel === 'Reports') return './img/ui/dashboards.svg';
+          if (groupLabel === 'Looks') return './img/ui/dashboards.svg';
+          if (groupLabel === 'Explores') return './img/ui/table.svg';
+          if (groupLabel === 'Worksheets') return './img/ui/table.svg';
+          if (groupLabel === 'Workbooks') return './img/ui/dashboards.svg';
+          return './img/ui/table.svg';
+        };
+
+        const groupIcon = getGroupIcon();
+
         return React.createElement('div', { 
           className: `graph-platform-container platform-${platformId}`,
           style: {
-            background: bgColor,
-            border: `1px solid ${borderColor}`,
+            background: 'transparent',
+            border: 'none',
             borderRadius: '12px',
             padding: '8px'
           }
@@ -2637,18 +2671,36 @@
               })
             )
           ),
-          // Platform header
+          // Platform header (outside colored section - like db header)
           React.createElement('div', { 
-            className: `graph-platform-header ${collapsed ? 'collapsed' : ''}`,
+            className: `graph-group-db-header ${collapsed ? 'collapsed' : ''}`,
             onClick: handleHeaderClick
           },
-            React.createElement('img', { className: 'graph-platform-icon', src: icon, alt: '' }),
-            React.createElement('span', { className: 'graph-platform-name' }, name),
-            React.createElement('span', { className: 'graph-platform-count' }, items.length)
+            React.createElement('img', { className: 'graph-group-db-icon', src: icon, alt: '' }),
+            React.createElement('span', { className: 'graph-group-db-name' }, name)
           ),
-          // Items list
-          !collapsed && React.createElement('div', { className: 'graph-platform-items' },
-            items.map(renderItem)
+          // Inner group section (colored container - like schema section)
+          !collapsed && React.createElement('div', { 
+            className: 'graph-group-schema-section',
+            style: {
+              background: bgColor,
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              padding: '8px'
+            }
+          },
+            // Group type header (like schema header)
+            React.createElement('div', { 
+              className: 'graph-group-schema-header'
+            },
+              React.createElement('img', { className: 'graph-group-schema-icon', src: groupIcon, alt: '' }),
+              React.createElement('span', { className: 'graph-group-schema-name' }, groupLabel),
+              React.createElement('span', { className: 'graph-group-schema-count' }, items.length)
+            ),
+            // Items list
+            React.createElement('div', { className: 'graph-platform-items' },
+              items.map(renderItem)
+            )
           )
         );
       }

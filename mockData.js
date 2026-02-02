@@ -188,7 +188,7 @@ const mockLineageData = {
                   id: 'orders',
                   name: 'ORDERS',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['stg_orders'],
                   columns: [
                     { name: 'ORDER_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -206,7 +206,7 @@ const mockLineageData = {
                   id: 'payments',
                   name: 'PAYMENTS',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['stg_payments'],
                   columns: [
                     { name: 'PAYMENT_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -223,7 +223,7 @@ const mockLineageData = {
                   id: 'customers',
                   name: 'CUSTOMERS',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['stg_customers', 'stg_orders'],
                   columns: [
                     { name: 'CUSTOMER_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -247,7 +247,7 @@ const mockLineageData = {
                   id: 'ga_sessions',
                   name: 'GA_SESSIONS',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['stg_sessions'],
                   columns: [
                     { name: 'SESSION_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -267,7 +267,7 @@ const mockLineageData = {
                   id: 'ga_events',
                   name: 'GA_EVENTS',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['stg_web_events'],
                   columns: [
                     { name: 'EVENT_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -283,7 +283,7 @@ const mockLineageData = {
                   id: 'ad_spend',
                   name: 'AD_SPEND',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['stg_ad_spend'],
                   columns: [
                     { name: 'AD_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -302,7 +302,7 @@ const mockLineageData = {
                   id: 'product_events',
                   name: 'PRODUCT_EVENTS',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['stg_web_events', 'stg_sessions'],
                   columns: [
                     { name: 'EVENT_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -344,7 +344,7 @@ const mockLineageData = {
                   id: 'stg_orders',
                   name: 'STG_ORDERS',
                   objType: OBJ_TYPES.VIEW,
-                  icon: './img/view.svg',
+                  icon: './img/ui/view.svg',
                   downstream: ['fct_customer_orders'],
                   columns: [
                     { name: 'ORDER_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -363,7 +363,7 @@ const mockLineageData = {
                   id: 'stg_payments',
                   name: 'STG_PAYMENTS',
                   objType: OBJ_TYPES.VIEW,
-                  icon: './img/view.svg',
+                  icon: './img/ui/view.svg',
                   downstream: ['fct_customer_orders'],
                   columns: [
                     { name: 'PAYMENT_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -379,7 +379,7 @@ const mockLineageData = {
                   id: 'stg_customers',
                   name: 'STG_CUSTOMERS',
                   objType: OBJ_TYPES.VIEW,
-                  icon: './img/view.svg',
+                  icon: './img/ui/view.svg',
                   downstream: ['fct_customer_orders'],
                   columns: [
                     { name: 'CUSTOMER_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -399,7 +399,7 @@ const mockLineageData = {
                   id: 'stg_sessions',
                   name: 'STG_SESSIONS',
                   objType: OBJ_TYPES.VIEW,
-                  icon: './img/view.svg',
+                  icon: './img/ui/view.svg',
                   downstream: ['fct_customer_orders'],
                   columns: [
                     { name: 'SESSION_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -420,7 +420,7 @@ const mockLineageData = {
                   id: 'stg_web_events',
                   name: 'STG_WEB_EVENTS',
                   objType: OBJ_TYPES.VIEW,
-                  icon: './img/view.svg',
+                  icon: './img/ui/view.svg',
                   downstream: ['fct_customer_orders'],
                   columns: [
                     { name: 'EVENT_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -438,7 +438,7 @@ const mockLineageData = {
                   id: 'stg_ad_spend',
                   name: 'STG_AD_SPEND',
                   objType: OBJ_TYPES.VIEW,
-                  icon: './img/view.svg',
+                  icon: './img/ui/view.svg',
                   downstream: [],
                   columns: [
                     { name: 'AD_ID', type: 'VARCHAR', isPrimaryKey: true },
@@ -540,7 +540,7 @@ const mockLineageData = {
                   id: 'dim_customers',
                   name: 'DIM_CUSTOMERS',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['customer-360-dashboard', 'churn_prediction_model'],
                   columns: [
                     { name: 'CUSTOMER_KEY', type: 'INTEGER', isPrimaryKey: true },
@@ -566,7 +566,7 @@ const mockLineageData = {
                   id: 'fct_daily_revenue',
                   name: 'FCT_DAILY_REVENUE',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['exec-revenue-dashboard'],
                   columns: [
                     { name: 'DATE_KEY', type: 'INTEGER', isPrimaryKey: true },
@@ -586,7 +586,7 @@ const mockLineageData = {
                   id: 'fct_attribution',
                   name: 'FCT_ATTRIBUTION',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: ['marketing-roi-dashboard', 'attribution_model'],
                   columns: [
                     { name: 'ATTRIBUTION_KEY', type: 'INTEGER', isPrimaryKey: true },
@@ -607,7 +607,7 @@ const mockLineageData = {
                   id: 'user_journey_agg',
                   name: 'USER_JOURNEY_AGG',
                   objType: OBJ_TYPES.TABLE,
-                  icon: './img/table.svg',
+                  icon: './img/ui/table.svg',
                   downstream: [],
                   columns: [
                     { name: 'JOURNEY_KEY', type: 'INTEGER', isPrimaryKey: true },
@@ -649,7 +649,7 @@ const mockLineageData = {
               id: 'exec-revenue-dashboard',
               name: 'Exec Revenue Dashboard',
               objType: OBJ_TYPES.DASHBOARD,
-              icon: './img/dashboard.svg',
+              icon: './img/ui/dashboards.svg',
               downstream: ['finance-weekly-report'],
               // Dashboards have "metrics" or "fields" instead of columns
               columns: [
@@ -674,7 +674,7 @@ const mockLineageData = {
               id: 'customer-360-dashboard',
               name: 'Customer 360 Dashboard',
               objType: OBJ_TYPES.DASHBOARD,
-              icon: './img/dashboard.svg',
+              icon: './img/ui/dashboards.svg',
               downstream: ['investor-data-room'],
               columns: [
                 { name: 'Customer Segments', type: 'DIMENSION' },
@@ -690,7 +690,7 @@ const mockLineageData = {
               id: 'marketing-roi-dashboard',
               name: 'Marketing ROI Dashboard',
               objType: OBJ_TYPES.DASHBOARD,
-              icon: './img/dashboard.svg',
+              icon: './img/ui/dashboards.svg',
               downstream: [],
               columns: [
                 { name: 'Channel', type: 'DIMENSION' },

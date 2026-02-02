@@ -172,6 +172,11 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.side-panel.hidden {
+  display: none;
 }
 
 .panel-header {
@@ -197,11 +202,27 @@ body {
 }
 
 .panel-close {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   cursor: pointer;
-  color: #94a3b8;
-  display: none;
+  color: #5D6A85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.panel-close:hover {
+  background-color: #F1F5F9;
+  color: #1E252F;
+}
+
+.panel-close svg {
+  flex-shrink: 0;
 }
 
 .panel-content {
