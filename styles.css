@@ -168,7 +168,7 @@ body {
   width: 400px;
   height: 100vh;
   background: #ffffff;
-  border-left: 1px solid #e2e8f0;
+  border-left: 1px solid #D5DAE4;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -179,28 +179,56 @@ body {
   display: none;
 }
 
+/* Panel Views */
+.panel-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.panel-view.hidden {
+  display: none;
+}
+
+/* Panel Header */
 .panel-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px;
-  /* border-bottom: 1px solid #e2e8f0; */
+  padding: 12px 16px;
+  /* border-bottom: 1px solid #D5DAE4; */
+  min-height: 48px;
 }
 
 .panel-header-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
 .panel-header-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: #1E252F;
   flex: 1;
-  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+.panel-edge-title {
+  font-size: 12px;
+}
+
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.panel-header-btn,
 .panel-close {
   width: 24px;
   height: 24px;
@@ -216,115 +244,236 @@ body {
   transition: background-color 0.15s, color 0.15s;
 }
 
+.panel-header-btn:hover,
 .panel-close:hover {
   background-color: #F1F5F9;
   color: #1E252F;
 }
 
+.panel-header-btn svg,
 .panel-close svg {
   flex-shrink: 0;
 }
 
+/* Panel Content */
 .panel-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
 }
 
-.panel-section {
-  margin-bottom: 16px;
+/* Section Groups */
+.panel-section-group {
+  /* border-bottom: 1px solid #D5DAE4; */
 }
 
-/* Columns section fills remaining height */
-.panel-section:last-child {
+.panel-section-group:last-child {
+  border-bottom: none;
+}
+
+.panel-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: default;
+}
+
+.panel-section-toggle {
+  cursor: pointer;
+}
+
+.panel-section-toggle:hover {
+  background-color: #F8FAFC;
+}
+
+.panel-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1E252F;
+}
+
+.panel-section-chevron {
+  color: #5D6A85;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.panel-section-info {
+  color: #5D6A85;
+  flex-shrink: 0;
+}
+
+/* Collapsible sections */
+.panel-collapsible[data-collapsed="true"] .panel-section-chevron {
+  transform: rotate(-90deg);
+}
+
+.panel-collapsible[data-collapsed="true"] .panel-section-content {
+  display: none;
+}
+
+.panel-section-content {
+  padding: 0 16px 12px;
+}
+
+/* Details Grid */
+.panel-details-grid {
+  padding: 0 16px 12px;
+}
+
+.panel-detail-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 6px 0;
+  gap: 12px;
+}
+
+.panel-detail-label {
+  font-size: 12px;
+  color: #5D6A85;
+  flex-shrink: 0;
+}
+
+.panel-detail-value {
+  font-size: 12px;
+  color: #1E252F;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* External Tool in Edge Panel */
+.panel-external-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-external-tool-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Tags */
+.panel-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--Large, 16px);
+  border: 1px solid var(--Reusable-Border, #D5DAE4);
+  background: var(--Primitives-Level-2-background, #FBFBFB);
+  font-size: 12px;
+  color: #1E252F;
+}
+
+.panel-tag-icon {
+  width: 14px;
+  height: 14px;
+  color: #8B95A9;
+  flex-shrink: 0;
+}
+
+.panel-tag-name {
+  color: #8B95A9;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.panel-tag-divider {
+  width: 1px;
+  height: 14px;
+  background: #D5DAE4;
+}
+
+.panel-tag-value {
+  color: #1E252F;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Columns Section */
+.panel-columns-section {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  margin-bottom: 0;
 }
 
-.panel-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: #64748b;
-  margin-bottom: 4px;
-}
-
-.panel-value {
-  font-size: 13px;
-  color: #1e293b;
-}
-
-.panel-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.panel-tag {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--Primitives-Level-2-background, #FBFBFB);
-  border: 1px solid var(--Reusable-Border, #D5DAE4);
-  border-radius: var(--Large, 16px);
-  font-size: 11px;
-  color: #475569;
-}
-
-.panel-columns-header {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 12px;
+.panel-columns-section .panel-section-header {
+  flex-shrink: 0;
 }
 
 .panel-search {
-  margin-bottom: 12px;
+  padding: 0 16px 8px;
+  flex-shrink: 0;
 }
 
 .panel-search input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  padding: 6px 10px;
+  border: 1px solid #D5DAE4;
+  border-radius: 4px;
   font-size: 12px;
-  background: #f8fafc;
+  background: #F8FAFC;
+  color: #1E252F;
+}
+
+.panel-search input::placeholder {
+  color: #94A3B8;
+}
+
+.panel-search input:focus {
+  outline: none;
+  border-color: #0EA5E9;
+  background: #FFF;
 }
 
 .panel-column-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 0 8px 8px;
 }
 
 .panel-column-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 4px 8px;
   font-size: 12px;
-  color: #475569;
+  color: #1E252F;
   border-radius: 4px;
   transition: background-color 0.1s;
 }
 
 .panel-column-item:hover {
-  background-color: #f1f5f9;
+  background-color: #F1F5F9;
 }
 
 .panel-column-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .panel-column-name {
@@ -335,8 +484,8 @@ body {
 }
 
 .panel-column-key {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
@@ -346,8 +495,252 @@ body {
   padding: 8px;
 }
 
+/* SQL Query Code Block */
+.panel-sql-code {
+  background: #F7F7F7;
+  color: #1E252F;
+  padding: 12px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* SQL Syntax Highlighting - Light Mode */
+.panel-sql-code .sql-keyword {
+  color: #0550AE;
+  font-weight: 500;
+}
+
+.panel-sql-code .sql-function {
+  color: #8250DF;
+}
+
+.panel-sql-code .sql-string {
+  color: #0A3069;
+}
+
+.panel-sql-code .sql-number {
+  color: #0550AE;
+}
+
+.panel-sql-code .sql-comment {
+  color: #6E7781;
+  font-style: italic;
+}
+
+.panel-sql-code .sql-operator {
+  color: #CF222E;
+}
+
+.panel-sql-code .sql-identifier {
+  color: #953800;
+}
+
+/* Dark Mode Styles (class-based for manual theme control) */
+.dark-mode .panel-sql-code {
+  background: #0F161E;
+  color: #E6EDF3;
+}
+
+.dark-mode .panel-sql-code .sql-keyword {
+  color: #FF7B72;
+  font-weight: 500;
+}
+
+.dark-mode .panel-sql-code .sql-function {
+  color: #D2A8FF;
+}
+
+.dark-mode .panel-sql-code .sql-string {
+  color: #A5D6FF;
+}
+
+.dark-mode .panel-sql-code .sql-number {
+  color: #79C0FF;
+}
+
+.dark-mode .panel-sql-code .sql-comment {
+  color: #8B949E;
+  font-style: italic;
+}
+
+.dark-mode .panel-sql-code .sql-operator {
+  color: #FF7B72;
+}
+
+.dark-mode .panel-sql-code .sql-identifier {
+  color: #FFA657;
+}
+
+/* Empty State */
+.panel-empty-state {
+  font-size: 12px;
+  color: #94A3B8;
+  padding: 8px 0;
+}
+
+/* Procedure & Task List Items */
+.panel-proc-list,
+.panel-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel-proc-item,
+.panel-task-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: #F8FAFC;
+  border-radius: 6px;
+  border: 1px solid #E8ECF1;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.panel-proc-item:hover,
+.panel-task-item:hover {
+  border-color: #CBD5E1;
+  background: #F1F5F9;
+}
+
+.panel-proc-header,
+.panel-task-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-proc-icon,
+.panel-task-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.panel-proc-name,
+.panel-task-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1E252F;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.panel-proc-meta,
+.panel-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 4px;
+  padding-left: 24px;
+}
+
+.panel-proc-meta-item,
+.panel-task-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #64748B;
+}
+
+.panel-proc-meta-label,
+.panel-task-meta-label {
+  color: #94A3B8;
+}
+
+.panel-task-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.panel-task-status.success {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.panel-task-status.running {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.panel-task-status.scheduled {
+  background: #F3E8FF;
+  color: #7C3AED;
+}
+
+.panel-task-status.failed {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+/* Dark mode for proc/task items */
+.dark-mode .panel-proc-item,
+.dark-mode .panel-task-item {
+  background: #1E293B;
+  border-color: #334155;
+}
+
+.dark-mode .panel-proc-item:hover,
+.dark-mode .panel-task-item:hover {
+  border-color: #475569;
+  background: #273449;
+}
+
+.dark-mode .panel-proc-name,
+.dark-mode .panel-task-name {
+  color: #F1F5F9;
+}
+
+.dark-mode .panel-proc-meta-item,
+.dark-mode .panel-task-meta-item {
+  color: #94A3B8;
+}
+
+.dark-mode .panel-proc-meta-label,
+.dark-mode .panel-task-meta-label {
+  color: #64748B;
+}
+
+.dark-mode .panel-task-status.success {
+  background: #166534;
+  color: #BBF7D0;
+}
+
+.dark-mode .panel-task-status.running {
+  background: #1E40AF;
+  color: #BFDBFE;
+}
+
+.dark-mode .panel-task-status.scheduled {
+  background: #5B21B6;
+  color: #DDD6FE;
+}
+
+.dark-mode .panel-task-status.failed {
+  background: #991B1B;
+  color: #FECACA;
+}
+
 /* ===========================================
-   Edge Info Panel (Connection Details)
+   Legacy Edge Info Panel (keeping for backwards compatibility)
    =========================================== */
 .panel-edge-info {
   display: flex;
