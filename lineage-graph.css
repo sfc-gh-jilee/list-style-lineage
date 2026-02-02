@@ -1475,8 +1475,8 @@
 
 .graph-expanded-card.column-lineage-active,
 .graph-expanded-card.column-lineage-active.selected {
-  /* No extra margin - keep spacing consistent with normal state */
-  margin: 0 !important;
+  /* Same margin as selected state */
+  margin: 8px 0;
 }
 
 .graph-expanded-card.focal {
@@ -1551,9 +1551,48 @@
   text-transform: uppercase;
 }
 
+/* Tab bar for model nodes (Features | Outputs) */
+.graph-expanded-tabs {
+  display: flex;
+  gap: 16px;
+  padding: 0;
+  margin: 0 16px 8px;
+  border-bottom: 1px solid #E8ECF1;
+}
+
+.graph-expanded-tab {
+  /* flex: 1; */
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: #5D6A85;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.graph-expanded-tab:hover {
+  color: #3D4758;
+  background: #F5F7FA;
+}
+
+.graph-expanded-tab.active {
+  color: #1A6CE7;
+  border-bottom-color: #1A6CE7;
+  font-weight: 600;
+}
+
+.graph-expanded-tab.active:hover {
+  background: transparent;
+}
+
 /* Children section (columns/features) */
 .graph-children-section {
-  padding: 0;
+  padding: 0 0 8px;
 }
 
 /* Search input container */

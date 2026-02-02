@@ -2193,12 +2193,20 @@
         isLeafDownstream,
         columnLeafStatus,
         showAllColumns,
-        onShowAllClick
+        onShowAllClick,
+        activeTab,
+        onTabChange
       }) {
         const hasChildren = item.columns?.length > 0 || item.features?.length > 0;
         const children = item.features || item.columns || [];
         const isFeatureList = item.features?.length > 0;
         const childLabel = isFeatureList ? 'features' : 'columns';
+        
+        // Check if this is a model with both features and outputs
+        const hasFeatures = item.features?.length > 0;
+        const hasOutputs = item.outputs?.length > 0;
+        const isModelWithTabs = hasFeatures && hasOutputs;
+        const currentTab = activeTab || 'features';
         
         // Check if this card is active in column lineage mode
         const isLineageActive = columnLineageMode && (
@@ -2230,8 +2238,27 @@
               React.createElement('span', { className: 'graph-expanded-name' }, item.name)
             )
           ),
-          // Children section (when expanded)
-          childrenExpanded && hasChildren && React.createElement(ChildrenList, {
+          // Tab bar for models with features and outputs
+          childrenExpanded && isModelWithTabs && React.createElement('div', { 
+            className: 'graph-expanded-tabs'
+          },
+            React.createElement('button', {
+              className: `graph-expanded-tab ${currentTab === 'features' ? 'active' : ''}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                onTabChange?.(item.id, 'features');
+              }
+            }, `Features (${item.features.length})`),
+            React.createElement('button', {
+              className: `graph-expanded-tab ${currentTab === 'outputs' ? 'active' : ''}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                onTabChange?.(item.id, 'outputs');
+              }
+            }, `Outputs (${item.outputs.length})`)
+          ),
+          // Children section (when expanded) - show features or columns
+          childrenExpanded && hasChildren && (!isModelWithTabs || currentTab === 'features') && React.createElement(ChildrenList, {
             children: children,
             searchQuery: searchQuery,
             onSearchChange: onSearchChange,
@@ -2248,8 +2275,22 @@
             showAllColumns: showAllColumns,
             onShowAllClick: onShowAllClick
           }),
-          // Model outputs section (for ML models)
-          childrenExpanded && item.outputs?.length > 0 && React.createElement('div', { className: 'graph-outputs-section' },
+          // Model outputs section (for ML models) - show when outputs tab is active
+          childrenExpanded && isModelWithTabs && currentTab === 'outputs' && React.createElement(ChildrenList, {
+            children: item.outputs,
+            searchQuery: '',
+            isFeatureList: false,
+            nodeId: nodeId,
+            itemId: item.id,
+            columnLineageMode: columnLineageMode,
+            sourceColumn: sourceColumn,
+            relatedColumns: relatedColumns,
+            columnLeafStatus: columnLeafStatus,
+            showAllColumns: showAllColumns,
+            onShowAllClick: onShowAllClick
+          }),
+          // For non-model items with outputs, still show outputs below (legacy behavior)
+          childrenExpanded && !isModelWithTabs && item.outputs?.length > 0 && React.createElement('div', { className: 'graph-outputs-section' },
             React.createElement('div', { className: 'graph-outputs-header' }, 'Outputs'),
             React.createElement(ChildrenList, {
               children: item.outputs,
@@ -2310,7 +2351,8 @@
           selectedChildren, onChildClick, onChildHover,
           columnLineageMode, sourceColumn, relatedColumns,
           adjacentItemIds, columnLeafStatus,
-          showAllColumnsItems, onShowAllColumns
+          showAllColumnsItems, onShowAllColumns,
+          itemActiveTabs, onTabChange
         } = data;
         
         // Get colors for this source
@@ -2387,7 +2429,9 @@
                 isLeafDownstream: item.isLeafDownstream,
                 columnLeafStatus: columnLeafStatus,
                 showAllColumns: showAllColumnsItems?.[item.id],
-                onShowAllClick: () => onShowAllColumns?.(item.id)
+                onShowAllClick: () => onShowAllColumns?.(item.id),
+                activeTab: itemActiveTabs?.[item.id],
+                onTabChange: onTabChange
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2430,7 +2474,9 @@
                 isLeafDownstream: item.isLeafDownstream,
                 columnLeafStatus: columnLeafStatus,
                 showAllColumns: showAllColumnsItems?.[item.id],
-                onShowAllClick: () => onShowAllColumns?.(item.id)
+                onShowAllClick: () => onShowAllColumns?.(item.id),
+                activeTab: itemActiveTabs?.[item.id],
+                onTabChange: onTabChange
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2638,7 +2684,8 @@
           selectedChildren, onChildClick, onChildHover,
           columnLineageMode, sourceColumn, relatedColumns,
           adjacentItemIds, columnLeafStatus,
-          showAllColumnsItems, onShowAllColumns
+          showAllColumnsItems, onShowAllColumns,
+          itemActiveTabs, onTabChange
         } = data;
 
         const handleHeaderClick = (e) => {
@@ -2693,7 +2740,9 @@
                 isLeafDownstream: item.isLeafDownstream,
                 columnLeafStatus: columnLeafStatus,
                 showAllColumns: showAllColumnsItems?.[item.id],
-                onShowAllClick: () => onShowAllColumns?.(item.id)
+                onShowAllClick: () => onShowAllColumns?.(item.id),
+                activeTab: itemActiveTabs?.[item.id],
+                onTabChange: onTabChange
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -2736,7 +2785,9 @@
                 isLeafDownstream: item.isLeafDownstream,
                 columnLeafStatus: columnLeafStatus,
                 showAllColumns: showAllColumnsItems?.[item.id],
-                onShowAllClick: () => onShowAllColumns?.(item.id)
+                onShowAllClick: () => onShowAllColumns?.(item.id),
+                activeTab: itemActiveTabs?.[item.id],
+                onTabChange: onTabChange
               }),
               React.createElement(Handle, {
                 type: 'source',
@@ -3278,6 +3329,7 @@
         const [selectedChildren, setSelectedChildren] = useState({}); // { itemId: Set<string> }
         const [hoveredChild, setHoveredChild] = useState(null); // { itemId, childName }
         const [showAllColumnsItems, setShowAllColumnsItems] = useState({}); // { itemId: boolean } - show all columns in lineage mode
+        const [itemActiveTabs, setItemActiveTabs] = useState({}); // { itemId: 'features' | 'outputs' } - active tab for model items
         
         // Edge selection state
         const [selectedEdge, setSelectedEdge] = useState(null); // { id, sourceItemId, targetItemId, sourceItem, targetItem }
@@ -3402,6 +3454,14 @@
           setShowAllColumnsItems(prev => ({
             ...prev,
             [itemId]: !prev[itemId]
+          }));
+        }, []);
+
+        // Handle tab change for model items (features/outputs)
+        const handleTabChange = useCallback((itemId, tab) => {
+          setItemActiveTabs(prev => ({
+            ...prev,
+            [itemId]: tab
           }));
         }, []);
 
@@ -4180,9 +4240,11 @@
               columnLeafStatus: columnLeafStatus,
               showAllColumnsItems: showAllColumnsItems,
               onShowAllColumns: handleShowAllColumns,
+              itemActiveTabs: itemActiveTabs,
+              onTabChange: handleTabChange,
             },
           })));
-        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, columnLineageMode, selectedColumnLineage, relatedColumns, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, showAllColumnsItems, handleShowAllColumns]);
+        }, [selectedItem, expandedItems, itemSearchQueries, selectedChildren, columnLineageMode, selectedColumnLineage, relatedColumns, setNodes, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, showAllColumnsItems, handleShowAllColumns, itemActiveTabs, handleTabChange]);
 
         // Layout version counter to prevent stale updates
         const layoutVersionRef = React.useRef(0);
@@ -4225,6 +4287,8 @@
                   height: estimatedHeight,
                   showAllColumnsItems: showAllColumnsItems,
                   onShowAllColumns: handleShowAllColumns,
+                  itemActiveTabs: itemActiveTabs,
+                  onTabChange: handleTabChange,
                 },
               };
             });
@@ -4301,7 +4365,7 @@
             clearTimeout(timeoutId1);
             clearTimeout(timeoutId2);
           };
-        }, [collapseState, expandedItems, selectedItem, columnLineageMode, selectedColumnLineage, relatedColumns, adjacentItemIds, calculateNodeHeight, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, setNodes, showAllColumnsItems, handleShowAllColumns]);
+        }, [collapseState, expandedItems, selectedItem, columnLineageMode, selectedColumnLineage, relatedColumns, adjacentItemIds, calculateNodeHeight, handleToggleDbCollapse, handleToggleSchemaCollapse, handleTogglePlatformCollapse, handleToggleItemExpand, handleItemSearchChange, handleChildClick, handleChildHover, setNodes, showAllColumnsItems, handleShowAllColumns, itemActiveTabs, handleTabChange]);
 
         // Expose global function to center on selected/focal node
         useEffect(() => {
