@@ -334,7 +334,7 @@
    Group Container (Database > Schema > Items)
    =========================================== */
 .graph-group-container {
-  background: rgba(189, 196, 213, 0.00);
+  background: rgba(189, 196, 213, 0);
   /* border: 1px solid #DEE3EA; */
   border-radius: 8px;
   padding: 8px;
