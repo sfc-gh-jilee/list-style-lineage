@@ -650,8 +650,10 @@
         const sidePanel = document.getElementById('sidePanel');
         const panelObjectView = document.getElementById('panelObjectView');
         const panelEdgeView = document.getElementById('panelEdgeView');
+        const panelColumnView = document.getElementById('panelColumnView');
         const panelClose = document.getElementById('panelClose');
         const panelEdgeClose = document.getElementById('panelEdgeClose');
+        const panelColumnClose = document.getElementById('panelColumnClose');
         const panelIcon = document.getElementById('panelIcon');
         const panelTitle = document.getElementById('panelTitle');
         const panelComment = document.getElementById('panelComment');
@@ -675,6 +677,18 @@
         const panelStoredProcsContent = document.getElementById('panelStoredProcsContent');
         const panelTasksSection = document.getElementById('panelTasksSection');
         const panelTasksContent = document.getElementById('panelTasksContent');
+        // Column panel elements
+        const panelColumnTitle = document.getElementById('panelColumnTitle');
+        const panelColumnTypeIcon = document.getElementById('panelColumnTypeIcon');
+        const panelColumnDescription = document.getElementById('panelColumnDescription');
+        const panelColumnType = document.getElementById('panelColumnType');
+        const panelColumnParent = document.getElementById('panelColumnParent');
+        const panelColumnKeyRow = document.getElementById('panelColumnKeyRow');
+        const panelColumnKeyType = document.getElementById('panelColumnKeyType');
+        const panelColumnUpstreamCount = document.getElementById('panelColumnUpstreamCount');
+        const panelColumnUpstreamList = document.getElementById('panelColumnUpstreamList');
+        const panelColumnDownstreamCount = document.getElementById('panelColumnDownstreamCount');
+        const panelColumnDownstreamList = document.getElementById('panelColumnDownstreamList');
         let selectedListItem = null;
         
         // Setup collapsible section toggles
@@ -691,6 +705,13 @@
         // Setup edge panel close button
         if (panelEdgeClose) {
           panelEdgeClose.addEventListener('click', () => {
+            window.sharedSelection.clearSelection();
+          });
+        }
+        
+        // Setup column panel close button
+        if (panelColumnClose) {
+          panelColumnClose.addEventListener('click', () => {
             window.sharedSelection.clearSelection();
           });
         }
@@ -849,9 +870,10 @@
           updateSidePanel: function(itemData) {
             if (!itemData) return;
             
-            // Show object view, hide edge view
+            // Show object view, hide other views
             panelObjectView.classList.remove('hidden');
             panelEdgeView.classList.add('hidden');
+            panelColumnView.classList.add('hidden');
             
             // Header
             panelTitle.textContent = itemData.name || 'Unknown';
@@ -924,9 +946,10 @@
           updateEdgeSidePanel: function(sourceItem, targetItem, edgeData) {
             if (!sourceItem || !targetItem) return;
             
-            // Show edge view, hide object view
+            // Show edge view, hide other views
             panelObjectView.classList.add('hidden');
             panelEdgeView.classList.remove('hidden');
+            panelColumnView.classList.add('hidden');
             
             // Truncate names for title
             const truncate = (str, len) => str && str.length > len ? str.substring(0, len) + '...' : str;
@@ -1038,6 +1061,107 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             } else {
               panelTasksSection.style.display = 'block';
               panelTasksContent.innerHTML = '<div class="panel-empty-state">No tasks</div>';
+            }
+            
+            sidePanel.classList.remove('hidden');
+          },
+          
+          // Update side panel with column details
+          updateColumnSidePanel: function(columnData, parentItem) {
+            if (!columnData) return;
+            
+            // Show column view, hide other views
+            panelObjectView.classList.add('hidden');
+            panelEdgeView.classList.add('hidden');
+            panelColumnView.classList.remove('hidden');
+            
+            // Header
+            panelColumnTitle.textContent = columnData.name || 'Unknown Column';
+            panelColumnTypeIcon.src = getPanelColumnIcon(columnData.type);
+            
+            // Description
+            panelColumnDescription.textContent = columnData.description || '—';
+            
+            // Data Type
+            panelColumnType.textContent = columnData.type || '—';
+            
+            // Parent Object
+            panelColumnParent.textContent = parentItem?.name || '—';
+            
+            // Key Type
+            if (columnData.isPrimaryKey || columnData.isForeignKey) {
+              panelColumnKeyRow.style.display = 'flex';
+              if (columnData.isPrimaryKey && columnData.isForeignKey) {
+                panelColumnKeyType.textContent = 'Primary Key, Foreign Key';
+              } else if (columnData.isPrimaryKey) {
+                panelColumnKeyType.textContent = 'Primary Key';
+              } else {
+                panelColumnKeyType.textContent = 'Foreign Key';
+              }
+            } else {
+              panelColumnKeyRow.style.display = 'none';
+            }
+            
+            // Get upstream and downstream lineage
+            const lineage = window.columnLineage || [];
+            const itemId = parentItem?.id;
+            const columnName = columnData.name;
+            
+            // Find upstream columns (sources that feed into this column)
+            const upstreamColumns = lineage
+              .filter(edge => edge.targetTable === itemId && edge.targetColumn === columnName)
+              .map(edge => ({
+                itemId: edge.sourceTable,
+                columnName: edge.sourceColumn,
+                transformType: edge.transformType
+              }));
+            
+            // Find downstream columns (targets that this column feeds into)
+            const downstreamColumns = lineage
+              .filter(edge => edge.sourceTable === itemId && edge.sourceColumn === columnName)
+              .map(edge => ({
+                itemId: edge.targetTable,
+                columnName: edge.targetColumn,
+                transformType: edge.transformType
+              }));
+            
+            // Get item map for looking up names
+            const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+            
+            // Render upstream list
+            panelColumnUpstreamCount.textContent = upstreamColumns.length.toString();
+            if (upstreamColumns.length > 0) {
+              panelColumnUpstreamList.innerHTML = upstreamColumns.map(col => {
+                const item = itemMap.get(col.itemId);
+                const itemName = item?.name || col.itemId;
+                return `<div class="panel-lineage-item">
+                  <div class="panel-lineage-column">
+                    <span class="panel-lineage-column-name">${col.columnName}</span>
+                    <span class="panel-lineage-item-name">${itemName}</span>
+                  </div>
+                  <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
+                </div>`;
+              }).join('');
+            } else {
+              panelColumnUpstreamList.innerHTML = '<div class="panel-empty-state">No upstream columns</div>';
+            }
+            
+            // Render downstream list
+            panelColumnDownstreamCount.textContent = downstreamColumns.length.toString();
+            if (downstreamColumns.length > 0) {
+              panelColumnDownstreamList.innerHTML = downstreamColumns.map(col => {
+                const item = itemMap.get(col.itemId);
+                const itemName = item?.name || col.itemId;
+                return `<div class="panel-lineage-item">
+                  <div class="panel-lineage-column">
+                    <span class="panel-lineage-column-name">${col.columnName}</span>
+                    <span class="panel-lineage-item-name">${itemName}</span>
+                  </div>
+                  <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
+                </div>`;
+              }).join('');
+            } else {
+              panelColumnDownstreamList.innerHTML = '<div class="panel-empty-state">No downstream columns</div>';
             }
             
             sidePanel.classList.remove('hidden');
@@ -1911,6 +2035,75 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             </div>
             <div class="panel-section-content" id="panelTasksContent">
               <div class="panel-empty-state">No tasks</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Column Panel View -->
+      <div class="panel-view panel-column-view hidden" id="panelColumnView">
+        <div class="panel-header">
+          <div class="panel-header-icon-wrapper">
+            <img class="panel-header-icon" id="panelColumnTypeIcon" src="./img/ui/type-string.svg" alt="">
+          </div>
+          <span class="panel-header-title" id="panelColumnTitle">Column Name</span>
+          <div class="panel-header-actions">
+            <button class="panel-close" id="panelColumnClose" aria-label="Close panel">
+              <img src="./img/ui/clear.svg" width="16" height="16" alt="Close">
+            </button>
+          </div>
+        </div>
+        <div class="panel-content">
+          <!-- Column Details Section -->
+          <div class="panel-section-group">
+            <div class="panel-section-header">
+              <span class="panel-section-title">Details</span>
+            </div>
+            <div class="panel-details-grid">
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Description</span>
+                <span class="panel-detail-value panel-detail-description" id="panelColumnDescription">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Data Type</span>
+                <span class="panel-detail-value" id="panelColumnType">—</span>
+              </div>
+              <div class="panel-detail-row">
+                <span class="panel-detail-label">Parent Object</span>
+                <span class="panel-detail-value" id="panelColumnParent">—</span>
+              </div>
+              <div class="panel-detail-row" id="panelColumnKeyRow" style="display: none;">
+                <span class="panel-detail-label">Key Type</span>
+                <span class="panel-detail-value" id="panelColumnKeyType">—</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Upstream Lineage Section -->
+          <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnUpstreamSection">
+            <div class="panel-section-header panel-section-toggle">
+              <span class="panel-section-title">Upstream Columns</span>
+              <span class="panel-section-count" id="panelColumnUpstreamCount">0</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+            </div>
+            <div class="panel-section-content">
+              <div class="panel-lineage-list" id="panelColumnUpstreamList">
+                <div class="panel-empty-state">No upstream columns</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Downstream Lineage Section -->
+          <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnDownstreamSection">
+            <div class="panel-section-header panel-section-toggle">
+              <span class="panel-section-title">Downstream Columns</span>
+              <span class="panel-section-count" id="panelColumnDownstreamCount">0</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+            </div>
+            <div class="panel-section-content">
+              <div class="panel-lineage-list" id="panelColumnDownstreamList">
+                <div class="panel-empty-state">No downstream columns</div>
+              </div>
             </div>
           </div>
         </div>
@@ -3867,6 +4060,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
           
           const related = findAllRelatedColumns(itemId, childName);
+          
+          // Find the parent item and column data for side panel
+          const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+          const parentItem = itemMap.get(itemId);
+          const columnData = parentItem?.columns?.find(c => c.name === childName) || 
+                             parentItem?.features?.find(f => f.name === childName) ||
+                             { name: childName };
+          
+          // Update side panel with column details
+          if (window.sharedSelection) {
+            window.sharedSelection.updateColumnSidePanel(columnData, parentItem);
+          }
           
           // If no related columns found, exit lineage mode and clear all selections
           if (related.size === 0) {
