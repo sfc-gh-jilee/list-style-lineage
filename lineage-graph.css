@@ -1895,6 +1895,7 @@
 .graph-children-list {
   max-height: 240px;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px 8px;
   gap: 2px;
   display: flex;
