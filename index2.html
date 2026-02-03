@@ -3564,12 +3564,26 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             setMenuOpen(false);
           };
           
-          // Close on scroll or zoom
+          // Close on scroll, zoom, or canvas drag
           const handleScroll = () => setMenuOpen(false);
+          
+          // Close on mousedown (drag start) on canvas
+          const handleMouseDown = (e) => {
+            const menuEl = menuRef.current;
+            const buttonEl = buttonRef.current;
+            
+            // If mousedown on the menu or button, don't close
+            if (menuEl && menuEl.contains(e.target)) return;
+            if (buttonEl && buttonEl.contains(e.target)) return;
+            
+            // Close the menu on any mousedown outside
+            setMenuOpen(false);
+          };
           
           // Use setTimeout to avoid catching the opening click
           const timeoutId = setTimeout(() => {
             document.addEventListener('click', handleClickOutside, true);
+            document.addEventListener('mousedown', handleMouseDown, true);
           }, 0);
           
           document.addEventListener('wheel', handleScroll);
@@ -3577,6 +3591,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           return () => {
             clearTimeout(timeoutId);
             document.removeEventListener('click', handleClickOutside, true);
+            document.removeEventListener('mousedown', handleMouseDown, true);
             document.removeEventListener('wheel', handleScroll);
           };
         }, [menuOpen]);
