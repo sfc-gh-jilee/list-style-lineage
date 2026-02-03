@@ -1207,7 +1207,7 @@
 .graph-child-item.focused,
 .graph-expanded-card.focused,
 .graph-regular-card.focused {
-  border: 1px solid #5999F8;
+  outline: 1px solid #5999F8;
 }
 
 /* ===========================================
@@ -1374,7 +1374,7 @@
 .node-action-menu-item img {
   width: 16px;
   height: 16px;
-  opacity: 0.6;
+  opacity: 1;
 }
 
 .node-action-menu-item .menu-arrow {
@@ -1903,6 +1903,7 @@
   transition: background-color 0.1s;
   position: relative;
   border-radius: 4px;
+  box-sizing: border-box;
 }
 
 .graph-child-item:hover {
