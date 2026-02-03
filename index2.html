@@ -3547,12 +3547,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             if (relatedTarget && relatedTarget.closest && relatedTarget.closest('.node-hover-actions-portal')) {
               return;
             }
-            // Small delay to allow for hit area check
-            setTimeout(() => {
-              if (!isOverHitAreaRef.current) {
-                setIsVisible(false);
-              }
-            }, 10);
+            // Hide instantly
+            setIsVisible(false);
           };
           
           // For expanded cards, track mouse movement to show/hide based on child hover
