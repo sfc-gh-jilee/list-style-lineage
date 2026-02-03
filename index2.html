@@ -3509,30 +3509,31 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             const topOffset = isExpandedCard ? 22 : rect.height / 2;
             
             // Hit area dimensions: extends toward node to cover the gap
-            // Button is 24x24, gap to node is 4px, we extend 8px into node for overlap
+            // Button is 24x24, gap to node is 12px, we extend 8px into node for overlap
             const buttonSize = 24;
-            const gap = 4;
+            const gap = 12;
             const overlap = 8;
-            const hitAreaWidth = buttonSize + gap + overlap; // 36px
+            const hitAreaWidth = buttonSize + gap + overlap; // 44px
             const hitAreaHeight = buttonSize + 16; // 40px (8px above and below)
             
             setHitAreaSize({ width: hitAreaWidth, height: hitAreaHeight });
             
-            // Position hit area so button ends up at correct location
-            // Button center should be at: topOffset from node top
+            // Calculate vertical position: center button with the target line
+            const hitAreaTop = rect.top + topOffset - buttonSize / 2 - 8; // 8px padding above button
+            
             if (position === 'left') {
-              // Left button at rect.left - gap - buttonSize = rect.left - 28
-              // Hit area starts at button position
+              // Left button: gap + buttonSize away from left edge
+              // Hit area starts at button left edge
               setButtonPosition({
-                top: rect.top + topOffset - buttonSize / 2 - 8, // center button vertically, minus 8 for hit area padding
-                left: rect.left - gap - buttonSize // button's left edge
+                top: hitAreaTop,
+                left: rect.left - gap - buttonSize
               });
             } else {
-              // Right button at rect.right + gap
-              // Hit area extends left from button into the node
+              // Right button: gap away from right edge
+              // Hit area extends left from button position into the node
               setButtonPosition({
-                top: rect.top + topOffset - buttonSize / 2 - 8,
-                left: rect.right - overlap // start 8px inside node
+                top: hitAreaTop,
+                left: rect.right - overlap // start 8px inside node, button at right edge
               });
             }
           };
