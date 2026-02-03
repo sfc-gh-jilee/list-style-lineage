@@ -3481,8 +3481,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       function NodeHoverActions({ position, itemId, isColumn, columnName }) {
         // position: 'left' or 'right'
         const icon = position === 'left' 
-          ? './img/arrow-left.svg' 
-          : './img/ui/arrow-right.svg';
+          ? './img/ui/chevron-left.svg' 
+          : './img/ui/chevron-right.svg';
         const title = position === 'left' 
           ? 'Show upstream (-1)' 
           : 'Show downstream (+1)';
