@@ -1478,10 +1478,11 @@
             // Group header must be one of two formats:
             // 1. [snowflake icon][db icon] DB_NAME / [schema icon] SCHEMA_NAME
             // 2. [source platform icon] Source platform name
-            function renderCurrentObjectNode(objData) {
+            function renderCurrentObjectNode(objData, isUpstream = false) {
               const objIcon = objData?.icon || './img/ui/table.svg';
               const objName = objData?.name || 'Unknown';
               const leafClasses = getObjectLeafClasses(objData?.id || currentItemId);
+              const upstreamClass = isUpstream ? 'upstream-tree-group' : '';
               
               // Generate group header based on db/schema or platform
               // Note: schema may be 'schema' (from buildItemMap) or 'schemaName' (from original data)
@@ -1517,7 +1518,7 @@
               const objId = objData?.id || currentItemId;
               return `
                 <div class="panel-tree-depth" data-depth="0">
-                  <div class="object-group panel-tree-group panel-tree-current">
+                  <div class="object-group panel-tree-group panel-tree-current ${upstreamClass}">
                     ${groupHeaderHtml}
                     <ul class="group-list">
                       <li class="panel-tree-item panel-tree-item-current ${leafClasses}" data-item-id="${objId}">
@@ -1569,7 +1570,7 @@
             }
             
             // Helper function to render objects at a specific depth grouped by db/schema or platform
-            function renderObjectDepthLevel(objects, depth) {
+            function renderObjectDepthLevel(objects, depth, isUpstream = false) {
               // Group objects by database/schema or platform
               const groupedObjects = new Map();
               const groupHeaders = new Map();
@@ -1583,13 +1584,14 @@
                 groupedObjects.get(groupKey).push(obj);
               });
               
-              // Render groups
+              // Render groups - add upstream-tree-group class for upstream groups
+              const upstreamClass = isUpstream ? 'upstream-tree-group' : '';
               let groupsHtml = '';
               groupedObjects.forEach((objs, groupKey) => {
                 const headerHtml = groupHeaders.get(groupKey);
                 
                 groupsHtml += `
-                  <div class="object-group panel-tree-group">
+                  <div class="object-group panel-tree-group ${upstreamClass}">
                     <div class="group-header">
                       <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                       ${headerHtml}
@@ -1621,11 +1623,11 @@
             }
             
             // Render full upstream tree by depth
-            let upstreamHtml = renderCurrentObjectNode(itemData);
+            let upstreamHtml = renderCurrentObjectNode(itemData, true);
             if (upstreamByDepth.size > 0) {
               const sortedDepths = Array.from(upstreamByDepth.keys()).sort((a, b) => a - b);
               sortedDepths.forEach(depth => {
-                upstreamHtml += renderObjectDepthLevel(upstreamByDepth.get(depth), depth);
+                upstreamHtml += renderObjectDepthLevel(upstreamByDepth.get(depth), depth, true);
               });
             } else {
               upstreamHtml += '<div class="panel-tree-empty">No upstream sources</div>';
@@ -1983,17 +1985,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             // Helper function to render the current column as the root node
-            function renderCurrentColumnNode(colData, parent) {
+            function renderCurrentColumnNode(colData, parent, isUpstream = false) {
               const colType = colData?.type || 'STRING';
               const typeIcon = window.getColumnTypeIcon ? window.getColumnTypeIcon(colType) : 'img/ui/column-single.svg';
               const parentIcon = parent?.icon || './img/ui/table.svg';
               const parentName = parent?.name || 'Unknown';
               const parentId = parent?.id || itemId;
               const leafClasses = getLeafClasses(parentId, colData?.name || columnName);
+              const upstreamClass = isUpstream ? 'upstream-tree-group' : '';
               
               return `
                 <div class="panel-tree-depth" data-depth="0">
-                  <div class="object-group panel-tree-group panel-tree-current">
+                  <div class="object-group panel-tree-group panel-tree-current ${upstreamClass}">
                     <div class="group-header panel-tree-current-header">
                       <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                       <img class="group-icon" src="${parentIcon}" alt="">
@@ -2013,7 +2016,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             // Helper function to render columns at a specific depth grouped by parent object
-            function renderDepthLevel(columns, depth) {
+            function renderDepthLevel(columns, depth, isUpstream = false) {
               // Group columns by parent object (itemId)
               const groupedByItem = new Map();
               columns.forEach(col => {
@@ -2023,7 +2026,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 groupedByItem.get(col.itemId).push(col);
               });
               
-              // Render groups
+              // Render groups - add upstream-tree-group class for upstream groups
+              const upstreamClass = isUpstream ? 'upstream-tree-group' : '';
               let groupsHtml = '';
               groupedByItem.forEach((cols, colItemId) => {
                 const item = itemMap.get(colItemId);
@@ -2032,7 +2036,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 const columnCount = cols.length;
                 
                 groupsHtml += `
-                  <div class="object-group panel-tree-group">
+                  <div class="object-group panel-tree-group ${upstreamClass}">
                     <div class="group-header">
                       <img class="chevron" src="./img/ui/chevron-down-small.svg" alt="">
                       <img class="group-icon" src="${itemIcon}" alt="">
@@ -2068,12 +2072,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             // Render full upstream tree by depth
-            let upstreamHtml = renderCurrentColumnNode(columnData, parentItem);
+            let upstreamHtml = renderCurrentColumnNode(columnData, parentItem, true);
             if (upstreamByDepth.size > 0) {
               // Sort depths and render each level
               const sortedDepths = Array.from(upstreamByDepth.keys()).sort((a, b) => a - b);
               sortedDepths.forEach(depth => {
-                upstreamHtml += renderDepthLevel(upstreamByDepth.get(depth), depth);
+                upstreamHtml += renderDepthLevel(upstreamByDepth.get(depth), depth, true);
               });
             } else {
               upstreamHtml += '<div class="panel-tree-empty">No upstream sources</div>';

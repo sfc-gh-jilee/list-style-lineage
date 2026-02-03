@@ -1524,6 +1524,15 @@ body {
   transform: rotate(0deg);
 }
 
+/* Upstream tree group: chevron up when expanded, left when collapsed */
+.object-group.upstream-tree-group:not(.collapsed) .chevron {
+  transform: rotate(180deg);
+}
+
+.object-group.upstream-tree-group.collapsed .chevron {
+  transform: rotate(90deg);
+}
+
 /* Group Icon */
 .group-icon {
   width: 16px;
