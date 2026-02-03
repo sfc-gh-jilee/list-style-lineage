@@ -3512,25 +3512,111 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       // =============================================
       function NodeInlineActions({ itemId, isColumn, columnName }) {
         const [menuOpen, setMenuOpen] = React.useState(false);
+        const [menuPosition, setMenuPosition] = React.useState({ top: 0, left: 0 });
+        const buttonRef = React.useRef(null);
         const menuRef = React.useRef(null);
+        
+        // Calculate menu position when opening
+        const openMenu = (e) => {
+          e.stopPropagation();
+          if (buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setMenuPosition({
+              top: rect.bottom + 4,
+              left: rect.right - 180 // menu width is 180px, align right edge with button
+            });
+          }
+          setMenuOpen(true);
+        };
         
         // Close menu when clicking outside
         React.useEffect(() => {
           if (!menuOpen) return;
           
           const handleClickOutside = (e) => {
-            if (menuRef.current && !menuRef.current.contains(e.target)) {
+            if (menuRef.current && !menuRef.current.contains(e.target) &&
+                buttonRef.current && !buttonRef.current.contains(e.target)) {
               setMenuOpen(false);
             }
           };
           
+          // Close on scroll or zoom
+          const handleScroll = () => setMenuOpen(false);
+          
           document.addEventListener('mousedown', handleClickOutside);
-          return () => document.removeEventListener('mousedown', handleClickOutside);
+          document.addEventListener('wheel', handleScroll);
+          return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('wheel', handleScroll);
+          };
         }, [menuOpen]);
+        
+        // Menu content
+        const menuContent = React.createElement('div', {
+          ref: menuRef,
+          className: 'node-action-menu-portal',
+          style: {
+            position: 'fixed',
+            top: menuPosition.top,
+            left: menuPosition.left,
+            zIndex: 99999
+          },
+          onClick: (e) => e.stopPropagation()
+        },
+          React.createElement('div', {
+            className: 'node-action-menu-item',
+            onClick: () => { console.log('Show SQL'); setMenuOpen(false); }
+          },
+            React.createElement('img', { src: './img/ui/format-code.svg', alt: '' }),
+            'Show SQL'
+          ),
+          React.createElement('div', {
+            className: 'node-action-menu-item disabled'
+          },
+            React.createElement('img', { src: './img/info-outline.svg', alt: '' }),
+            'Open Info'
+          ),
+          React.createElement('div', {
+            className: 'node-action-menu-item',
+            onClick: () => { console.log('Search'); setMenuOpen(false); }
+          },
+            React.createElement('img', { src: './img/ui/search.svg', alt: '' }),
+            'Search'
+          ),
+          React.createElement('div', { className: 'node-action-menu-divider' }),
+          React.createElement('div', {
+            className: 'node-action-menu-item',
+            onClick: () => { console.log('Open All Upstream'); setMenuOpen(false); }
+          },
+            React.createElement('img', { src: './img/arrow-left.svg', alt: '' }),
+            'Open All Upstream'
+          ),
+          React.createElement('div', {
+            className: 'node-action-menu-item',
+            onClick: () => { console.log('Close All Upstream'); setMenuOpen(false); }
+          },
+            React.createElement('img', { src: './img/arrow-left-close.svg', alt: '' }),
+            'Close All Upstream'
+          ),
+          React.createElement('div', { className: 'node-action-menu-divider' }),
+          React.createElement('div', {
+            className: 'node-action-menu-item',
+            onClick: () => { console.log('Open All Downstream'); setMenuOpen(false); }
+          },
+            React.createElement('img', { src: './img/ui/arrow-right.svg', alt: '' }),
+            'Open All Downstream'
+          ),
+          React.createElement('div', {
+            className: 'node-action-menu-item',
+            onClick: () => { console.log('Close All Downstream'); setMenuOpen(false); }
+          },
+            React.createElement('img', { src: './img/arrow-right-close.svg', alt: '' }),
+            'Close All Downstream'
+          )
+        );
         
         return React.createElement('div', {
           className: 'node-inline-actions',
-          ref: menuRef,
           onClick: (e) => e.stopPropagation()
         },
           // Stats button
@@ -3549,73 +3635,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           ),
           // More menu button
           React.createElement('button', {
+            ref: buttonRef,
             className: 'inline-action-btn more-btn',
             title: 'More actions',
-            onClick: (e) => {
-              e.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }
+            onClick: openMenu
           },
             React.createElement('img', { 
               src: './img/ui/ellipsis-horizontal.svg', 
               alt: '...'
             })
           ),
-          // Dropdown menu
-          React.createElement('div', {
-            className: `node-action-menu ${menuOpen ? 'open' : ''}`
-          },
-            React.createElement('div', {
-              className: 'node-action-menu-item',
-              onClick: () => { console.log('Show SQL'); setMenuOpen(false); }
-            },
-              React.createElement('img', { src: './img/ui/format-code.svg', alt: '' }),
-              'Show SQL'
-            ),
-            React.createElement('div', {
-              className: 'node-action-menu-item disabled'
-            },
-              React.createElement('img', { src: './img/info-outline.svg', alt: '' }),
-              'Open Info'
-            ),
-            React.createElement('div', {
-              className: 'node-action-menu-item',
-              onClick: () => { console.log('Search'); setMenuOpen(false); }
-            },
-              React.createElement('img', { src: './img/ui/search.svg', alt: '' }),
-              'Search'
-            ),
-            React.createElement('div', { className: 'node-action-menu-divider' }),
-            React.createElement('div', {
-              className: 'node-action-menu-item',
-              onClick: () => { console.log('Open All Upstream'); setMenuOpen(false); }
-            },
-              React.createElement('img', { src: './img/arrow-left.svg', alt: '' }),
-              'Open All Upstream'
-            ),
-            React.createElement('div', {
-              className: 'node-action-menu-item',
-              onClick: () => { console.log('Close All Upstream'); setMenuOpen(false); }
-            },
-              React.createElement('img', { src: './img/arrow-left-close.svg', alt: '' }),
-              'Close All Upstream'
-            ),
-            React.createElement('div', { className: 'node-action-menu-divider' }),
-            React.createElement('div', {
-              className: 'node-action-menu-item',
-              onClick: () => { console.log('Open All Downstream'); setMenuOpen(false); }
-            },
-              React.createElement('img', { src: './img/ui/arrow-right.svg', alt: '' }),
-              'Open All Downstream'
-            ),
-            React.createElement('div', {
-              className: 'node-action-menu-item',
-              onClick: () => { console.log('Close All Downstream'); setMenuOpen(false); }
-            },
-              React.createElement('img', { src: './img/arrow-right-close.svg', alt: '' }),
-              'Close All Downstream'
-            )
-          )
+          // Render menu via portal to body (outside React Flow zoom transform)
+          menuOpen && ReactDOM.createPortal(menuContent, document.body)
         );
       }
 
