@@ -3484,6 +3484,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const [hitAreaSize, setHitAreaSize] = React.useState({ width: 24, height: 24 });
         const markerRef = React.useRef(null);
         const isOverHitAreaRef = React.useRef(false);
+        const showTimeoutRef = React.useRef(null);
         
         // position: 'left' or 'right'
         const icon = position === 'left' 
@@ -3545,11 +3546,23 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             if (isExpandedCard && e.target.closest('.graph-child-item')) {
               return;
             }
-            updateButtonPosition();
-            setIsVisible(true);
+            // Clear any pending show timeout
+            if (showTimeoutRef.current) {
+              clearTimeout(showTimeoutRef.current);
+            }
+            // Delay showing by 400ms
+            showTimeoutRef.current = setTimeout(() => {
+              updateButtonPosition();
+              setIsVisible(true);
+            }, 400);
           };
           
           const hideButtons = (e) => {
+            // Clear any pending show timeout
+            if (showTimeoutRef.current) {
+              clearTimeout(showTimeoutRef.current);
+              showTimeoutRef.current = null;
+            }
             // Check if moving to the hover hit area
             const relatedTarget = e.relatedTarget;
             if (relatedTarget && relatedTarget.closest && relatedTarget.closest('.node-hover-actions-portal')) {
@@ -3565,12 +3578,24 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             const isOverChild = e.target.closest('.graph-child-item');
             if (isOverChild) {
+              // Clear any pending show timeout and hide instantly
+              if (showTimeoutRef.current) {
+                clearTimeout(showTimeoutRef.current);
+                showTimeoutRef.current = null;
+              }
               if (!isOverHitAreaRef.current) {
                 setIsVisible(false);
               }
             } else {
-              updateButtonPosition();
-              setIsVisible(true);
+              // Only schedule show if not already pending
+              if (!showTimeoutRef.current && !isVisible) {
+                showTimeoutRef.current = setTimeout(() => {
+                  updateButtonPosition();
+                  setIsVisible(true);
+                }, 400);
+              } else if (isVisible) {
+                updateButtonPosition();
+              }
             }
           };
           
@@ -3586,6 +3611,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             parentNode.removeEventListener('mouseleave', hideButtons);
             if (isExpandedCard) {
               parentNode.removeEventListener('mousemove', handleMouseMove);
+            }
+            if (showTimeoutRef.current) {
+              clearTimeout(showTimeoutRef.current);
             }
           };
         }, [position]);
