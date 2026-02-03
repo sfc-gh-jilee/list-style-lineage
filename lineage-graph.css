@@ -1214,45 +1214,22 @@
    Hover Actions (lineage arrows, stats, menu)
    =========================================== */
 
-/* Container for hover action buttons - positioned outside the node */
-.node-hover-actions {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+/* Hover action anchor (invisible hitbox for mouse detection) */
+.node-hover-actions-anchor {
+  pointer-events: auto;
+}
+
+/* Portal-rendered hover action buttons */
+.node-hover-actions-portal {
   display: flex;
   align-items: center;
-  gap: 4px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-  z-index: 10;
-}
-
-.node-hover-actions.left {
-  right: 100%;
-  margin-right: 4px;
-}
-
-.node-hover-actions.right {
-  left: 100%;
-  margin-left: 4px;
-}
-
-/* Show on hover and when selected */
-.graph-group-item:hover > .node-hover-actions,
-.graph-group-item.selected > .node-hover-actions,
-.graph-platform-item:hover > .node-hover-actions,
-.graph-platform-item.selected > .node-hover-actions,
-.graph-expanded-card:hover > .node-hover-actions,
-.graph-expanded-card.selected > .node-hover-actions {
-  opacity: 1;
   pointer-events: auto;
+  animation: hoverActionFadeIn 0.1s ease;
 }
 
-/* Column items: only show hover actions on hover, not when parent is selected */
-.graph-child-item:hover > .node-hover-actions {
-  opacity: 1;
-  pointer-events: auto;
+@keyframes hoverActionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Lineage arrow buttons */
@@ -1260,7 +1237,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 1px solid #E2E8F0;
+  border: 1px solid #D5DAE4;
   background: #FFFFFF;
   display: flex;
   align-items: center;
@@ -1414,10 +1391,6 @@
 /* Expanded card specific adjustments */
 .graph-expanded-card {
   position: relative;
-}
-
-.graph-expanded-card > .node-hover-actions {
-  top: 20px; /* Align with header */
 }
 
 .graph-expanded-header {

@@ -3476,9 +3476,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       }
 
       // =============================================
-      // Component: Node Hover Actions (lineage arrows + menu)
+      // Component: Node Hover Actions (lineage arrows) - rendered via portal
       // =============================================
-      function NodeHoverActions({ position, itemId, isColumn, columnName }) {
+      function NodeHoverActions({ position, itemId, isColumn, columnName, parentRef }) {
+        const [isVisible, setIsVisible] = React.useState(false);
+        const [buttonPosition, setButtonPosition] = React.useState({ top: 0, left: 0 });
+        const anchorRef = React.useRef(null);
+        
         // position: 'left' or 'right'
         const icon = position === 'left' 
           ? './img/ui/chevron-left.svg' 
@@ -3487,24 +3491,83 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           ? 'Show upstream (-1)' 
           : 'Show downstream (+1)';
         
-        return React.createElement('div', {
-          className: `node-hover-actions ${position}`,
-          onClick: (e) => e.stopPropagation()
-        },
-          React.createElement('button', {
-            className: 'hover-action-btn',
-            title: title,
-            onClick: (e) => {
-              e.stopPropagation();
-              console.log(`${position} lineage action for ${itemId}${columnName ? ':' + columnName : ''}`);
-            }
+        // Update position when visible
+        React.useEffect(() => {
+          if (!isVisible || !anchorRef.current) return;
+          
+          const updatePosition = () => {
+            const rect = anchorRef.current.getBoundingClientRect();
+            // Find the parent node element to get its full height
+            const parentNode = anchorRef.current.closest('.graph-group-item, .graph-platform-item, .graph-expanded-card, .graph-child-item');
+            const parentRect = parentNode ? parentNode.getBoundingClientRect() : rect;
+            
+            setButtonPosition({
+              top: parentRect.top + parentRect.height / 2 - 12, // center vertically (button is 24px)
+              left: position === 'left' ? parentRect.left - 28 : parentRect.right + 4 // 24px button + 4px gap
+            });
+          };
+          
+          updatePosition();
+          // Update on scroll/resize
+          const handleUpdate = () => updatePosition();
+          window.addEventListener('scroll', handleUpdate, true);
+          window.addEventListener('resize', handleUpdate);
+          
+          return () => {
+            window.removeEventListener('scroll', handleUpdate, true);
+            window.removeEventListener('resize', handleUpdate);
+          };
+        }, [isVisible, position]);
+        
+        // The anchor element (invisible, just for positioning reference)
+        const anchor = React.createElement('div', {
+          ref: anchorRef,
+          className: `node-hover-actions-anchor ${position}`,
+          onMouseEnter: () => setIsVisible(true),
+          onMouseLeave: () => setIsVisible(false),
+          style: { 
+            position: 'absolute',
+            [position]: position === 'left' ? '-28px' : '-28px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '28px',
+            height: '100%',
+            minHeight: '24px'
+          }
+        });
+        
+        // The actual button rendered via portal
+        const button = isVisible && ReactDOM.createPortal(
+          React.createElement('div', {
+            className: 'node-hover-actions-portal',
+            style: {
+              position: 'fixed',
+              top: buttonPosition.top,
+              left: buttonPosition.left,
+              zIndex: 99998
+            },
+            onMouseEnter: () => setIsVisible(true),
+            onMouseLeave: () => setIsVisible(false),
+            onClick: (e) => e.stopPropagation()
           },
-            React.createElement('img', { 
-              src: icon, 
-              alt: position === 'left' ? '<' : '>'
-            })
-          )
+            React.createElement('button', {
+              className: 'hover-action-btn',
+              title: title,
+              onClick: (e) => {
+                e.stopPropagation();
+                console.log(`${position} lineage action for ${itemId}${columnName ? ':' + columnName : ''}`);
+              }
+            },
+              React.createElement('img', { 
+                src: icon, 
+                alt: position === 'left' ? '<' : '>'
+              })
+            )
+          ),
+          document.body
         );
+        
+        return React.createElement(React.Fragment, null, anchor, button);
       }
 
       // Global registry to close all open menus
