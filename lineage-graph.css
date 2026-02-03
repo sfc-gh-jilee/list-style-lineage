@@ -1201,6 +1201,15 @@
   opacity: 0.4;
 }
 
+/* Focused state for specific item (from side panel tree click) */
+.graph-group-item.focused,
+.graph-platform-item.focused,
+.graph-child-item.focused,
+.graph-expanded-card.focused,
+.graph-regular-card.focused {
+  border: 1px solid #5999F8;
+}
+
 /* ===========================================
    Edge-Adjacent Node Highlight States
    When an edge is selected, highlight its connected nodes
