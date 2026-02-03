@@ -1237,7 +1237,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 1px solid #D5DAE4;
+  border: 1px solid #9FABC1;
   background: #FFFFFF;
   display: flex;
   align-items: center;
@@ -1258,8 +1258,8 @@
 }
 
 .hover-action-btn img {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   opacity: 0.6;
 }
 
