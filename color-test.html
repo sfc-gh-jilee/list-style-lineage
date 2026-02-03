@@ -1085,7 +1085,7 @@
         // Custom Node: Data Source Group
         // =============================================
         function DataSourceNode({ data, id }) {
-          const { source, items, colors, onItemClick, selectedItemId, bgOpacity = 0.04, borderOpacity = 0.20, saturationAdjust = 40, lightnessValue = 50, isDarkMode = false } = data;
+          const { source, items, colors, onItemClick, selectedItemId, bgOpacity = 0.06, borderOpacity = 0.12, saturationAdjust = 40, lightnessValue = 50, isDarkMode = false } = data;
           const sourceName = source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
           // Get logo icon for data source (returns null if no logo available)
@@ -1443,14 +1443,14 @@
         // Theme presets for light and dark mode
         const THEME_PRESETS = {
           light: {
-            bgOpacity: 0.03,      // 3%
+            bgOpacity: 0.06,      // 6%
             borderOpacity: 0.12,  // 12%
             saturation: 40,       // +40%
             lightness: 50         // L=50
           },
           dark: {
             bgOpacity: 0.06,      // 6%
-            borderOpacity: 0.16,  // 16%
+            borderOpacity: 0.12,  // 12%
             saturation: 60,       // +60%
             lightness: 50         // L=50
           }

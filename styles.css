@@ -821,13 +821,13 @@ body {
   padding: 16px;
   border-radius: 8px;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 18px;
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-all;
   margin: 0;
-  max-height: 600px;
+  max-height: 640px;
   overflow-y: auto;
 }
 
