@@ -3506,28 +3506,33 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             const rect = parentNode.getBoundingClientRect();
             // For expanded cards, align with center of header/name (header has 12px padding + ~10px to center of 20px line)
             // For other items, center vertically
-            const topOffset = isExpandedCard ? 22 - 12 : rect.height / 2 - 12;
+            const topOffset = isExpandedCard ? 22 : rect.height / 2;
             
-            // Calculate hit area that extends to the node edge
-            // Button is 24x24, positioned 28px left or 4px right of node
+            // Hit area dimensions: extends toward node to cover the gap
+            // Button is 24x24, gap to node is 4px, we extend 8px into node for overlap
             const buttonSize = 24;
-            const gapToNode = position === 'left' ? 4 : 4; // gap between button edge and node
-            const extendedWidth = buttonSize + gapToNode + 8; // extend 8px into node for overlap
-            const extendedHeight = buttonSize + 16; // extend 8px above and below
+            const gap = 4;
+            const overlap = 8;
+            const hitAreaWidth = buttonSize + gap + overlap; // 36px
+            const hitAreaHeight = buttonSize + 16; // 40px (8px above and below)
             
-            setHitAreaSize({ width: extendedWidth, height: extendedHeight });
+            setHitAreaSize({ width: hitAreaWidth, height: hitAreaHeight });
             
+            // Position hit area so button ends up at correct location
+            // Button center should be at: topOffset from node top
             if (position === 'left') {
-              // Left button: position hit area so it extends right toward the node
+              // Left button at rect.left - gap - buttonSize = rect.left - 28
+              // Hit area starts at button position
               setButtonPosition({
-                top: rect.top + topOffset - 8, // 8px above button center
-                left: rect.left - 28 // button position stays same
+                top: rect.top + topOffset - buttonSize / 2 - 8, // center button vertically, minus 8 for hit area padding
+                left: rect.left - gap - buttonSize // button's left edge
               });
             } else {
-              // Right button: position hit area so it extends left toward the node
+              // Right button at rect.right + gap
+              // Hit area extends left from button into the node
               setButtonPosition({
-                top: rect.top + topOffset - 8, // 8px above button center
-                left: rect.right + 4 - gapToNode - 8 // extend left into gap and node
+                top: rect.top + topOffset - buttonSize / 2 - 8,
+                left: rect.right - overlap // start 8px inside node
               });
             }
           };
@@ -3609,9 +3614,6 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               width: hitAreaSize.width,
               height: hitAreaSize.height,
               zIndex: 99998,
-              display: 'flex',
-              alignItems: position === 'left' ? 'flex-start' : 'flex-end',
-              justifyContent: 'center',
               // Uncomment to debug hit area: background: 'rgba(255,0,0,0.1)'
             },
             onMouseEnter: handleHitAreaMouseEnter,
@@ -3621,7 +3623,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             React.createElement('button', {
               className: 'hover-action-btn',
               title: title,
-              style: { marginTop: 8 }, // offset to center button in hit area
+              style: { 
+                position: 'absolute',
+                top: 8, // 8px from top of hit area (centered in 40px height)
+                // Left button: at left edge of hit area
+                // Right button: at right edge of hit area (hit area extends left into node)
+                left: position === 'left' ? 0 : 'auto',
+                right: position === 'right' ? 0 : 'auto'
+              },
               onClick: (e) => {
                 e.stopPropagation();
                 console.log(`${position} lineage action for ${itemId}${columnName ? ':' + columnName : ''}`);
