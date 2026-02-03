@@ -165,7 +165,7 @@ body {
    Side Panel
    =========================================== */
 .side-panel {
-  width: 400px;
+  width: 320px;
   height: 100vh;
   background: #ffffff;
   border-left: 1px solid #D5DAE4;
@@ -173,6 +173,12 @@ body {
   flex-direction: column;
   overflow: hidden;
   transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+@media (min-width: 1112px) {
+  .side-panel {
+    width: 400px;
+  }
 }
 
 .side-panel.hidden {
@@ -194,7 +200,7 @@ body {
 /* Panel Header */
 .panel-header {
   display: flex;
-  align-items: center;
+  /* align-items: center; */
   gap: 8px;
   padding: 20px;
   /* border-bottom: 1px solid #D5DAE4; */
@@ -217,7 +223,7 @@ body {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  /* white-space: nowrap; */
 }
 
 .panel-edge-title {
@@ -227,11 +233,16 @@ body {
   font-style: normal;
   font-weight: var(--font-weight-semi-bold, 600);
   line-height: var(--font-line-height-sub-header, 20px);
+  /* Override truncation from panel-header-title */
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .panel-header-actions {
   display: flex;
-  align-items: center;
+  /* align-items: center; */
   gap: 4px;
   flex-shrink: 0;
 }
@@ -278,15 +289,7 @@ body {
   position: relative;
 }
 
-.panel-section-group + .panel-section-group::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 20px;
-  right: 20px;
-  height: 1px;
-  background-color: #D5DAE4;
-}
+/* Separator line handled by header border-bottom */
 
 .panel-section-group:last-child {
   border-bottom: none;
@@ -298,13 +301,22 @@ body {
   justify-content: space-between;
   padding: 16px 20px;
   cursor: default;
+  background: #fff;
+  box-sizing: border-box;
+  /* Border for sticky stack separation */
+  border-top: 1px solid #D5DAE4;
 }
 
-.panel-section-toggle {
+.panel-section-group:first-child .panel-section-header {
+  border-top: 1px solid transparent;
+}
+
+/* Header is clickable to scroll section to top */
+.panel-section-header {
   cursor: pointer;
 }
 
-.panel-section-toggle:hover {
+.panel-section-header:hover {
   background-color: #F8FAFC;
 }
 
@@ -317,7 +329,41 @@ body {
 .panel-section-chevron {
   color: #5D6A85;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+}
+
+/* Toggle icons - show collapse icon when expanded, expand icon when collapsed */
+.panel-section-collapse-icon {
+  display: block;
+}
+
+.panel-section-expand-icon {
+  display: none;
+}
+
+.panel-collapsible[data-collapsed="true"] .panel-section-collapse-icon {
+  display: none;
+}
+
+.panel-collapsible[data-collapsed="true"] .panel-section-expand-icon {
+  display: block;
+}
+
+.panel-section-chevron-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.panel-section-chevron-btn:hover {
+  background-color: #E2E8F0;
 }
 
 .panel-section-info {
@@ -326,10 +372,6 @@ body {
 }
 
 /* Collapsible sections */
-.panel-collapsible[data-collapsed="true"] .panel-section-chevron {
-  transform: rotate(-90deg);
-}
-
 .panel-collapsible[data-collapsed="true"] .panel-section-content {
   display: none;
 }
@@ -480,7 +522,7 @@ body {
   flex-direction: column;
   justify-content: space-between;
   padding: 16px;
-  background: #fff;
+  background: #fbfbfb;
   border-radius: 8px;
   border: 1px solid #D5DAE4;
   gap: 8px;
@@ -690,7 +732,7 @@ body {
   white-space: pre-wrap;
   word-break: break-all;
   margin: 0;
-  max-height: 200px;
+  max-height: 600px;
   overflow-y: auto;
 }
 

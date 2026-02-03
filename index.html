@@ -693,13 +693,181 @@
         const panelColumnDownstreamList = document.getElementById('panelColumnDownstreamList');
         let selectedListItem = null;
         
-        // Setup collapsible section toggles
-        document.querySelectorAll('.panel-section-toggle').forEach(toggle => {
-          toggle.addEventListener('click', function() {
+        // =============================================
+        // Sticky Section Headers in Side Panel (Accordion Pattern)
+        // Uses fixed positioning for stuck headers to escape parent constraints
+        // =============================================
+        const PANEL_HEADER_HEIGHT = 49; // Height of sticky header for stack positioning
+        const PANEL_HEADER_PLACEHOLDER_HEIGHT = 57; // Height of placeholder when header is fixed
+        
+        function updatePanelStickyHeaders(panelContent) {
+          if (!panelContent) return;
+          
+          const scrollTop = panelContent.scrollTop;
+          const containerHeight = panelContent.clientHeight;
+          const contentRect = panelContent.getBoundingClientRect();
+          const containerTop = contentRect.top;
+          const containerLeft = contentRect.left;
+          const containerWidth = contentRect.width;
+          
+          // Get all section groups within this panel content
+          const sectionGroups = Array.from(panelContent.querySelectorAll('.panel-section-group'));
+          
+          // Filter to only visible sections
+          const visibleGroups = sectionGroups.filter(group => {
+            const style = window.getComputedStyle(group);
+            return style.display !== 'none';
+          });
+          
+          const totalHeaders = visibleGroups.length;
+          
+          // First pass: reset all headers to get accurate natural positions
+          visibleGroups.forEach((group) => {
+            const header = group.querySelector('.panel-section-header');
+            let placeholder = group.querySelector('.panel-header-placeholder');
+            if (placeholder) placeholder.style.height = '0px';
+            if (header) {
+              header.style.position = 'relative';
+              header.style.top = '';
+              header.style.bottom = '';
+              header.style.left = '';
+              header.style.width = '';
+              header.style.zIndex = '';
+            }
+          });
+          
+          // Second pass: calculate and apply sticky positions
+          visibleGroups.forEach((group, index) => {
+            const header = group.querySelector('.panel-section-header');
+            if (!header) return;
+            
+            // Ensure placeholder exists for when header becomes fixed
+            let placeholder = group.querySelector('.panel-header-placeholder');
+            if (!placeholder) {
+              placeholder = document.createElement('div');
+              placeholder.className = 'panel-header-placeholder';
+              placeholder.style.height = '0px';
+              placeholder.style.visibility = 'hidden';
+              group.insertBefore(placeholder, header);
+            }
+            
+            // Get header's true natural position in scroll content
+            const headerRect = header.getBoundingClientRect();
+            const headerNaturalY = headerRect.top;
+            
+            // Stack positions (in viewport coordinates)
+            const topStackY = containerTop + (index * PANEL_HEADER_HEIGHT);
+            const bottomStackY = containerTop + containerHeight - ((totalHeaders - index) * PANEL_HEADER_HEIGHT);
+            
+            // Determine state - header sticks when it reaches the stack edge
+            const shouldStickTop = headerNaturalY < topStackY;
+            const shouldStickBottom = headerNaturalY > bottomStackY;
+            
+            if (shouldStickTop) {
+              // Stick to top
+              placeholder.style.height = PANEL_HEADER_PLACEHOLDER_HEIGHT + 'px';
+              header.style.position = 'fixed';
+              header.style.top = topStackY + 'px';
+              header.style.bottom = 'auto';
+              header.style.left = containerLeft + 'px';
+              header.style.width = containerWidth + 'px';
+              header.style.zIndex = 1000 + index;
+            } else if (shouldStickBottom) {
+              // Stick to bottom
+              placeholder.style.height = PANEL_HEADER_PLACEHOLDER_HEIGHT + 'px';
+              header.style.position = 'fixed';
+              header.style.top = bottomStackY + 'px';
+              header.style.bottom = 'auto';
+              header.style.left = containerLeft + 'px';
+              header.style.width = containerWidth + 'px';
+              header.style.zIndex = 1000 + (totalHeaders - index);
+            }
+            // If neither, header stays in natural position (already reset above)
+          });
+        }
+        
+        // Initialize sticky headers for all panel contents
+        function initPanelStickyHeaders() {
+          document.querySelectorAll('.panel-content').forEach(panelContent => {
+            // Update on scroll
+            panelContent.addEventListener('scroll', () => {
+              updatePanelStickyHeaders(panelContent);
+            }, { passive: true });
+          });
+          
+          // Also update on window resize
+          window.addEventListener('resize', () => {
+            document.querySelectorAll('.panel-content').forEach(panelContent => {
+              updatePanelStickyHeaders(panelContent);
+            });
+          });
+        }
+        
+        // Initialize scroll listeners
+        initPanelStickyHeaders();
+        
+        // Setup section header click to scroll section to top
+        document.querySelectorAll('.panel-section-header').forEach(header => {
+          header.addEventListener('click', function(e) {
+            // Don't scroll if clicking on the chevron button
+            if (e.target.closest('.panel-section-chevron-btn')) return;
+            
+            const group = this.closest('.panel-section-group');
+            const panelContent = this.closest('.panel-content');
+            if (!group || !panelContent) return;
+            
+            // Get visible groups to calculate target scroll position
+            const sectionGroups = Array.from(panelContent.querySelectorAll('.panel-section-group'));
+            const visibleGroups = sectionGroups.filter(g => {
+              const style = window.getComputedStyle(g);
+              return style.display !== 'none';
+            });
+            
+            const index = visibleGroups.indexOf(group);
+            if (index === -1) return;
+            
+            // Reset all placeholders to get accurate group positions
+            visibleGroups.forEach(g => {
+              const placeholder = g.querySelector('.panel-header-placeholder');
+              if (placeholder) placeholder.style.height = '0px';
+              const h = g.querySelector('.panel-section-header');
+              if (h) {
+                h.style.position = 'relative';
+                h.style.top = '';
+                h.style.left = '';
+                h.style.width = '';
+              }
+            });
+            
+            // Calculate scroll position: position the placeholder at the edge of scroll area
+            // Headers 0 to index will all be sticky, taking (index + 1) * PANEL_HEADER_HEIGHT
+            // The placeholder should meet right at that edge
+            const targetScrollTop = group.offsetTop - ((index + 1) * PANEL_HEADER_HEIGHT);
+            panelContent.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+            
+            // Update sticky headers after scroll
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 100);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 300);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 500);
+          });
+        });
+        
+        // Setup chevron button click to toggle collapse/expand
+        document.querySelectorAll('.panel-section-chevron-btn').forEach(btn => {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent header click from firing
+            
             const group = this.closest('.panel-collapsible');
             if (group) {
               const isCollapsed = group.getAttribute('data-collapsed') === 'true';
               group.setAttribute('data-collapsed', !isCollapsed);
+              
+              // Update sticky headers after collapse/expand animation
+              const panelContent = group.closest('.panel-content');
+              setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
+              setTimeout(() => updatePanelStickyHeaders(panelContent), 50);
+              setTimeout(() => updatePanelStickyHeaders(panelContent), 150);
             }
           });
         });
@@ -942,6 +1110,12 @@
             }
             
             sidePanel.classList.remove('hidden');
+            // Update sticky headers for the visible panel (multiple retries like depth headers)
+            const panelContent = panelObjectView.querySelector('.panel-content');
+            updatePanelStickyHeaders(panelContent);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 50);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 100);
           },
           
           // Update side panel with edge info (source -> target connection)
@@ -954,9 +1128,8 @@
             panelColumnView.classList.add('hidden');
             
             // Truncate names for title
-            const truncate = (str, len) => str && str.length > len ? str.substring(0, len) + '...' : str;
-            const sourceName = truncate(sourceItem.name, 15) || 'Source';
-            const targetName = truncate(targetItem.name, 15) || 'Target';
+            const sourceName = sourceItem.name || 'Source';
+            const targetName = targetItem.name || 'Target';
             panelEdgeTitle.textContent = `${sourceName} to ${targetName}`;
             
             // Edge details - use edgeData if available, otherwise defaults
@@ -1055,6 +1228,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             sidePanel.classList.remove('hidden');
+            // Update sticky headers for the visible panel (multiple retries like depth headers)
+            const panelContent = panelEdgeView.querySelector('.panel-content');
+            updatePanelStickyHeaders(panelContent);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 50);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 100);
           },
           
           // Update side panel with column details
@@ -1134,6 +1313,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <img class="panel-lineage-type-icon" src="${typeIcon}" width="16" height="16" alt="${columnType}">
                         ${col.columnName}
                       </span>
+                      <a class="panel-lineage-goto" href="#" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Go to column">
+                        <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
+                      </a>
                       <span class="panel-lineage-item-name">${itemName}</span>
                     </div>
                     <div class="panel-lineage-column-info">
@@ -1162,6 +1344,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <img class="panel-lineage-type-icon" src="${typeIcon}" width="16" height="16" alt="${columnType}">
                         ${col.columnName}
                       </span>
+                      <a class="panel-lineage-goto" href="#" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Go to column">
+                        <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
+                      </a>
                       <span class="panel-lineage-item-name">${itemName}</span>
                     </div>
                     <div class="panel-lineage-column-info">
@@ -1176,6 +1361,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             sidePanel.classList.remove('hidden');
+            // Update sticky headers for the visible panel (multiple retries like depth headers)
+            const panelContent = panelColumnView.querySelector('.panel-content');
+            updatePanelStickyHeaders(panelContent);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 50);
+            setTimeout(() => updatePanelStickyHeaders(panelContent), 100);
           }
         };
 
@@ -1919,9 +2110,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         <div class="panel-content">
           <!-- Details Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false">
-            <div class="panel-section-header panel-section-toggle">
+            <div class="panel-section-header">
               <span class="panel-section-title">Details</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content">
               <div class="panel-details-grid">
@@ -1955,9 +2149,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           <!-- Columns Section -->
           <div class="panel-section-group panel-columns-section panel-collapsible" data-collapsed="false">
-            <div class="panel-section-header panel-section-toggle">
+            <div class="panel-section-header">
               <span class="panel-section-title">Columns</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content">
               <div class="panel-search">
@@ -1984,9 +2181,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         <div class="panel-content">
           <!-- Details Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false">
-            <div class="panel-section-header panel-section-toggle">
+            <div class="panel-section-header">
               <span class="panel-section-title">Details</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content">
               <div class="panel-details-grid">
@@ -2027,9 +2227,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           <!-- SQL Query Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false">
-            <div class="panel-section-header panel-section-toggle">
+            <div class="panel-section-header">
               <span class="panel-section-title">SQL Query</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content">
               <pre class="panel-sql-code" id="panelSqlQuery">SELECT * FROM table;</pre>
@@ -2037,10 +2240,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           </div>
           
           <!-- Stored Procedures Section -->
-          <div class="panel-section-group panel-collapsible" data-collapsed="true" id="panelStoredProcsSection">
-            <div class="panel-section-header panel-section-toggle">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelStoredProcsSection">
+            <div class="panel-section-header">
               <span class="panel-section-title" id="panelStoredProcsTitle">Stored procedures (0)</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content" id="panelStoredProcsContent">
               <div class="panel-empty-state">No stored procedures</div>
@@ -2048,10 +2254,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           </div>
           
           <!-- Tasks Section -->
-          <div class="panel-section-group panel-collapsible" data-collapsed="true" id="panelTasksSection">
-            <div class="panel-section-header panel-section-toggle">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelTasksSection">
+            <div class="panel-section-header">
               <span class="panel-section-title" id="panelTasksTitle">Tasks (0)</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content" id="panelTasksContent">
               <div class="panel-empty-state">No tasks</div>
@@ -2076,9 +2285,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         <div class="panel-content">
           <!-- Column Details Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false">
-            <div class="panel-section-header panel-section-toggle">
+            <div class="panel-section-header">
               <span class="panel-section-title">Details</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content">
               <div class="panel-details-grid">
@@ -2104,9 +2316,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           <!-- Upstream Lineage Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnUpstreamSection">
-            <div class="panel-section-header panel-section-toggle">
+            <div class="panel-section-header">
               <span class="panel-section-title" id="panelColumnUpstreamTitle">Upstream columns (0)</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content">
               <div class="panel-lineage-list" id="panelColumnUpstreamList">
@@ -2117,9 +2332,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           <!-- Downstream Lineage Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnDownstreamSection">
-            <div class="panel-section-header panel-section-toggle">
+            <div class="panel-section-header">
               <span class="panel-section-title" id="panelColumnDownstreamTitle">Downstream columns (0)</span>
-              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
+              <button class="panel-section-chevron-btn" aria-label="Toggle section">
+                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
+                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              </button>
             </div>
             <div class="panel-section-content">
               <div class="panel-lineage-list" id="panelColumnDownstreamList">
