@@ -1435,13 +1435,15 @@ LEFT JOIN ACME_PROD.RAW_ECOMMERCE.CUSTOMERS c
         name: 'SP_VALIDATE_ORDER_DATA',
         schema: 'ACME_PROD.ANALYTICS',
         lastModified: '2026-01-15',
-        owner: 'Data Engineering'
+        owner: 'Data Engineering',
+        status: 'success'
       },
       {
         name: 'SP_CALCULATE_ORDER_METRICS',
         schema: 'ACME_PROD.ANALYTICS',
         lastModified: '2026-01-20',
-        owner: 'Analytics Team'
+        owner: 'Analytics Team',
+        status: 'success'
       }
     ],
     tasks: [
@@ -1633,19 +1635,22 @@ GROUP BY CUSTOMER_KEY, CUSTOMER_ID;`
         name: 'SP_CALC_DAILY_METRICS',
         schema: 'ACME_ANALYTICS.PROCS',
         lastModified: '2026-01-10',
-        owner: 'Analytics Team'
+        owner: 'Analytics Team',
+        status: 'success'
       },
       {
         name: 'SP_REVENUE_FORECAST',
         schema: 'ACME_ANALYTICS.PROCS',
         lastModified: '2026-01-18',
-        owner: 'Finance Analytics'
+        owner: 'Finance Analytics',
+        status: 'scheduled'
       },
       {
         name: 'SP_ANOMALY_DETECTION',
         schema: 'ACME_ANALYTICS.ML',
         lastModified: '2026-01-25',
-        owner: 'Data Science'
+        owner: 'Data Science',
+        status: 'failed'
       }
     ],
     tasks: [
@@ -1782,7 +1787,8 @@ GROUP BY USER_ID, JOURNEY_DATE;`
         name: 'SP_REFRESH_CUSTOMER_CACHE',
         schema: 'ACME_PROD.BI_CACHE',
         lastModified: '2026-01-28',
-        owner: 'BI Team'
+        owner: 'BI Team',
+        status: 'success'
       }
     ],
     tasks: [

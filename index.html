@@ -674,8 +674,10 @@
         const panelRowCount = document.getElementById('panelRowCount');
         const panelSqlQuery = document.getElementById('panelSqlQuery');
         const panelStoredProcsSection = document.getElementById('panelStoredProcsSection');
+        const panelStoredProcsTitle = document.getElementById('panelStoredProcsTitle');
         const panelStoredProcsContent = document.getElementById('panelStoredProcsContent');
         const panelTasksSection = document.getElementById('panelTasksSection');
+        const panelTasksTitle = document.getElementById('panelTasksTitle');
         const panelTasksContent = document.getElementById('panelTasksContent');
         // Column panel elements
         const panelColumnTitle = document.getElementById('panelColumnTitle');
@@ -685,9 +687,9 @@
         const panelColumnParent = document.getElementById('panelColumnParent');
         const panelColumnKeyRow = document.getElementById('panelColumnKeyRow');
         const panelColumnKeyType = document.getElementById('panelColumnKeyType');
-        const panelColumnUpstreamCount = document.getElementById('panelColumnUpstreamCount');
+        const panelColumnUpstreamTitle = document.getElementById('panelColumnUpstreamTitle');
         const panelColumnUpstreamList = document.getElementById('panelColumnUpstreamList');
-        const panelColumnDownstreamCount = document.getElementById('panelColumnDownstreamCount');
+        const panelColumnDownstreamTitle = document.getElementById('panelColumnDownstreamTitle');
         const panelColumnDownstreamList = document.getElementById('panelColumnDownstreamList');
         let selectedListItem = null;
         
@@ -991,29 +993,26 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             panelSqlQuery.innerHTML = highlightSQL(sqlCode);
             
             // Stored Procedures section
+            const procCount = data.storedProcedures?.length || 0;
+            panelStoredProcsTitle.textContent = `Stored procedures (${procCount})`;
             if (data.storedProcedures && data.storedProcedures.length > 0) {
               panelStoredProcsSection.style.display = 'block';
               panelStoredProcsContent.innerHTML = `
-                <div class="panel-proc-list">
+                <div class="panel-lineage-list">
                   ${data.storedProcedures.map(proc => `
-                    <div class="panel-proc-item">
-                      <div class="panel-proc-header">
-                        <img class="panel-proc-icon" src="./img/code-block.svg" width="16" height="16" alt="Procedure">
-                        <span class="panel-proc-name">${proc.name}</span>
+                    <div class="panel-lineage-item">
+                      <div class="panel-lineage-column-header">
+                        <span class="panel-lineage-column-name">
+                          ${proc.name}
+                        </span>
+                        <a class="panel-lineage-goto" href="#" title="View details">
+                          <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
+                        </a>
+                        <span class="panel-lineage-item-name">${proc.schema}</span>
                       </div>
-                      <div class="panel-proc-meta">
-                        <div class="panel-proc-meta-item">
-                          <span class="panel-proc-meta-label">Schema:</span>
-                          <span>${proc.schema}</span>
-                        </div>
-                        <div class="panel-proc-meta-item">
-                          <span class="panel-proc-meta-label">Owner:</span>
-                          <span>${proc.owner}</span>
-                        </div>
-                        <div class="panel-proc-meta-item">
-                          <span class="panel-proc-meta-label">Modified:</span>
-                          <span>${proc.lastModified}</span>
-                        </div>
+                      <div class="panel-lineage-column-info">
+                        ${proc.status ? `<span class="panel-lineage-transform panel-task-status ${proc.status}">${proc.status}</span>` : ''}
+                        <span class="panel-lineage-item-meta">Last run: ${proc.lastModified}</span>
                       </div>
                     </div>
                   `).join('')}
@@ -1025,34 +1024,26 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             // Tasks section
+            const taskCount = data.tasks?.length || 0;
+            panelTasksTitle.textContent = `Tasks (${taskCount})`;
             if (data.tasks && data.tasks.length > 0) {
               panelTasksSection.style.display = 'block';
               panelTasksContent.innerHTML = `
-                <div class="panel-task-list">
+                <div class="panel-lineage-list">
                   ${data.tasks.map(task => `
-                    <div class="panel-task-item">
-                      <div class="panel-task-header">
-                        <img class="panel-task-icon" src="./img/job.svg" width="16" height="16" alt="Task">
-                        <span class="panel-task-name">${task.name}</span>
-                        <span class="panel-task-status ${task.status}">${task.status}</span>
+                    <div class="panel-lineage-item">
+                      <div class="panel-lineage-column-header">
+                        <span class="panel-lineage-column-name">
+                          ${task.name}
+                        </span>
+                        <a class="panel-lineage-goto" href="#" title="View details">
+                          <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
+                        </a>
+                        <span class="panel-lineage-item-name">${task.type}</span>
                       </div>
-                      <div class="panel-task-meta">
-                        <div class="panel-task-meta-item">
-                          <span class="panel-task-meta-label">Type:</span>
-                          <span>${task.type}</span>
-                        </div>
-                        <div class="panel-task-meta-item">
-                          <span class="panel-task-meta-label">Schedule:</span>
-                          <span>${task.schedule}</span>
-                        </div>
-                        <div class="panel-task-meta-item">
-                          <span class="panel-task-meta-label">Last Run:</span>
-                          <span>${task.lastRun}</span>
-                        </div>
-                        <div class="panel-task-meta-item">
-                          <span class="panel-task-meta-label">Owner:</span>
-                          <span>${task.owner}</span>
-                        </div>
+                      <div class="panel-lineage-column-info">
+                        <span class="panel-lineage-transform panel-task-status ${task.status}">${task.status}</span>
+                        <span class="panel-lineage-item-meta">Schedule: ${task.schedule}</span>
                       </div>
                     </div>
                   `).join('')}
@@ -1129,17 +1120,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
             
             // Render upstream list
-            panelColumnUpstreamCount.textContent = upstreamColumns.length.toString();
+            panelColumnUpstreamTitle.textContent = `Upstream columns (${upstreamColumns.length})`;
             if (upstreamColumns.length > 0) {
               panelColumnUpstreamList.innerHTML = upstreamColumns.map(col => {
                 const item = itemMap.get(col.itemId);
                 const itemName = item?.name || col.itemId;
+                const columnDef = item?.columns?.find(c => c.name === col.columnName);
+                const columnType = columnDef?.type || 'STRING';
+                const typeIcon = window.getColumnTypeIcon ? window.getColumnTypeIcon(columnType) : 'img/ui/column-single.svg';
                 return `<div class="panel-lineage-item">
-                  <div class="panel-lineage-column">
-                    <span class="panel-lineage-column-name">${col.columnName}</span>
-                    <span class="panel-lineage-item-name">${itemName}</span>
+                    <div class="panel-lineage-column-header">
+                      <span class="panel-lineage-column-name">
+                        <img class="panel-lineage-type-icon" src="${typeIcon}" width="16" height="16" alt="${columnType}">
+                        ${col.columnName}
+                      </span>
+                      <span class="panel-lineage-item-name">${itemName}</span>
+                    </div>
+                    <div class="panel-lineage-column-info">
+                      
+                      <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
+                    </div>
                   </div>
-                  <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
                 </div>`;
               }).join('');
             } else {
@@ -1147,17 +1148,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             // Render downstream list
-            panelColumnDownstreamCount.textContent = downstreamColumns.length.toString();
+            panelColumnDownstreamTitle.textContent = `Downstream columns (${downstreamColumns.length})`;
             if (downstreamColumns.length > 0) {
               panelColumnDownstreamList.innerHTML = downstreamColumns.map(col => {
                 const item = itemMap.get(col.itemId);
                 const itemName = item?.name || col.itemId;
+                const columnDef = item?.columns?.find(c => c.name === col.columnName);
+                const columnType = columnDef?.type || 'STRING';
+                const typeIcon = window.getColumnTypeIcon ? window.getColumnTypeIcon(columnType) : 'img/ui/column-single.svg';
                 return `<div class="panel-lineage-item">
-                  <div class="panel-lineage-column">
-                    <span class="panel-lineage-column-name">${col.columnName}</span>
-                    <span class="panel-lineage-item-name">${itemName}</span>
+                    <div class="panel-lineage-column-header">
+                      <span class="panel-lineage-column-name">
+                        <img class="panel-lineage-type-icon" src="${typeIcon}" width="16" height="16" alt="${columnType}">
+                        ${col.columnName}
+                      </span>
+                      <span class="panel-lineage-item-name">${itemName}</span>
+                    </div>
+                    <div class="panel-lineage-column-info">
+                      
+                      <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
+                    </div>
                   </div>
-                  <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
                 </div>`;
               }).join('');
             } else {
@@ -1907,48 +1918,54 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         </div>
         <div class="panel-content">
           <!-- Details Section -->
-          <div class="panel-section-group">
-            <div class="panel-section-header">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false">
+            <div class="panel-section-header panel-section-toggle">
               <span class="panel-section-title">Details</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
-            <div class="panel-details-grid">
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Comment</span>
-                <span class="panel-detail-value" id="panelComment">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Owner</span>
-                <span class="panel-detail-value" id="panelOwner">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Created</span>
-                <span class="panel-detail-value" id="panelCreated">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Data Quality</span>
-                <span class="panel-detail-value" id="panelQuality">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Columns</span>
-                <span class="panel-detail-value" id="panelColumnCount">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Tags</span>
-                <span class="panel-detail-value panel-detail-tags" id="panelTags">—</span>
+            <div class="panel-section-content">
+              <div class="panel-details-grid">
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Comment</span>
+                  <span class="panel-detail-value" id="panelComment">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Owner</span>
+                  <span class="panel-detail-value" id="panelOwner">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Created</span>
+                  <span class="panel-detail-value" id="panelCreated">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Data Quality</span>
+                  <span class="panel-detail-value" id="panelQuality">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Columns</span>
+                  <span class="panel-detail-value" id="panelColumnCount">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Tags</span>
+                  <span class="panel-detail-value panel-detail-tags" id="panelTags">—</span>
+                </div>
               </div>
             </div>
           </div>
           
           <!-- Columns Section -->
-          <div class="panel-section-group panel-columns-section">
-            <div class="panel-section-header">
+          <div class="panel-section-group panel-columns-section panel-collapsible" data-collapsed="false">
+            <div class="panel-section-header panel-section-toggle">
               <span class="panel-section-title">Columns</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
-            <div class="panel-search">
-              <input type="text" placeholder="Search columns" id="panelColumnsSearch">
-            </div>
-            <div class="panel-column-list" id="panelColumns">
-              <div class="panel-column-item"><span class="panel-column-icon">⏱</span> PTIME</div>
+            <div class="panel-section-content">
+              <div class="panel-search">
+                <input type="text" placeholder="Search columns" id="panelColumnsSearch">
+              </div>
+              <div class="panel-column-list" id="panelColumns">
+                <div class="panel-column-item"><span class="panel-column-icon">⏱</span> PTIME</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1966,41 +1983,44 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         </div>
         <div class="panel-content">
           <!-- Details Section -->
-          <div class="panel-section-group">
-            <div class="panel-section-header">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false">
+            <div class="panel-section-header panel-section-toggle">
               <span class="panel-section-title">Details</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
-            <div class="panel-details-grid">
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Query Type</span>
-                <span class="panel-detail-value" id="panelQueryType">—</span>
-              </div>
-              <div class="panel-detail-row" id="panelExternalToolRow" style="display: none;">
-                <span class="panel-detail-label">External Tool</span>
-                <span class="panel-detail-value panel-external-tool" id="panelExternalTool">
-                  <img class="panel-external-tool-icon" id="panelExternalToolIcon" src="" width="16" height="16" alt="">
-                  <span id="panelExternalToolName">—</span>
-                </span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Run By</span>
-                <span class="panel-detail-value" id="panelRunBy">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Run On</span>
-                <span class="panel-detail-value" id="panelRunOn">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Duration</span>
-                <span class="panel-detail-value" id="panelDuration">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Query ID</span>
-                <span class="panel-detail-value" id="panelQueryId">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Row Count</span>
-                <span class="panel-detail-value" id="panelRowCount">—</span>
+            <div class="panel-section-content">
+              <div class="panel-details-grid">
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Query Type</span>
+                  <span class="panel-detail-value" id="panelQueryType">—</span>
+                </div>
+                <div class="panel-detail-row" id="panelExternalToolRow" style="display: none;">
+                  <span class="panel-detail-label">External Tool</span>
+                  <span class="panel-detail-value panel-external-tool" id="panelExternalTool">
+                    <img class="panel-external-tool-icon" id="panelExternalToolIcon" src="" width="16" height="16" alt="">
+                    <span id="panelExternalToolName">—</span>
+                  </span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Run By</span>
+                  <span class="panel-detail-value" id="panelRunBy">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Run On</span>
+                  <span class="panel-detail-value" id="panelRunOn">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Duration</span>
+                  <span class="panel-detail-value" id="panelDuration">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Query ID</span>
+                  <span class="panel-detail-value" id="panelQueryId">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Row Count</span>
+                  <span class="panel-detail-value" id="panelRowCount">—</span>
+                </div>
               </div>
             </div>
           </div>
@@ -2019,7 +2039,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <!-- Stored Procedures Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="true" id="panelStoredProcsSection">
             <div class="panel-section-header panel-section-toggle">
-              <span class="panel-section-title">Stored Procedures</span>
+              <span class="panel-section-title" id="panelStoredProcsTitle">Stored procedures (0)</span>
               <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
             <div class="panel-section-content" id="panelStoredProcsContent">
@@ -2030,7 +2050,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <!-- Tasks Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="true" id="panelTasksSection">
             <div class="panel-section-header panel-section-toggle">
-              <span class="panel-section-title">Tasks</span>
+              <span class="panel-section-title" id="panelTasksTitle">Tasks (0)</span>
               <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
             <div class="panel-section-content" id="panelTasksContent">
@@ -2055,26 +2075,29 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         </div>
         <div class="panel-content">
           <!-- Column Details Section -->
-          <div class="panel-section-group">
-            <div class="panel-section-header">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false">
+            <div class="panel-section-header panel-section-toggle">
               <span class="panel-section-title">Details</span>
+              <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
-            <div class="panel-details-grid">
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Description</span>
-                <span class="panel-detail-value panel-detail-description" id="panelColumnDescription">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Data Type</span>
-                <span class="panel-detail-value" id="panelColumnType">—</span>
-              </div>
-              <div class="panel-detail-row">
-                <span class="panel-detail-label">Parent Object</span>
-                <span class="panel-detail-value" id="panelColumnParent">—</span>
-              </div>
-              <div class="panel-detail-row" id="panelColumnKeyRow" style="display: none;">
-                <span class="panel-detail-label">Key Type</span>
-                <span class="panel-detail-value" id="panelColumnKeyType">—</span>
+            <div class="panel-section-content">
+              <div class="panel-details-grid">
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Description</span>
+                  <span class="panel-detail-value panel-detail-description" id="panelColumnDescription">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Data Type</span>
+                  <span class="panel-detail-value" id="panelColumnType">—</span>
+                </div>
+                <div class="panel-detail-row">
+                  <span class="panel-detail-label">Parent Object</span>
+                  <span class="panel-detail-value" id="panelColumnParent">—</span>
+                </div>
+                <div class="panel-detail-row" id="panelColumnKeyRow" style="display: none;">
+                  <span class="panel-detail-label">Key Type</span>
+                  <span class="panel-detail-value" id="panelColumnKeyType">—</span>
+                </div>
               </div>
             </div>
           </div>
@@ -2082,8 +2105,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <!-- Upstream Lineage Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnUpstreamSection">
             <div class="panel-section-header panel-section-toggle">
-              <span class="panel-section-title">Upstream Columns</span>
-              <span class="panel-section-count" id="panelColumnUpstreamCount">0</span>
+              <span class="panel-section-title" id="panelColumnUpstreamTitle">Upstream columns (0)</span>
               <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
             <div class="panel-section-content">
@@ -2096,8 +2118,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <!-- Downstream Lineage Section -->
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnDownstreamSection">
             <div class="panel-section-header panel-section-toggle">
-              <span class="panel-section-title">Downstream Columns</span>
-              <span class="panel-section-count" id="panelColumnDownstreamCount">0</span>
+              <span class="panel-section-title" id="panelColumnDownstreamTitle">Downstream columns (0)</span>
               <img class="panel-section-chevron" src="./img/ui/chevron-down.svg" width="16" height="16" alt="">
             </div>
             <div class="panel-section-content">
@@ -2377,6 +2398,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         // Default
         return 'img/ui/column-single.svg';
       }
+      // Expose globally for side panel access
+      window.getColumnTypeIcon = getColumnTypeIcon;
 
       // =============================================
       // Component: Column/Feature Type Icon

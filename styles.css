@@ -275,7 +275,17 @@ body {
 
 /* Section Groups */
 .panel-section-group {
-  /* border-bottom: 1px solid #D5DAE4; */
+  position: relative;
+}
+
+.panel-section-group + .panel-section-group::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 1px;
+  background-color: #D5DAE4;
 }
 
 .panel-section-group:last-child {
@@ -325,12 +335,12 @@ body {
 }
 
 .panel-section-content {
-  padding: 0 16px 12px;
+  padding: 8px 20px 24px;
 }
 
 /* Details Grid */
 .panel-details-grid {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .panel-detail-row {
@@ -341,6 +351,10 @@ body {
   margin: 0 0 16px;
   gap: 2px;
   flex-direction: column;
+}
+
+.panel-detail-row:last-child {
+  margin: 0 !important;
 }
 
 .panel-detail-label {
@@ -463,49 +477,117 @@ body {
 
 .panel-lineage-item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: #F8FAFC;
-  border-radius: 6px;
-  border: 1px solid #E2E8F0;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #D5DAE4;
+  gap: 8px;
 }
 
-.panel-lineage-column {
+.panel-lineage-column-header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   min-width: 0;
   flex: 1;
+  gap: 2px;
+  position: relative;
+}
+
+.panel-lineage-goto {
+  position: absolute;
+  top: 0;
+  right: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.panel-lineage-goto:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.panel-lineage-item:hover .panel-lineage-goto {
+  opacity: 1;
+}
+
+.panel-lineage-type-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.panel-lineage-column-info {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
 }
 
 .panel-lineage-column-name {
   font-size: 12px;
-  font-weight: 500;
+  line-height: 18px;
+  font-weight: 600;
   color: #1E252F;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .panel-lineage-item-name {
-  font-size: 11px;
-  color: #64748B;
+  color: var(--Reusable-Secondary-text, #5D6A85);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 18px;
+}
+
+.panel-lineage-item-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--Reusable-Secondary-text, #5D6A85);
+  font-family: Inter;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  margin-top: 4px;
+}
+
+.panel-lineage-column-info .panel-lineage-transform,
+.panel-lineage-column-info .panel-task-status {
+  align-self: flex-start;
+  margin-top: 4px;
 }
 
 .panel-lineage-transform {
-  font-size: 10px;
-  font-weight: 500;
-  color: #8B95A9;
-  background: #E2E8F0;
+  color: var(--Reusable-Primary-text, #1E252F);
+  font-family: "Apercu Mono Pro", monospace;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 11px;
+  border-radius: var(--XSmall, 4px);
+  border: 1px solid var(--Reusable-Border, #D5DAE4);
+  background: var(--Status-Neutral-Background, #ECEEF1);
   padding: 2px 6px;
-  border-radius: 4px;
   text-transform: uppercase;
   flex-shrink: 0;
-  margin-left: 8px;
 }
 
 /* Columns Section */
@@ -521,7 +603,7 @@ body {
 }
 
 .panel-search {
-  padding: 0 20px 16px;
+  padding: 0 0 16px;
   flex-shrink: 0;
 }
 
@@ -551,7 +633,7 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 20px 16px;
+  padding: 0 0 16px;
 }
 
 .panel-column-item {
@@ -599,8 +681,8 @@ body {
 .panel-sql-code {
   background: #F7F7F7;
   color: #1E252F;
-  padding: 12px;
-  border-radius: 4px;
+  padding: 16px;
+  border-radius: 8px;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
   font-size: 11px;
   line-height: 1.5;
@@ -700,10 +782,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 12px;
-  background: #F8FAFC;
-  border-radius: 6px;
-  border: 1px solid #E8ECF1;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #D5DAE4;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -766,30 +848,46 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
+  border-radius: var(--XSmall, 4px);
+  font-family: var(--Font-Family-Body, Inter);
+  font-size: var(--Font-Size-Small, 12px);
+  font-style: normal;
+  font-weight: var(--Font-Weight-Semibold, 500);
+  line-height: var(--Line-Height-LineHeight18, 18px);
+  letter-spacing: var(--Letter-Spacing, 0);
+  text-transform: capitalize;
+  border: none;
 }
 
 .panel-task-status.success {
-  background: #DCFCE7;
-  color: #15803D;
+  background: var(--Status-Success-Background, #BDF8E9);
+  color: var(--Status-Success-Text, #034237);
 }
 
 .panel-task-status.running {
-  background: #DBEAFE;
-  color: #1D4ED8;
+  background: var(--_Components-Status-Pill-Active-background, #5D6A85);
+  color: var(--_Components-Status-Pill-Active-text, #FBFBFB);
 }
 
 .panel-task-status.scheduled {
-  background: #F3E8FF;
-  color: #7C3AED;
+  display: inline-flex;
+  padding: var(--0_25x, 2px) var(--0_75x, 6px);
+  align-items: center;
+  gap: var(--0_25x, 2px);
+  background: #DBEAFE;
+  color: var(--Status-Info-Text, #002C6E);
+  text-align: justify;
+  font-family: var(--Font-Family-Body, Inter);
+  font-size: var(--Font-Size-Small, 12px);
+  font-style: normal;
+  font-weight: var(--Font-Weight-Semibold, 500);
+  line-height: var(--Line-Height-LineHeight18, 18px);
+  letter-spacing: var(--Letter-Spacing, 0);
 }
 
 .panel-task-status.failed {
-  background: #FEE2E2;
-  color: #DC2626;
+  background: var(--Status-Critical-Background, #FFD1DC);
+  color: var(--Status-Critical-Text, #66000E);
 }
 
 /* Dark mode for proc/task items */
