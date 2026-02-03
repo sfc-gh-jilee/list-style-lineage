@@ -3710,6 +3710,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setMenuOpen(true);
         };
         
+        // Add focused style to parent node when menu is open
+        React.useEffect(() => {
+          if (!buttonRef.current) return;
+          
+          const parentNode = buttonRef.current.closest('.graph-group-item, .graph-platform-item, .graph-expanded-card, .graph-child-item');
+          if (!parentNode) return;
+          
+          // Don't add focused if already selected
+          if (parentNode.classList.contains('selected')) return;
+          
+          if (menuOpen) {
+            parentNode.classList.add('focused');
+          } else {
+            parentNode.classList.remove('focused');
+          }
+          
+          return () => {
+            parentNode.classList.remove('focused');
+          };
+        }, [menuOpen]);
+        
         // Close menu when clicking outside
         React.useEffect(() => {
           if (!menuOpen) return;
