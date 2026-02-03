@@ -170,6 +170,8 @@ body {
   background: #ffffff;
   border-left: 1px solid #D5DAE4;
   display: flex;
+  position: relative;
+  z-index: 200;
   flex-direction: column;
   overflow: hidden;
   transition: transform 0.2s ease, opacity 0.2s ease;
