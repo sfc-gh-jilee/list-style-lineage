@@ -3482,6 +3482,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const [isVisible, setIsVisible] = React.useState(false);
         const [buttonPosition, setButtonPosition] = React.useState({ top: 0, left: 0 });
         const markerRef = React.useRef(null);
+        const hideTimeoutRef = React.useRef(null);
+        const isOverButtonRef = React.useRef(false);
         
         // position: 'left' or 'right'
         const icon = position === 'left' 
@@ -3490,6 +3492,24 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const title = position === 'left' 
           ? 'Show upstream (-1)' 
           : 'Show downstream (+1)';
+        
+        // Helper to clear any pending hide timeout
+        const clearHideTimeout = () => {
+          if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+          }
+        };
+        
+        // Helper to schedule hiding with delay
+        const scheduleHide = () => {
+          clearHideTimeout();
+          hideTimeoutRef.current = setTimeout(() => {
+            if (!isOverButtonRef.current) {
+              setIsVisible(false);
+            }
+          }, 150); // 150ms grace period to reach the button
+        };
         
         // Listen for hover on parent node
         React.useEffect(() => {
@@ -3516,17 +3536,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             if (isExpandedCard && e.target.closest('.graph-child-item')) {
               return;
             }
+            clearHideTimeout();
             updateButtonPosition();
             setIsVisible(true);
           };
           
           const hideButtons = (e) => {
-            // Don't hide if moving to the portal button
-            const relatedTarget = e.relatedTarget;
-            if (relatedTarget && relatedTarget.closest && relatedTarget.closest('.node-hover-actions-portal')) {
-              return;
-            }
-            setIsVisible(false);
+            // Schedule hide with delay to allow moving to the button
+            scheduleHide();
           };
           
           // For expanded cards, track mouse movement to show/hide based on child hover
@@ -3535,8 +3552,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             const isOverChild = e.target.closest('.graph-child-item');
             if (isOverChild) {
-              setIsVisible(false);
+              scheduleHide();
             } else {
+              clearHideTimeout();
               updateButtonPosition();
               setIsVisible(true);
             }
@@ -3555,8 +3573,21 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             if (isExpandedCard) {
               parentNode.removeEventListener('mousemove', handleMouseMove);
             }
+            clearHideTimeout();
           };
         }, [position]);
+        
+        // Handle button hover
+        const handleButtonMouseEnter = () => {
+          isOverButtonRef.current = true;
+          clearHideTimeout();
+          setIsVisible(true);
+        };
+        
+        const handleButtonMouseLeave = () => {
+          isOverButtonRef.current = false;
+          scheduleHide();
+        };
         
         // Invisible marker to find parent node
         const marker = React.createElement('span', {
@@ -3574,8 +3605,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               left: buttonPosition.left,
               zIndex: 99998
             },
-            onMouseEnter: () => setIsVisible(true),
-            onMouseLeave: () => setIsVisible(false),
+            onMouseEnter: handleButtonMouseEnter,
+            onMouseLeave: handleButtonMouseLeave,
             onClick: (e) => e.stopPropagation()
           },
             React.createElement('button', {
