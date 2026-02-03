@@ -193,6 +193,38 @@
           setTimeout(updateConnectionOverflow, 350);
         });
 
+        // Graph view: Collapse/Expand all groups button
+        const graphCollapseExpandBtn = document.getElementById('graph-collapse-expand-all');
+        
+        function updateGraphCollapseExpandButton() {
+          if (!graphCollapseExpandBtn) return;
+          
+          const state = window.getGraphGroupsCollapseState ? window.getGraphGroupsCollapseState() : { allCollapsed: false };
+          const img = graphCollapseExpandBtn.querySelector('img');
+          
+          if (state.allCollapsed) {
+            img.src = './img/chevrons-expand.svg';
+            img.alt = 'Expand all';
+            graphCollapseExpandBtn.title = 'Expand all groups';
+          } else {
+            img.src = './img/chevrons-collapse.svg';
+            img.alt = 'Collapse all';
+            graphCollapseExpandBtn.title = 'Collapse all groups';
+          }
+        }
+        
+        if (graphCollapseExpandBtn) {
+          graphCollapseExpandBtn.addEventListener('click', () => {
+            if (window.toggleGraphGroupsCollapse) {
+              const result = window.toggleGraphGroupsCollapse();
+              updateGraphCollapseExpandButton();
+            }
+          });
+        }
+        
+        // Expose the update function for React to call when state changes
+        window.updateGraphCollapseExpandButton = updateGraphCollapseExpandButton;
+
         // Hover highlighting for connected objects
         const allItems = document.querySelectorAll('.group-list li');
         
@@ -656,14 +688,15 @@
         const panelColumnClose = document.getElementById('panelColumnClose');
         const panelIcon = document.getElementById('panelIcon');
         const panelTitle = document.getElementById('panelTitle');
+        const panelPath = document.getElementById('panelPath');
         const panelComment = document.getElementById('panelComment');
         const panelOwner = document.getElementById('panelOwner');
         const panelCreated = document.getElementById('panelCreated');
         const panelQuality = document.getElementById('panelQuality');
         const panelColumnCount = document.getElementById('panelColumnCount');
+        const panelColumnCountLabel = document.getElementById('panelColumnCountLabel');
         const panelTags = document.getElementById('panelTags');
-        const panelColumns = document.getElementById('panelColumns');
-        const panelColumnsSearch = document.getElementById('panelColumnsSearch');
+        const panelDynamicSections = document.getElementById('panelDynamicSections');
         // Edge panel elements
         const panelEdgeTitle = document.getElementById('panelEdgeTitle');
         const panelQueryType = document.getElementById('panelQueryType');
@@ -681,6 +714,7 @@
         const panelTasksContent = document.getElementById('panelTasksContent');
         // Column panel elements
         const panelColumnTitle = document.getElementById('panelColumnTitle');
+        const panelColumnPath = document.getElementById('panelColumnPath');
         const panelColumnTypeIcon = document.getElementById('panelColumnTypeIcon');
         const panelColumnDescription = document.getElementById('panelColumnDescription');
         const panelColumnType = document.getElementById('panelColumnType');
@@ -772,6 +806,8 @@
               header.style.left = containerLeft + 'px';
               header.style.width = containerWidth + 'px';
               header.style.zIndex = 1000 + index;
+              header.classList.add('is-sticky-top');
+              header.classList.remove('is-sticky-bottom');
             } else if (shouldStickBottom) {
               // Stick to bottom
               placeholder.style.height = PANEL_HEADER_PLACEHOLDER_HEIGHT + 'px';
@@ -781,6 +817,12 @@
               header.style.left = containerLeft + 'px';
               header.style.width = containerWidth + 'px';
               header.style.zIndex = 1000 + (totalHeaders - index);
+              header.classList.remove('is-sticky-top');
+              header.classList.add('is-sticky-bottom');
+            } else {
+              // Natural position
+              header.classList.remove('is-sticky-top');
+              header.classList.remove('is-sticky-bottom');
             }
             // If neither, header stays in natural position (already reset above)
           });
@@ -806,71 +848,72 @@
         // Initialize scroll listeners
         initPanelStickyHeaders();
         
-        // Setup section header click to scroll section to top
-        document.querySelectorAll('.panel-section-header').forEach(header => {
-          header.addEventListener('click', function(e) {
-            // Don't scroll if clicking on the chevron button
-            if (e.target.closest('.panel-section-chevron-btn')) return;
-            
-            const group = this.closest('.panel-section-group');
-            const panelContent = this.closest('.panel-content');
-            if (!group || !panelContent) return;
-            
-            // Get visible groups to calculate target scroll position
-            const sectionGroups = Array.from(panelContent.querySelectorAll('.panel-section-group'));
-            const visibleGroups = sectionGroups.filter(g => {
-              const style = window.getComputedStyle(g);
-              return style.display !== 'none';
-            });
-            
-            const index = visibleGroups.indexOf(group);
-            if (index === -1) return;
-            
-            // Reset all placeholders to get accurate group positions
-            visibleGroups.forEach(g => {
-              const placeholder = g.querySelector('.panel-header-placeholder');
-              if (placeholder) placeholder.style.height = '0px';
-              const h = g.querySelector('.panel-section-header');
-              if (h) {
-                h.style.position = 'relative';
-                h.style.top = '';
-                h.style.left = '';
-                h.style.width = '';
-              }
-            });
-            
-            // Calculate scroll position: position the placeholder at the edge of scroll area
-            // Headers 0 to index will all be sticky, taking (index + 1) * PANEL_HEADER_HEIGHT
-            // The placeholder should meet right at that edge
-            const targetScrollTop = group.offsetTop - ((index + 1) * PANEL_HEADER_HEIGHT);
-            panelContent.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
-            
-            // Update sticky headers after scroll
-            setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
-            setTimeout(() => updatePanelStickyHeaders(panelContent), 100);
-            setTimeout(() => updatePanelStickyHeaders(panelContent), 300);
-            setTimeout(() => updatePanelStickyHeaders(panelContent), 500);
+        // Helper function to scroll a section to top
+        function scrollSectionToTop(group) {
+          const panelContent = group.closest('.panel-content');
+          if (!panelContent) return;
+          
+          // Get visible groups to calculate target scroll position
+          const sectionGroups = Array.from(panelContent.querySelectorAll('.panel-section-group'));
+          const visibleGroups = sectionGroups.filter(g => {
+            const style = window.getComputedStyle(g);
+            return style.display !== 'none';
           });
-        });
-        
-        // Setup chevron button click to toggle collapse/expand
-        document.querySelectorAll('.panel-section-chevron-btn').forEach(btn => {
-          btn.addEventListener('click', function(e) {
-            e.stopPropagation(); // Prevent header click from firing
-            
-            const group = this.closest('.panel-collapsible');
-            if (group) {
-              const isCollapsed = group.getAttribute('data-collapsed') === 'true';
-              group.setAttribute('data-collapsed', !isCollapsed);
-              
-              // Update sticky headers after collapse/expand animation
-              const panelContent = group.closest('.panel-content');
-              setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
-              setTimeout(() => updatePanelStickyHeaders(panelContent), 50);
-              setTimeout(() => updatePanelStickyHeaders(panelContent), 150);
+          
+          const index = visibleGroups.indexOf(group);
+          if (index === -1) return;
+          
+          // Reset all placeholders to get accurate group positions
+          visibleGroups.forEach(g => {
+            const placeholder = g.querySelector('.panel-header-placeholder');
+            if (placeholder) placeholder.style.height = '0px';
+            const h = g.querySelector('.panel-section-header');
+            if (h) {
+              h.style.position = 'relative';
+              h.style.top = '';
+              h.style.left = '';
+              h.style.width = '';
+              h.classList.remove('is-sticky-top', 'is-sticky-bottom');
             }
           });
-        });
+          
+          // Calculate scroll position: position the placeholder at the edge of scroll area
+          // Headers 0 to index will all be sticky, taking (index + 1) * PANEL_HEADER_HEIGHT
+          // The placeholder should meet right at that edge
+          const targetScrollTop = group.offsetTop - ((index + 1) * PANEL_HEADER_HEIGHT);
+          panelContent.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+          
+          // Update sticky headers after scroll
+          setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
+          setTimeout(() => updatePanelStickyHeaders(panelContent), 100);
+          setTimeout(() => updatePanelStickyHeaders(panelContent), 300);
+          setTimeout(() => updatePanelStickyHeaders(panelContent), 500);
+        }
+        
+        // Helper function to attach click handlers to section headers within a container
+        function attachSectionHeaderHandlers(container) {
+          container.querySelectorAll('.panel-section-header').forEach(header => {
+            header.addEventListener('click', function(e) {
+              // Don't scroll if clicking on the chevron button
+              if (e.target.closest('.panel-section-chevron-btn')) return;
+              
+              const group = this.closest('.panel-section-group');
+              if (group) scrollSectionToTop(group);
+            });
+          });
+          
+          container.querySelectorAll('.panel-section-chevron-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+              e.stopPropagation(); // Prevent header click from firing
+              
+              const group = this.closest('.panel-section-group');
+              if (group) scrollSectionToTop(group);
+            });
+          });
+        }
+        
+        // Setup section header click handlers for existing sections
+        attachSectionHeaderHandlers(document);
         
         // Setup edge panel close button
         if (panelEdgeClose) {
@@ -1049,6 +1092,45 @@
             panelTitle.textContent = itemData.name || 'Unknown';
             panelIcon.src = itemData.icon || './img/ui/table.svg';
             
+            // Path - show for Snowflake DB/Schema objects and external platform objects
+            // Skip for External APIs and Exports
+            if (itemData.database && itemData.schemaName) {
+              // Snowflake DB/Schema path: [snowflake icon] [db icon] DB_NAME / [schema icon] SCHEMA_NAME
+              panelPath.innerHTML = `
+                <img class="panel-header-path-icon" src="${itemData.sourceIcon || './img/logo-snowflake.svg'}" alt="Source">
+                <img class="panel-header-path-icon" src="./img/ui/database.svg" alt="Database">
+                <span class="panel-header-path-text">${itemData.database}</span>
+                <span class="panel-header-path-separator">/</span>
+                <img class="panel-header-path-icon" src="./img/ui/schema.svg" alt="Schema">
+                <span class="panel-header-path-text">${itemData.schemaName}</span>
+              `;
+              panelPath.classList.remove('hidden');
+            } else if (itemData.platform && itemData.platform !== 'External APIs' && itemData.platform !== 'Exports') {
+              // External platform path: [source icon] Source name / Object type
+              const objTypeLabels = {
+                'DASHBOARD': 'Dashboards',
+                'MODEL': 'Models',
+                'TABLE': 'Tables',
+                'VIEW': 'Views',
+                'DATASET': 'Datasets',
+                'API': 'APIs',
+                'EXTERNAL': 'External',
+                'STAGE': 'Stages'
+              };
+              const objTypeLabel = objTypeLabels[itemData.objType] || itemData.objType || 'Objects';
+              panelPath.innerHTML = `
+                <img class="panel-header-path-icon" src="${itemData.platformIcon || './img/api.svg'}" alt="Platform">
+                <span class="panel-header-path-text">${itemData.platform}</span>
+                <span class="panel-header-path-separator">/</span>
+                <span class="panel-header-path-text">${objTypeLabel}</span>
+              `;
+              panelPath.classList.remove('hidden');
+            } else {
+              // Hide path for External APIs and Exports
+              panelPath.innerHTML = '';
+              panelPath.classList.add('hidden');
+            }
+            
             // Comment/Description
             panelComment.textContent = itemData.description || itemData.comment || '—';
             
@@ -1061,9 +1143,25 @@
             // Data quality
             panelQuality.textContent = itemData.dataQuality || '—';
             
-            // Column count
-            const columns = itemData.columns || itemData.features || [];
-            panelColumnCount.textContent = columns.length > 0 ? columns.length.toString() : '—';
+            // Count for details section - show primary data type count with dynamic label
+            const columns = itemData.columns || [];
+            const features = itemData.features || [];
+            const outputs = itemData.outputs || [];
+            
+            // Determine label and count based on object type
+            let countLabel = 'Columns';
+            let primaryCount = columns.length;
+            
+            if (features.length > 0) {
+              countLabel = 'Features';
+              primaryCount = features.length;
+            } else if (columns.length === 0 && outputs.length > 0) {
+              countLabel = 'Outputs';
+              primaryCount = outputs.length;
+            }
+            
+            panelColumnCountLabel.textContent = countLabel;
+            panelColumnCount.textContent = primaryCount > 0 ? primaryCount.toString() : '—';
             
             // Tags
             if (itemData.tags && itemData.tags.length > 0) {
@@ -1080,34 +1178,129 @@
               panelTags.textContent = '—';
             }
             
-            // Columns list
-            if (columns.length > 0) {
-              panelColumns.innerHTML = columns.map(col => {
-                const iconSrc = getPanelColumnIcon(col.type);
-                const keyIcon = col.isPrimaryKey ? '<img src="img/ui/ownership.svg" class="panel-column-key" title="Primary Key">' :
-                               col.isForeignKey ? '<img src="img/ui/format-link.svg" class="panel-column-key" title="Foreign Key">' : '';
-                return `<div class="panel-column-item">
-                  <img src="${iconSrc}" class="panel-column-icon" alt="${col.type || 'column'}">
-                  <span class="panel-column-name">${col.name}</span>
+            // Dynamic sections based on object type
+            const currentItemId = itemData.id;
+            
+            // Helper function to generate a list section
+            function generateListSection(sectionId, title, items, emptyMessage, searchPlaceholder, isClickable = false) {
+              if (!items || items.length === 0) {
+                return `
+                  <div class="panel-section-group panel-collapsible" data-collapsed="false" data-section="${sectionId}">
+                    <div class="panel-section-header">
+                      <span class="panel-section-title">${title}</span>
+                      <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                        <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
+                      </button>
+                    </div>
+                    <div class="panel-section-content">
+                      <div class="panel-column-empty">${emptyMessage}</div>
+                    </div>
+                  </div>
+                `;
+              }
+              
+              const itemsHtml = items.map(item => {
+                const iconSrc = getPanelColumnIcon(item.type);
+                const keyIcon = item.isPrimaryKey ? '<img src="img/ui/ownership.svg" class="panel-column-key" title="Primary Key">' :
+                               item.isForeignKey ? '<img src="img/ui/format-link.svg" class="panel-column-key" title="Foreign Key">' : '';
+                const importanceHtml = item.importance !== undefined ? 
+                  `<span class="panel-column-importance" title="Feature importance">${(item.importance * 100).toFixed(0)}%</span>` : '';
+                const clickableClass = isClickable ? 'panel-column-item-clickable' : '';
+                const dataAttrs = isClickable ? `data-column-name="${item.name}" data-item-id="${currentItemId}"` : '';
+                
+                return `<div class="panel-column-item ${clickableClass}" ${dataAttrs}>
+                  <img src="${iconSrc}" class="panel-column-icon" alt="${item.type || 'item'}">
+                  <span class="panel-column-name">${item.name}</span>
                   ${keyIcon}
+                  ${importanceHtml}
                 </div>`;
               }).join('');
-            } else {
-              panelColumns.innerHTML = '<div class="panel-column-empty">No columns</div>';
+              
+              return `
+                <div class="panel-section-group panel-collapsible" data-collapsed="false" data-section="${sectionId}">
+                  <div class="panel-section-header">
+                    <span class="panel-section-title">${title}</span>
+                    <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                      <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
+                    </button>
+                  </div>
+                  <div class="panel-section-content">
+                    <div class="panel-search">
+                      <input type="text" placeholder="${searchPlaceholder}" class="panel-list-search" data-section="${sectionId}">
+                    </div>
+                    <div class="panel-column-list" data-section="${sectionId}">
+                      ${itemsHtml}
+                    </div>
+                  </div>
+                </div>
+              `;
             }
             
-            // Setup column search filtering
-            if (panelColumnsSearch) {
-              panelColumnsSearch.value = '';
-              panelColumnsSearch.oninput = function() {
-                const query = this.value.toLowerCase();
-                const items = panelColumns.querySelectorAll('.panel-column-item');
-                items.forEach(item => {
-                  const name = item.querySelector('.panel-column-name')?.textContent.toLowerCase() || '';
-                  item.style.display = name.includes(query) ? 'flex' : 'none';
-                });
-              };
+            // Generate sections based on available data
+            let sectionsHtml = '';
+            
+            if (columns.length > 0) {
+              // Show Columns section for tables, views, datasets, dashboards, etc.
+              sectionsHtml += generateListSection('columns', 'Columns', columns, 'No columns', 'Search columns', true);
             }
+            
+            if (features.length > 0) {
+              // Show Features section for ML models
+              sectionsHtml += generateListSection('features', 'Features', features, 'No features', 'Search features', true);
+            }
+            
+            if (outputs.length > 0) {
+              // Show Outputs section for ML models
+              sectionsHtml += generateListSection('outputs', 'Outputs', outputs, 'No outputs', 'Search outputs', true);
+            }
+            
+            // If no sections, show a default empty message
+            if (!sectionsHtml) {
+              sectionsHtml = `
+                <div class="panel-section-group panel-collapsible" data-collapsed="false">
+                  <div class="panel-section-header">
+                    <span class="panel-section-title">Columns</span>
+                    <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                      <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
+                    </button>
+                  </div>
+                  <div class="panel-section-content">
+                    <div class="panel-column-empty">No columns</div>
+                  </div>
+                </div>
+              `;
+            }
+            
+            panelDynamicSections.innerHTML = sectionsHtml;
+            
+            // Attach section header click handlers for scrolling
+            attachSectionHeaderHandlers(panelDynamicSections);
+            
+            // Add click handlers to select column/feature in graph view
+            panelDynamicSections.querySelectorAll('.panel-column-item-clickable').forEach(item => {
+              item.addEventListener('click', function() {
+                const columnName = this.dataset.columnName;
+                const itemId = this.dataset.itemId;
+                if (columnName && itemId && window.selectColumn) {
+                  window.selectColumn(itemId, columnName);
+                }
+              });
+            });
+            
+            // Setup search filtering for all list sections
+            panelDynamicSections.querySelectorAll('.panel-list-search').forEach(searchInput => {
+              searchInput.addEventListener('input', function() {
+                const sectionId = this.dataset.section;
+                const query = this.value.toLowerCase();
+                const list = panelDynamicSections.querySelector(`.panel-column-list[data-section="${sectionId}"]`);
+                if (list) {
+                  list.querySelectorAll('.panel-column-item').forEach(item => {
+                    const name = item.querySelector('.panel-column-name')?.textContent.toLowerCase() || '';
+                    item.style.display = name.includes(query) ? 'flex' : 'none';
+                  });
+                }
+              });
+            });
             
             sidePanel.classList.remove('hidden');
             // Update sticky headers for the visible panel (multiple retries like depth headers)
@@ -1130,7 +1323,7 @@
             // Truncate names for title
             const sourceName = sourceItem.name || 'Source';
             const targetName = targetItem.name || 'Target';
-            panelEdgeTitle.textContent = `${sourceName} to ${targetName}`;
+            panelEdgeTitle.innerHTML = `${sourceName} <img src="./img/ui/arrow-right.svg" class="panel-title-arrow" alt="to"> ${targetName}`;
             
             // Edge details - use edgeData if available, otherwise defaults
             const data = edgeData || {};
@@ -1178,7 +1371,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <span class="panel-lineage-column-name">
                           ${proc.name}
                         </span>
-                        <a class="panel-lineage-goto" href="#" title="View details">
+                        <a class="panel-lineage-goto" href="#" title="Open in Horizon Catalog">
                           <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
                         </a>
                         <span class="panel-lineage-item-name">${proc.schema}</span>
@@ -1209,7 +1402,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <span class="panel-lineage-column-name">
                           ${task.name}
                         </span>
-                        <a class="panel-lineage-goto" href="#" title="View details">
+                        <a class="panel-lineage-goto" href="#" title="Open in Horizon Catalog">
                           <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
                         </a>
                         <span class="panel-lineage-item-name">${task.type}</span>
@@ -1248,6 +1441,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             // Header
             panelColumnTitle.textContent = columnData.name || 'Unknown Column';
             panelColumnTypeIcon.src = getPanelColumnIcon(columnData.type);
+            
+            // Path - show parent object
+            if (parentItem) {
+              panelColumnPath.innerHTML = `
+                <img class="panel-header-path-icon" src="${parentItem.icon || './img/ui/table.svg'}" alt="Parent">
+                <span class="panel-header-path-text">${parentItem.name || 'Unknown'}</span>
+              `;
+            } else {
+              panelColumnPath.innerHTML = '';
+            }
             
             // Description
             panelColumnDescription.textContent = columnData.description || '—';
@@ -1298,6 +1501,21 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             // Get item map for looking up names
             const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
             
+            // Get column leaf status for visual indicators
+            const columnLeafStatus = window.columnLeafStatus || { hasUpstream: new Map(), hasDownstream: new Map() };
+            
+            // Helper to get leaf classes for a column
+            const getLeafClasses = (itemId, columnName) => {
+              const isLeafUpstream = !columnLeafStatus.hasUpstream?.has(itemId) || 
+                                     !columnLeafStatus.hasUpstream.get(itemId).has(columnName);
+              const isLeafDownstream = !columnLeafStatus.hasDownstream?.has(itemId) || 
+                                       !columnLeafStatus.hasDownstream.get(itemId).has(columnName);
+              return [
+                isLeafUpstream ? 'leaf-upstream' : '',
+                isLeafDownstream ? 'leaf-downstream' : ''
+              ].filter(Boolean).join(' ');
+            };
+            
             // Render upstream list
             panelColumnUpstreamTitle.textContent = `Upstream columns (${upstreamColumns.length})`;
             if (upstreamColumns.length > 0) {
@@ -1307,23 +1525,22 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 const columnDef = item?.columns?.find(c => c.name === col.columnName);
                 const columnType = columnDef?.type || 'STRING';
                 const typeIcon = window.getColumnTypeIcon ? window.getColumnTypeIcon(columnType) : 'img/ui/column-single.svg';
-                return `<div class="panel-lineage-item">
+                const leafClasses = getLeafClasses(col.itemId, col.columnName);
+                return `<div class="panel-lineage-item panel-lineage-item-clickable ${leafClasses}" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Select column">
                     <div class="panel-lineage-column-header">
                       <span class="panel-lineage-column-name">
                         <img class="panel-lineage-type-icon" src="${typeIcon}" width="16" height="16" alt="${columnType}">
                         ${col.columnName}
                       </span>
-                      <a class="panel-lineage-goto" href="#" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Go to column">
+                      <a class="panel-lineage-goto" href="#" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Open in Horizon Catalog">
                         <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
                       </a>
                       <span class="panel-lineage-item-name">${itemName}</span>
                     </div>
                     <div class="panel-lineage-column-info">
-                      
                       <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
                     </div>
-                  </div>
-                </div>`;
+                  </div>`;
               }).join('');
             } else {
               panelColumnUpstreamList.innerHTML = '<div class="panel-empty-state">No upstream columns</div>';
@@ -1338,23 +1555,22 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 const columnDef = item?.columns?.find(c => c.name === col.columnName);
                 const columnType = columnDef?.type || 'STRING';
                 const typeIcon = window.getColumnTypeIcon ? window.getColumnTypeIcon(columnType) : 'img/ui/column-single.svg';
-                return `<div class="panel-lineage-item">
+                const leafClasses = getLeafClasses(col.itemId, col.columnName);
+                return `<div class="panel-lineage-item panel-lineage-item-clickable ${leafClasses}" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Select column">
                     <div class="panel-lineage-column-header">
                       <span class="panel-lineage-column-name">
                         <img class="panel-lineage-type-icon" src="${typeIcon}" width="16" height="16" alt="${columnType}">
                         ${col.columnName}
                       </span>
-                      <a class="panel-lineage-goto" href="#" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Go to column">
+                      <a class="panel-lineage-goto" href="#" data-item-id="${col.itemId}" data-column-name="${col.columnName}" title="Open in Horizon Catalog">
                         <img src="./img/ui/goto.svg" width="16" height="16" alt="Go to">
                       </a>
                       <span class="panel-lineage-item-name">${itemName}</span>
                     </div>
                     <div class="panel-lineage-column-info">
-                      
                       <span class="panel-lineage-transform">${col.transformType || 'DIRECT'}</span>
                     </div>
-                  </div>
-                </div>`;
+                  </div>`;
               }).join('');
             } else {
               panelColumnDownstreamList.innerHTML = '<div class="panel-empty-state">No downstream columns</div>';
@@ -1367,6 +1583,37 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             setTimeout(() => updatePanelStickyHeaders(panelContent), 10);
             setTimeout(() => updatePanelStickyHeaders(panelContent), 50);
             setTimeout(() => updatePanelStickyHeaders(panelContent), 100);
+            
+            // Setup click handlers for lineage items (entire row is clickable)
+            panelColumnView.querySelectorAll('.panel-lineage-item-clickable').forEach(item => {
+              item.addEventListener('click', function(e) {
+                // Prevent default if clicking on goto link
+                if (e.target.closest('.panel-lineage-goto')) {
+                  e.preventDefault();
+                }
+                
+                const targetItemId = this.dataset.itemId;
+                const targetColumnName = this.dataset.columnName;
+                if (!targetItemId || !targetColumnName) return;
+                
+                // Find the parent item data
+                const parentItem = itemMap.get(targetItemId);
+                if (parentItem) {
+                  // Find the column data within the parent item
+                  const columnData = parentItem.columns?.find(c => c.name === targetColumnName) ||
+                                     parentItem.features?.find(f => f.name === targetColumnName) ||
+                                     { name: targetColumnName };
+                  
+                  // Select the column in graph view (triggers column lineage mode)
+                  if (window.selectColumn) {
+                    window.selectColumn(targetItemId, targetColumnName);
+                  }
+                  
+                  // Also update the side panel
+                  window.sharedSelection.updateColumnSidePanel(columnData, parentItem);
+                }
+              });
+            });
           }
         };
 
@@ -1377,11 +1624,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           for (const depth of window.mockLineageData.depths) {
             for (const group of depth.groups) {
-              // Some groups have items directly
+              // Some groups have items directly (platform groups)
               if (group.items) {
                 for (const item of group.items) {
                   if (item.name.toLowerCase().trim() === normalizedName) {
-                    return item;
+                    // Enrich with platform info
+                    return {
+                      ...item,
+                      platform: group.name,
+                      platformIcon: group.icon
+                    };
                   }
                 }
               }
@@ -1391,7 +1643,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                   if (schema.items) {
                     for (const item of schema.items) {
                       if (item.name.toLowerCase().trim() === normalizedName) {
-                        return item;
+                        // Enrich with database and schema info
+                        return {
+                          ...item,
+                          database: group.database,
+                          schemaName: schema.name,
+                          sourceIcon: group.icon
+                        };
                       }
                     }
                   }
@@ -1431,6 +1689,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               schemaName: fullItemData.schemaName,
               schema: fullItemData.schema || groupName,
               platform: fullItemData.platform,
+              sourceIcon: fullItemData.sourceIcon,
+              platformIcon: fullItemData.platformIcon,
               objType: fullItemData.objType,
               columns: fullItemData.columns,
               features: fullItemData.features,
@@ -1613,6 +1873,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           </div>
           <div class="toolbar-right">
             <button class="toolbar-btn icon-only list-view-only" id="collapse-expand-all" title="Collapse all groups" style="display: none;">
+              <img src="./img/chevrons-collapse.svg" alt="Collapse all" width="16" height="16">
+            </button>
+            <button class="toolbar-btn icon-only graph-view-only" id="graph-collapse-expand-all" title="Collapse all groups">
               <img src="./img/chevrons-collapse.svg" alt="Collapse all" width="16" height="16">
             </button>
             <button class="toolbar-btn icon-only graph-view-only" id="maximize-btn" title="Maximize">
@@ -2099,8 +2362,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       <!-- Object Panel View -->
       <div class="panel-view panel-object-view" id="panelObjectView">
         <div class="panel-header">
-          <img class="panel-header-icon" id="panelIcon" src="./img/ui/table.svg" alt="">
-          <span class="panel-header-title" id="panelTitle">Object Name</span>
+          <div class="panel-header-main">
+            <div class="panel-header-path hidden" id="panelPath">
+              <!-- Path will be populated dynamically -->
+            </div>
+            <div class="panel-header-title-row">
+              <img class="panel-header-icon" id="panelIcon" src="./img/ui/table.svg" alt="">
+              <span class="panel-header-title" id="panelTitle">Object Name</span>
+            </div>
+          </div>
           <div class="panel-header-actions">
             <button class="panel-close" id="panelClose" aria-label="Close panel">
               <img src="./img/ui/clear.svg" width="16" height="16" alt="Close">
@@ -2109,12 +2379,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         </div>
         <div class="panel-content">
           <!-- Details Section -->
-          <div class="panel-section-group panel-collapsible" data-collapsed="false">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelDetailsSection">
             <div class="panel-section-header">
               <span class="panel-section-title">Details</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content">
@@ -2135,8 +2404,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                   <span class="panel-detail-label">Data Quality</span>
                   <span class="panel-detail-value" id="panelQuality">—</span>
                 </div>
-                <div class="panel-detail-row">
-                  <span class="panel-detail-label">Columns</span>
+                <div class="panel-detail-row" id="panelColumnCountRow">
+                  <span class="panel-detail-label" id="panelColumnCountLabel">Columns</span>
                   <span class="panel-detail-value" id="panelColumnCount">—</span>
                 </div>
                 <div class="panel-detail-row">
@@ -2147,23 +2416,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             </div>
           </div>
           
-          <!-- Columns Section -->
-          <div class="panel-section-group panel-columns-section panel-collapsible" data-collapsed="false">
-            <div class="panel-section-header">
-              <span class="panel-section-title">Columns</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
-              </button>
-            </div>
-            <div class="panel-section-content">
-              <div class="panel-search">
-                <input type="text" placeholder="Search columns" id="panelColumnsSearch">
-              </div>
-              <div class="panel-column-list" id="panelColumns">
-                <div class="panel-column-item"><span class="panel-column-icon">⏱</span> PTIME</div>
-              </div>
-            </div>
+          <!-- Dynamic Sections (Columns, Features, Outputs, etc.) -->
+          <div id="panelDynamicSections">
+            <!-- Sections will be populated dynamically based on object type -->
           </div>
         </div>
       </div>
@@ -2180,12 +2435,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         </div>
         <div class="panel-content">
           <!-- Details Section -->
-          <div class="panel-section-group panel-collapsible" data-collapsed="false">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelEdgeDetailsSection">
             <div class="panel-section-header">
               <span class="panel-section-title">Details</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content">
@@ -2229,9 +2483,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-section-group panel-collapsible" data-collapsed="false">
             <div class="panel-section-header">
               <span class="panel-section-title">SQL Query</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content">
@@ -2243,9 +2496,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelStoredProcsSection">
             <div class="panel-section-header">
               <span class="panel-section-title" id="panelStoredProcsTitle">Stored procedures (0)</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content" id="panelStoredProcsContent">
@@ -2257,9 +2509,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelTasksSection">
             <div class="panel-section-header">
               <span class="panel-section-title" id="panelTasksTitle">Tasks (0)</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content" id="panelTasksContent">
@@ -2272,10 +2523,17 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       <!-- Column Panel View -->
       <div class="panel-view panel-column-view hidden" id="panelColumnView">
         <div class="panel-header">
-          <div class="panel-header-icon-wrapper">
-            <img class="panel-header-icon" id="panelColumnTypeIcon" src="./img/ui/type-string.svg" alt="">
+          <div class="panel-header-main">
+            <div class="panel-header-path" id="panelColumnPath">
+              <!-- Path will be populated dynamically -->
+            </div>
+            <div class="panel-header-title-row">
+              <div class="panel-header-icon-wrapper">
+                <img class="panel-header-icon" id="panelColumnTypeIcon" src="./img/ui/type-string.svg" alt="">
+              </div>
+              <span class="panel-header-title" id="panelColumnTitle">Column Name</span>
+            </div>
           </div>
-          <span class="panel-header-title" id="panelColumnTitle">Column Name</span>
           <div class="panel-header-actions">
             <button class="panel-close" id="panelColumnClose" aria-label="Close panel">
               <img src="./img/ui/clear.svg" width="16" height="16" alt="Close">
@@ -2284,12 +2542,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         </div>
         <div class="panel-content">
           <!-- Column Details Section -->
-          <div class="panel-section-group panel-collapsible" data-collapsed="false">
+          <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnDetailsSection">
             <div class="panel-section-header">
               <span class="panel-section-title">Details</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content">
@@ -2318,9 +2575,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnUpstreamSection">
             <div class="panel-section-header">
               <span class="panel-section-title" id="panelColumnUpstreamTitle">Upstream columns (0)</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content">
@@ -2334,9 +2590,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-section-group panel-collapsible" data-collapsed="false" id="panelColumnDownstreamSection">
             <div class="panel-section-header">
               <span class="panel-section-title" id="panelColumnDownstreamTitle">Downstream columns (0)</span>
-              <button class="panel-section-chevron-btn" aria-label="Toggle section">
-                <img class="panel-section-collapse-icon" src="./img/ui/chevrons-collapse.svg" width="16" height="16" alt="Collapse">
-                <img class="panel-section-expand-icon" src="./img/ui/chevrons-expand.svg" width="16" height="16" alt="Expand">
+              <button class="panel-section-chevron-btn" aria-label="Scroll to section">
+                <img src="./img/ui/chevron-up.svg" width="16" height="16" alt="Go to top">
               </button>
             </div>
             <div class="panel-section-content">
@@ -2423,6 +2678,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       
       // Build column leaf status from column lineage data
       const columnLeafStatus = buildColumnLeafStatus(window.columnLineage || []);
+      // Expose to window for side panel access
+      window.columnLeafStatus = columnLeafStatus;
 
       // =============================================
       // Data source color definitions
@@ -3914,7 +4171,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 const enrichedItems = schema.items.map(item => ({
                   ...item,
                   database: group.database,
-                  schemaName: schema.name
+                  schemaName: schema.name,
+                  sourceIcon: group.icon
                 }));
                 
                 nodes.push({
@@ -3963,7 +4221,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               // Enrich items with platform info
               const enrichedPlatformItems = group.items.map(item => ({
                 ...item,
-                platform: group.name
+                platform: group.name,
+                platformIcon: group.icon
               }));
               
               nodes.push({
@@ -4111,6 +4370,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const [columnLineageEdges, setColumnLineageEdges] = useState([]); // Additional edges for column lineage
         const [hoverPreviewEdges, setHoverPreviewEdges] = useState([]); // Preview edges on column hover
         const lineageVersionRef = React.useRef(0); // Track lineage version to avoid stale updates
+        const relatedColumnsRef = React.useRef(new Map()); // Ref for relatedColumns to avoid stale closures
+        const selectedColumnLineageRef = React.useRef(null); // Ref for selectedColumnLineage to avoid stale closures
         
         const reactFlowInstance = useReactFlow();
 
@@ -4354,10 +4615,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               });
               
               if (targetNode) {
-                const currentZoom = reactFlowInstance.getZoom();
+                // Use responsive zoom level for consistency with initial load
+                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
                 const x = targetNode.position.x + (targetNode.width || 304) / 2;
                 const y = targetNode.position.y + (targetNode.height || 100) / 2;
-                reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
+                reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
               }
             }
             return;
@@ -4366,13 +4628,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Increment version to invalidate any pending edge updates
           lineageVersionRef.current += 1;
           
-          // Clear existing edges first when switching columns
-          setColumnLineageEdges([]);
+          // DON'T clear edges immediately - keep old edges visible until new ones are ready
+          // This avoids the "flash of no edges" problem
           
           // Enter column lineage mode
           setColumnLineageMode(true);
-          setSelectedColumnLineage({ itemId, columnName: childName });
+          const newSelectedColumnLineage = { itemId, columnName: childName };
+          setSelectedColumnLineage(newSelectedColumnLineage);
           setRelatedColumns(related);
+          
+          // Update refs immediately for use in setTimeout callbacks
+          selectedColumnLineageRef.current = newSelectedColumnLineage;
+          relatedColumnsRef.current = related;
           
           // Clear item selection
           setSelectedItem(null);
@@ -4416,10 +4683,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             });
             
             if (targetNode) {
-              const currentZoom = reactFlowInstance.getZoom();
+              // Use responsive zoom level for consistency with initial load
+              const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
               const x = targetNode.position.x + (targetNode.width || 304) / 2;
               const y = targetNode.position.y + (targetNode.height || 100) / 2;
-              reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
+              reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
             }
           }
           
@@ -4428,24 +4696,40 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, [columnLineageMode, selectedColumnLineage, reactFlowInstance, setEdges]);
         
         // Create column lineage edges AFTER items are expanded (handles must exist first)
+        // Uses polling approach to handle rapid column switches
         useEffect(() => {
           if (!columnLineageMode || !selectedColumnLineage || !reactFlowInstance) {
             return;
           }
           
-          const { itemId, columnName: childName } = selectedColumnLineage;
-          const lineage = window.columnLineage || [];
           const currentVersion = lineageVersionRef.current;
+          let cancelled = false;
+          let retryCount = 0;
+          const maxRetries = 20; // Increased to handle node data + handle readiness
+          const retryDelays = [20, 40, 60, 80, 100, 120, 150, 180, 220, 260, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750]; // Progressive delays
           
-          // Delay to ensure DOM has updated with expanded items and handles are rendered
-          const timeoutId = setTimeout(() => {
-            // Skip if version changed (user selected a different column)
-            if (lineageVersionRef.current !== currentVersion) {
-              console.log('Skipping stale edge update, version changed');
+          console.log('Column lineage edge effect triggered. Version:', currentVersion, 
+            'Column:', selectedColumnLineage?.itemId + '.' + selectedColumnLineage?.columnName);
+          
+          const createEdges = () => {
+            // Skip if cancelled or version changed
+            if (cancelled || lineageVersionRef.current !== currentVersion) {
+              console.log('Skipping edge creation - cancelled:', cancelled, 'version mismatch:', lineageVersionRef.current !== currentVersion);
               return;
             }
-            const newColumnEdges = [];
-            const visited = new Set();
+            
+            // Use refs to get the LATEST values (avoids stale closure issues)
+            const currentSelectedColumn = selectedColumnLineageRef.current;
+            const currentRelatedColumns = relatedColumnsRef.current;
+            
+            // Double-check we still have valid data
+            if (!currentSelectedColumn || !currentRelatedColumns) {
+              console.log('No selected column or related columns, skipping edge creation');
+              return;
+            }
+            
+            const { itemId, columnName: childName } = currentSelectedColumn;
+            const lineage = window.columnLineage || [];
             
             // Build a map from item ID to node ID by checking current nodes
             const itemToNodeMap = new Map();
@@ -4458,8 +4742,41 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               }
             });
             
-            console.log('Creating column lineage edges. Source:', itemId, childName);
-            console.log('Related columns:', Array.from(relatedColumns.entries()).map(([k, v]) => [k, Array.from(v)]));
+            // Check if node data has been updated with the current sourceColumn
+            // This is critical for same-table column switches where React batches updates
+            const sourceNode = currentNodes.find(node => 
+              node.data?.items?.some(item => item.id === itemId)
+            );
+            const nodeSourceColumn = sourceNode?.data?.sourceColumn;
+            const nodeDataIsStale = !nodeSourceColumn || 
+              nodeSourceColumn.itemId !== itemId || 
+              nodeSourceColumn.columnName !== childName;
+            
+            if (nodeDataIsStale && retryCount < maxRetries) {
+              retryCount++;
+              const delay = retryDelays[Math.min(retryCount - 1, retryDelays.length - 1)];
+              console.log(`Node data not yet updated (sourceColumn: ${nodeSourceColumn?.itemId}.${nodeSourceColumn?.columnName}, expected: ${itemId}.${childName}), retry ${retryCount}/${maxRetries} in ${delay}ms`);
+              setTimeout(createEdges, delay);
+              return;
+            }
+            
+            // Check if at least the source column handle exists (indicates DOM is ready)
+            const sourceColumnHandle = document.querySelector(`[data-handleid="column-out-${itemId}-${childName}"]`);
+            
+            // If source handle doesn't exist yet and we haven't exceeded retries, try again
+            if (!sourceColumnHandle && retryCount < maxRetries) {
+              retryCount++;
+              const delay = retryDelays[Math.min(retryCount - 1, retryDelays.length - 1)];
+              console.log(`Source handle not ready, retry ${retryCount}/${maxRetries} in ${delay}ms`);
+              setTimeout(createEdges, delay);
+              return;
+            }
+            
+            console.log('Creating column lineage edges. Source:', itemId, childName, 'Retry count:', retryCount);
+            console.log('Related columns:', Array.from(currentRelatedColumns.entries()).map(([k, v]) => [k, Array.from(v)]));
+            
+            const newColumnEdges = [];
+            const visited = new Set();
             
             // Build edges for all related columns
             const addEdgesForColumn = (srcItemId, srcColumnName) => {
@@ -4472,7 +4789,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               lineage.forEach(edge => {
                 if (edge.sourceTable === srcItemId && edge.sourceColumn === srcColumnName) {
                   // Check if target is in our related set OR is the originally selected column
-                  const isTargetRelated = relatedColumns.has(edge.targetTable) && relatedColumns.get(edge.targetTable).has(edge.targetColumn);
+                  const isTargetRelated = currentRelatedColumns.has(edge.targetTable) && currentRelatedColumns.get(edge.targetTable).has(edge.targetColumn);
                   const isTargetSelected = edge.targetTable === itemId && edge.targetColumn === childName;
                   
                   if (isTargetRelated || isTargetSelected) {
@@ -4482,23 +4799,30 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                       return;
                     }
                     
-                    const edgeId = `column-edge-${edge.id}`;
+                    // Include version in edge ID to ensure React Flow updates edges when switching columns
+                    // This prevents React Flow from reusing stale edge paths when handles change
+                    const edgeId = `column-edge-v${currentVersion}-${edge.id}`;
                     if (!visited.has(edgeId)) {
                       visited.add(edgeId);
                       
                       // Check if handles exist in DOM
-                      const sourceHandle = document.querySelector(`[data-handleid="column-out-${srcItemId}-${srcColumnName}"]`);
-                      const targetHandle = document.querySelector(`[data-handleid="column-in-${edge.targetTable}-${edge.targetColumn}"]`);
-                      console.log('  Edge:', srcItemId + '.' + srcColumnName, '->', edge.targetTable + '.' + edge.targetColumn,
-                        'Handles exist:', !!sourceHandle, !!targetHandle);
+                      const sourceHandleId = `column-out-${srcItemId}-${srcColumnName}`;
+                      const targetHandleId = `column-in-${edge.targetTable}-${edge.targetColumn}`;
+                      const sourceHandle = document.querySelector(`[data-handleid="${sourceHandleId}"]`);
+                      const targetHandle = document.querySelector(`[data-handleid="${targetHandleId}"]`);
                       
-                      // Use column handles if they exist, otherwise fall back to object handles
-                      const actualSourceHandle = sourceHandle 
-                        ? `column-out-${srcItemId}-${srcColumnName}` 
-                        : `right-${srcItemId}`;
-                      const actualTargetHandle = targetHandle 
-                        ? `column-in-${edge.targetTable}-${edge.targetColumn}` 
-                        : `left-${edge.targetTable}`;
+                      // Track if any handles are missing - we'll need to retry
+                      if (!sourceHandle || !targetHandle) {
+                        console.log(`  Edge ${edge.id}: handles missing - source: ${!!sourceHandle}, target: ${!!targetHandle}`);
+                        // Mark that we have missing handles
+                        if (!window._missingHandles) window._missingHandles = [];
+                        window._missingHandles.push({ sourceHandleId, targetHandleId, sourceExists: !!sourceHandle, targetExists: !!targetHandle });
+                      }
+                      
+                      // Always use column handles - don't fall back to object handles
+                      // Object handles don't connect visually to the column items
+                      const actualSourceHandle = sourceHandleId;
+                      const actualTargetHandle = targetHandleId;
                       
                       newColumnEdges.push({
                         id: edgeId,
@@ -4527,32 +4851,79 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               });
             };
             
+            // Reset missing handles tracker
+            window._missingHandles = [];
+            
             // Add edges from source column
             addEdgesForColumn(itemId, childName);
             
             // Add edges from all related columns (to get the full chain)
-            relatedColumns.forEach((columns, relatedItemId) => {
+            currentRelatedColumns.forEach((columns, relatedItemId) => {
               columns.forEach(colName => {
                 addEdgesForColumn(relatedItemId, colName);
               });
             });
             
-            console.log('Column lineage edges created:', newColumnEdges.length);
-            setColumnLineageEdges(newColumnEdges);
+            console.log('Column lineage edges created:', newColumnEdges.length, 'Missing handles:', window._missingHandles.length);
             
-            // Force a second update after handles are fully positioned
-            setTimeout(() => {
-              // Skip if version changed
-              if (lineageVersionRef.current !== currentVersion) {
-                console.log('Skipping stale force update, version changed');
-                return;
+            // If handles are missing and we haven't exceeded retries, wait and try again
+            if (window._missingHandles.length > 0 && retryCount < maxRetries) {
+              retryCount++;
+              const delay = retryDelays[Math.min(retryCount - 1, retryDelays.length - 1)];
+              console.log(`Handles missing for ${window._missingHandles.length} edges, retry ${retryCount}/${maxRetries} in ${delay}ms`);
+              setTimeout(createEdges, delay);
+              return;
+            }
+            
+            // Only update if we created edges or this is the final attempt
+            if (newColumnEdges.length > 0 || retryCount >= maxRetries) {
+              console.log('Setting column lineage edges:', newColumnEdges.map(e => e.id));
+              
+              // Mark these edges as column lineage edges so we can identify them later
+              const markedEdges = newColumnEdges.map(e => ({ ...e, data: { ...e.data, isColumnLineage: true } }));
+              
+              // Add column lineage edges directly to React Flow's edge state
+              // This ensures React Flow properly manages them internally
+              setEdges(currentEdges => {
+                // Remove any existing column lineage edges
+                const baseEdges = currentEdges.filter(e => !e.data?.isColumnLineage);
+                // Add new column lineage edges
+                return [...baseEdges, ...markedEdges];
+              });
+              
+              // Also update our local state for combinedEdges calculation
+              setColumnLineageEdges(newColumnEdges);
+              
+              // Schedule one more update to ensure edges are positioned correctly after handles settle
+              if (!cancelled && lineageVersionRef.current === currentVersion) {
+                setTimeout(() => {
+                  if (!cancelled && lineageVersionRef.current === currentVersion) {
+                    console.log('Final edge refresh');
+                    // Force React Flow to recalculate edge paths
+                    setEdges(currentEdges => {
+                      const baseEdges = currentEdges.filter(e => !e.data?.isColumnLineage);
+                      return [...baseEdges, ...markedEdges];
+                    });
+                    setColumnLineageEdges([...newColumnEdges]);
+                  }
+                }, 150);
               }
-              console.log('Force re-setting column lineage edges');
-              setColumnLineageEdges([...newColumnEdges]);
-            }, 200);
-          }, 350); // Delay for DOM to update
+            } else if (retryCount < maxRetries) {
+              // No edges created but might be because handles aren't ready - retry
+              retryCount++;
+              const delay = retryDelays[Math.min(retryCount - 1, retryDelays.length - 1)];
+              console.log(`No edges created, retry ${retryCount}/${maxRetries} in ${delay}ms`);
+              setTimeout(createEdges, delay);
+            }
+          };
           
-          return () => clearTimeout(timeoutId);
+          // Start edge creation with a small initial delay to let React commit changes
+          const initialTimeoutId = setTimeout(createEdges, 20);
+          
+          return () => {
+            cancelled = true;
+            clearTimeout(initialTimeoutId);
+          };
         }, [columnLineageMode, selectedColumnLineage, relatedColumns, expandedItems, reactFlowInstance]);
         
         // Exit column lineage mode
@@ -4561,10 +4932,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
+          // Remove column lineage edges from React Flow's edge state
+          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
           setExpandedItems({});
           setSelectedChildren({});
           setShowAllColumnsItems({}); // Reset show all columns state
-        }, []);
+          // Clear refs
+          selectedColumnLineageRef.current = null;
+          relatedColumnsRef.current = new Map();
+        }, [setEdges]);
 
         // Handle child hover - show preview of column lineage edges
         const handleChildHover = useCallback((itemId, childName) => {
@@ -4683,7 +5059,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
+          // Remove column lineage edges from React Flow's edge state
+          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
           setShowAllColumnsItems({});
+          // Clear refs
+          selectedColumnLineageRef.current = null;
+          relatedColumnsRef.current = new Map();
           
           // Clear ALL previous selections and highlights
           setSelectedEdge(null);
@@ -4725,6 +5106,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               schemaName: item.schemaName,
               schema: item.schema,
               platform: item.platform,
+              sourceIcon: item.sourceIcon,
+              platformIcon: item.platformIcon,
               objType: item.objType,
               columns: item.columns,
               features: item.features,
@@ -4762,7 +5145,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
+          // Remove column lineage edges from React Flow's edge state
+          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
           setShowAllColumnsItems({});
+          // Clear refs
+          selectedColumnLineageRef.current = null;
+          relatedColumnsRef.current = new Map();
           setHoveredChild(null);
           setHoverPreviewEdges([]);
           
@@ -4886,6 +5274,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                     schemaName: focalItem.schemaName,
                     schema: focalItem.schema,
                     platform: focalItem.platform,
+                    sourceIcon: focalItem.sourceIcon,
+                    platformIcon: focalItem.platformIcon,
                     objType: focalItem.objType,
                     columns: focalItem.columns,
                     features: focalItem.features,
@@ -4905,8 +5295,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               
               // Center after a short delay to allow side panel to open and layout to settle
               setTimeout(() => {
-                console.log('onInit - centering to:', { x, y });
-                instance.setCenter(x, y, { zoom: 0.875, duration: 300 });
+                // Use smaller zoom for narrower screens
+                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
+                console.log('onInit - centering to:', { x, y, zoomLevel });
+                instance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
               }, 50);
             }
           }, 100);
@@ -5215,6 +5607,129 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
         }, [reactFlowInstance, selectedItem]);
 
+        // Handle window resize to adjust zoom level at breakpoint
+        useEffect(() => {
+          if (!reactFlowInstance) return;
+          
+          let lastBreakpointState = window.innerWidth < 1112;
+          
+          const handleResize = () => {
+            const isNarrow = window.innerWidth < 1112;
+            
+            // Only update zoom if we crossed the breakpoint
+            if (isNarrow !== lastBreakpointState) {
+              lastBreakpointState = isNarrow;
+              const newZoom = isNarrow ? 0.75 : 0.875;
+              const viewport = reactFlowInstance.getViewport();
+              reactFlowInstance.setViewport({ ...viewport, zoom: newZoom }, { duration: 300 });
+            }
+          };
+          
+          window.addEventListener('resize', handleResize);
+          
+          return () => {
+            window.removeEventListener('resize', handleResize);
+          };
+        }, [reactFlowInstance]);
+
+        // Expose global function to select a column (for side panel interaction)
+        useEffect(() => {
+          window.selectColumn = (itemId, columnName) => {
+            if (itemId && columnName) {
+              handleChildClick(itemId, columnName);
+            }
+          };
+          
+          return () => {
+            delete window.selectColumn;
+          };
+        }, [handleChildClick]);
+
+        // Expose global function to collapse/expand all graph groups
+        useEffect(() => {
+          window.toggleGraphGroupsCollapse = () => {
+            if (!reactFlowInstance) return { allCollapsed: false };
+            
+            const allNodes = reactFlowInstance.getNodes();
+            
+            // Count how many groups are collapsed vs expanded
+            let collapsedCount = 0;
+            let expandableCount = 0;
+            
+            allNodes.forEach(node => {
+              if (node.type === 'groupNode') {
+                expandableCount++;
+                const nodeState = collapseState[node.id] || {};
+                if (nodeState.dbCollapsed) collapsedCount++;
+              } else if (node.type === 'platformGroup') {
+                expandableCount++;
+                const nodeState = collapseState[node.id] || {};
+                if (nodeState.collapsed) collapsedCount++;
+              }
+            });
+            
+            // If all are collapsed, expand all. Otherwise, collapse all.
+            const allCollapsed = collapsedCount === expandableCount && expandableCount > 0;
+            
+            const newCollapseState = {};
+            allNodes.forEach(node => {
+              if (node.type === 'groupNode') {
+                newCollapseState[node.id] = {
+                  ...collapseState[node.id],
+                  dbCollapsed: !allCollapsed // collapse if not all collapsed, expand if all collapsed
+                };
+              } else if (node.type === 'platformGroup') {
+                newCollapseState[node.id] = {
+                  ...collapseState[node.id],
+                  collapsed: !allCollapsed
+                };
+              }
+            });
+            
+            setCollapseState(prev => ({ ...prev, ...newCollapseState }));
+            
+            // Return the new state (now all collapsed or all expanded)
+            return { allCollapsed: !allCollapsed };
+          };
+          
+          // Also expose a function to check current state
+          window.getGraphGroupsCollapseState = () => {
+            if (!reactFlowInstance) return { allCollapsed: false };
+            
+            const allNodes = reactFlowInstance.getNodes();
+            let collapsedCount = 0;
+            let expandableCount = 0;
+            
+            allNodes.forEach(node => {
+              if (node.type === 'groupNode') {
+                expandableCount++;
+                const nodeState = collapseState[node.id] || {};
+                if (nodeState.dbCollapsed) collapsedCount++;
+              } else if (node.type === 'platformGroup') {
+                expandableCount++;
+                const nodeState = collapseState[node.id] || {};
+                if (nodeState.collapsed) collapsedCount++;
+              }
+            });
+            
+            return { 
+              allCollapsed: collapsedCount === expandableCount && expandableCount > 0,
+              collapsedCount,
+              expandableCount
+            };
+          };
+          
+          // Update button icon whenever collapse state changes
+          if (window.updateGraphCollapseExpandButton) {
+            window.updateGraphCollapseExpandButton();
+          }
+          
+          return () => {
+            delete window.toggleGraphGroupsCollapse;
+            delete window.getGraphGroupsCollapseState;
+          };
+        }, [reactFlowInstance, collapseState, setCollapseState]);
+
         // Handle pane click - exit column lineage mode and clear edge selection (must be before loading check)
         const handlePaneClick = useCallback(() => {
           // Always clear ALL column lineage state (unconditionally)
@@ -5222,7 +5737,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
+          // Remove column lineage edges from React Flow's edge state
+          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
           setShowAllColumnsItems({});
+          // Clear refs
+          selectedColumnLineageRef.current = null;
+          relatedColumnsRef.current = new Map();
           setHoveredChild(null);
           setHoverPreviewEdges([]);
           
@@ -5252,21 +5772,31 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           );
         }
 
-        // Combine regular edges with column lineage edges and hover preview edges
-        // Dim regular edges to 40% opacity when showing column lineage
+        // Combine regular edges with hover preview edges
+        // In column lineage mode, dim non-lineage edges (lineage edges are already in the edges state)
+        console.log('Render: columnLineageMode:', columnLineageMode, 'edges count:', edges.length, 'lineage edges:', edges.filter(e => e.data?.isColumnLineage).map(e => e.id));
         const combinedEdges = columnLineageMode 
-          ? [
-              ...edges.map(edge => ({
+          ? edges.map(edge => {
+              // Don't dim column lineage edges
+              if (edge.data?.isColumnLineage) {
+                return edge;
+              }
+              // Dim regular edges
+              return {
                 ...edge,
                 style: { ...edge.style, opacity: 0.2 }
-              })),
-              ...columnLineageEdges
-            ]
+              };
+            })
           : [
-              ...edges,
+              // Filter out any stale column lineage edges when not in lineage mode
+              ...edges.filter(e => !e.data?.isColumnLineage),
               ...hoverPreviewEdges
             ];
+        console.log('combinedEdges count:', combinedEdges.length, 'lineage edges in combined:', combinedEdges.filter(e => e.data?.isColumnLineage).length);
 
+        // Use smaller zoom for narrower screens
+        const defaultZoom = window.innerWidth < 1112 ? 0.75 : 0.875;
+        
         return React.createElement(ReactFlowComponent, {
           nodes,
           edges: combinedEdges,
@@ -5276,7 +5806,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           onPaneClick: handlePaneClick,
           onEdgeClick: handleEdgeClick,
           nodeTypes,
-          defaultViewport: { x: 0, y: 0, zoom: 0.875 },
+          defaultViewport: { x: 0, y: 0, zoom: defaultZoom },
           minZoom: 0.1,
           maxZoom: 2,
           nodesDraggable: false, // Disabled for now - add lock/unlock UI later

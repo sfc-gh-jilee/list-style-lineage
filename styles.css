@@ -207,9 +207,57 @@ body {
   min-height: 48px;
 }
 
-.panel-header-icon {
+.panel-header-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-header-path {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  gap: 4px;
+  color: #5D6A85;
+  font-family: var(--font-family-body, Inter);
+  font-size: var(--font-size-small, 12px);
+  font-weight: var(--font-weight-regular, 400);
+  line-height: 16px;
+}
+
+.panel-header-path.hidden {
+  display: none;
+}
+
+.panel-header-path-icon {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.panel-header-path-separator {
+  color: #94A3B8;
+  margin: 0 2px;
+}
+
+.panel-header-path-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-header-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.panel-header-icon {
+  width: 16px;
+  height: 24px;
   flex-shrink: 0;
 }
 
@@ -238,6 +286,14 @@ body {
   text-overflow: clip;
   white-space: normal;
   word-break: break-word;
+}
+
+.panel-title-arrow {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin: 0 2px;
+  flex-shrink: 0;
 }
 
 .panel-header-actions {
@@ -307,10 +363,6 @@ body {
   border-top: 1px solid #D5DAE4;
 }
 
-.panel-section-group:first-child .panel-section-header {
-  border-top: 1px solid transparent;
-}
-
 /* Header is clickable to scroll section to top */
 .panel-section-header {
   cursor: pointer;
@@ -326,26 +378,10 @@ body {
   color: #1E252F;
 }
 
-.panel-section-chevron {
-  color: #5D6A85;
-  flex-shrink: 0;
-}
-
-/* Toggle icons - show collapse icon when expanded, expand icon when collapsed */
-.panel-section-collapse-icon {
-  display: block;
-}
-
-.panel-section-expand-icon {
-  display: none;
-}
-
-.panel-collapsible[data-collapsed="true"] .panel-section-collapse-icon {
-  display: none;
-}
-
-.panel-collapsible[data-collapsed="true"] .panel-section-expand-icon {
-  display: block;
+#panelColumnDetailsSection .panel-section-header, 
+#panelEdgeDetailsSection .panel-section-header, 
+#panelDetailsSection .panel-section-header {
+  border-top: 1px solid transparent;
 }
 
 .panel-section-chevron-btn {
@@ -364,6 +400,11 @@ body {
 
 .panel-section-chevron-btn:hover {
   background-color: #E2E8F0;
+}
+
+/* Hide chevron button when header is sticky at top */
+.panel-section-header.is-sticky-top .panel-section-chevron-btn {
+  display: none;
 }
 
 .panel-section-info {
@@ -486,7 +527,7 @@ body {
 
 .panel-column-view .panel-header-icon-wrapper {
   display: flex;
-  align-items: center;
+  /* align-items: center; */
   justify-content: center;
   /* width: 24px;
   height: 24px;
@@ -526,6 +567,48 @@ body {
   border-radius: 8px;
   border: 1px solid #D5DAE4;
   gap: 8px;
+  position: relative;
+  overflow: hidden;
+  --leaf-pattern-color: #D5DAE4;
+}
+
+.panel-lineage-item-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.panel-lineage-item-clickable:hover {
+  border-color: #9FABC1;
+}
+
+/* Leaf indicator strips for panel lineage items */
+.panel-lineage-item.leaf-upstream::before,
+.panel-lineage-item.leaf-downstream::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: repeating-linear-gradient(
+    -55deg,
+    transparent,
+    transparent 2px,
+    var(--leaf-pattern-color) 2px,
+    var(--leaf-pattern-color) 3px
+  );
+  pointer-events: none;
+}
+
+/* Left strip for upstream leaf (no sources feeding into this column) */
+.panel-lineage-item.leaf-upstream::before {
+  left: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+/* Right strip for downstream leaf (no destinations from this column) */
+.panel-lineage-item.leaf-downstream::after {
+  right: 0;
+  border-radius: 0 8px 8px 0;
 }
 
 .panel-lineage-column-header {
@@ -689,6 +772,10 @@ body {
   transition: background-color 0.1s;
 }
 
+.panel-column-item-clickable {
+  cursor: pointer;
+}
+
 .panel-column-item:hover {
   background-color: #F1F5F9;
 }
@@ -710,6 +797,14 @@ body {
 .panel-column-key {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
+}
+
+.panel-column-importance {
+  margin-left: auto;
+  font-size: 11px;
+  color: #64748B;
+  font-weight: 500;
   flex-shrink: 0;
 }
 
@@ -983,6 +1078,22 @@ body {
 .dark-mode .panel-header-title,
 .dark-mode .panel-edge-title {
   color: #F1F5F9;
+}
+
+.dark-mode .panel-header-path {
+  color: #94A3B8;
+}
+
+.dark-mode .panel-header-path-separator {
+  color: #64748B;
+}
+
+.dark-mode .panel-title-arrow {
+  filter: brightness(0) invert(1) brightness(0.85);
+}
+
+.dark-mode .panel-column-importance {
+  color: #94A3B8;
 }
 
 /* ===========================================
