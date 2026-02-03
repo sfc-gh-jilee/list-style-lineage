@@ -5309,7 +5309,47 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           if (window.sharedSelection) {
             const handleSelectionChange = (itemId, itemData) => {
               if (itemId) {
+                // Clear ALL column lineage state (same as handleItemClick)
+                setColumnLineageMode(false);
+                setSelectedColumnLineage(null);
+                setRelatedColumns(new Map());
+                setColumnLineageEdges([]);
+                // Remove column lineage edges from React Flow's edge state
+                setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+                setShowAllColumnsItems({});
+                // Clear refs
+                selectedColumnLineageRef.current = null;
+                relatedColumnsRef.current = new Map();
+                
+                // Clear ALL previous selections and highlights
+                setSelectedEdge(null);
+                setAdjacentItemIds(new Set());
+                setSelectedChildren({});
+                setHoveredChild(null);
+                setHoverPreviewEdges([]);
+                
+                // Reset edge styles to default
+                setEdges(eds => eds.map(e => ({
+                  ...e,
+                  selected: false,
+                  zIndex: 0,
+                  className: '',
+                  animated: false,
+                  style: {},
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    width: 10,
+                    height: 10,
+                    color: '#BDC4D5',
+                  },
+                })));
+                
+                // Set the new selected item
                 setSelectedItem({ id: itemId, ...itemData });
+                
+                // Reset expanded items - only expand the newly selected item (collapse all others)
+                const hasChildren = itemData?.columns?.length > 0 || itemData?.features?.length > 0;
+                setExpandedItems(hasChildren ? { [itemId]: true } : {});
                 
                 // Center view on the selected node
                 if (reactFlowInstance) {
@@ -5327,10 +5367,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                     const posY = targetNode.position.y;
                     // Only center if we have valid coordinates
                     if (typeof posX === 'number' && typeof posY === 'number' && !isNaN(posX) && !isNaN(posY)) {
-                      const currentZoom = reactFlowInstance.getZoom();
+                      // Use responsive zoom level for consistency
+                      const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
                       const x = posX + (targetNode.width || targetNode.data.width || 304) / 2;
                       const y = posY + (targetNode.height || targetNode.data.height || 100) / 2;
-                      reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
+                      reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
                     }
                   }
                 }
