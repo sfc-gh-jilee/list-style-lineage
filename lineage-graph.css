@@ -413,7 +413,7 @@
 
 /* Fixed width for group containers */
 .graph-group-container {
-  width: 352px;
+  width: 336px;
   box-sizing: border-box;
 }
 
@@ -437,8 +437,8 @@
 .graph-group-db-header::after,
 .graph-group-schema-header::after {
   content: '';
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   background-image: url('./img/chevron-down-small.svg');
   background-size: contain;
   background-repeat: no-repeat;
@@ -1244,7 +1244,7 @@
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  transition: all 0.15s ease;
+  /* transition: all 0.15s ease; */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -1274,7 +1274,7 @@
   gap: 4px;
   margin-left: auto;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  /* transition: opacity 0.15s ease; */
 }
 
 .graph-group-item:hover .node-inline-actions,
@@ -1307,7 +1307,7 @@
   cursor: pointer;
   padding: 0;
   border-radius: 4px;
-  transition: background 0.15s ease;
+  /* transition: background 0.15s ease; */
 }
 
 .inline-action-btn:hover {
@@ -2012,6 +2012,7 @@
   border-radius: 2px;
   overflow: hidden;
   flex-shrink: 0;
+  display: none;
 }
 
 .graph-child-importance-bar {
