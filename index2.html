@@ -3552,19 +3552,31 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           if (!menuOpen) return;
           
           const handleClickOutside = (e) => {
-            if (menuRef.current && !menuRef.current.contains(e.target) &&
-                buttonRef.current && !buttonRef.current.contains(e.target)) {
-              setMenuOpen(false);
-            }
+            // Check if click is inside the menu portal
+            const menuEl = menuRef.current;
+            const buttonEl = buttonRef.current;
+            
+            // If clicking on the menu or button, don't close
+            if (menuEl && menuEl.contains(e.target)) return;
+            if (buttonEl && buttonEl.contains(e.target)) return;
+            
+            // Close the menu
+            setMenuOpen(false);
           };
           
           // Close on scroll or zoom
           const handleScroll = () => setMenuOpen(false);
           
-          document.addEventListener('mousedown', handleClickOutside);
+          // Use setTimeout to avoid catching the opening click
+          const timeoutId = setTimeout(() => {
+            document.addEventListener('click', handleClickOutside, true);
+          }, 0);
+          
           document.addEventListener('wheel', handleScroll);
+          
           return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            clearTimeout(timeoutId);
+            document.removeEventListener('click', handleClickOutside, true);
             document.removeEventListener('wheel', handleScroll);
           };
         }, [menuOpen]);
