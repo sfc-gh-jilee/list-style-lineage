@@ -3502,9 +3502,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           const updateButtonPosition = () => {
             const rect = parentNode.getBoundingClientRect();
-            // For expanded cards, align with handles at 28px from top
+            // For expanded cards, align with center of header/name (header has 12px padding + ~10px to center of 20px line)
             // For other items, center vertically
-            const topOffset = isExpandedCard ? 28 - 12 : rect.height / 2 - 12;
+            const topOffset = isExpandedCard ? 22 - 12 : rect.height / 2 - 12;
             setButtonPosition({
               top: rect.top + topOffset,
               left: position === 'left' ? rect.left - 28 : rect.right + 4
