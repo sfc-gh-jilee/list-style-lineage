@@ -5620,7 +5620,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               
               if (targetNode) {
                 // Use responsive zoom level for consistency with initial load
-                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
+                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
                 const x = targetNode.position.x + (targetNode.width || 304) / 2;
                 const y = targetNode.position.y + (targetNode.height || 100) / 2;
                 reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
@@ -5688,7 +5688,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             if (targetNode) {
               // Use responsive zoom level for consistency with initial load
-              const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
+              const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
               const x = targetNode.position.x + (targetNode.width || 304) / 2;
               const y = targetNode.position.y + (targetNode.height || 100) / 2;
               reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
@@ -6300,7 +6300,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               // Center after a short delay to allow side panel to open and layout to settle
               setTimeout(() => {
                 // Use smaller zoom for narrower screens
-                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
+                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
                 console.log('onInit - centering to:', { x, y, zoomLevel });
                 instance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
               }, 50);
@@ -6372,7 +6372,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                     // Only center if we have valid coordinates
                     if (typeof posX === 'number' && typeof posY === 'number' && !isNaN(posX) && !isNaN(posY)) {
                       // Use responsive zoom level for consistency
-                      const zoomLevel = window.innerWidth < 1112 ? 0.75 : 0.875;
+                      const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
                       const x = posX + (targetNode.width || targetNode.data.width || 304) / 2;
                       const y = posY + (targetNode.height || targetNode.data.height || 100) / 2;
                       reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
@@ -6711,7 +6711,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             // Only update zoom if we crossed the breakpoint
             if (isNarrow !== lastBreakpointState) {
               lastBreakpointState = isNarrow;
-              const newZoom = isNarrow ? 0.75 : 0.875;
+              const newZoom = isNarrow ? 0.75 : 1;
               const viewport = reactFlowInstance.getViewport();
               reactFlowInstance.setViewport({ ...viewport, zoom: newZoom }, { duration: 300 });
             }
