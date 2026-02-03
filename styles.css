@@ -1722,8 +1722,8 @@ img.group-icon:not([src*="logo-"]) {
 }
 
 .depth-content--focal .object-name {
-  /* color: #1e40af; */
-  color: hsla(215, 22%, 15%, 1);
+  color: #085BD7;
+  /* color: hsla(215, 22%, 15%, 1); */
 }
 
 /* ===========================================
