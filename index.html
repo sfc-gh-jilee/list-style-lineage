@@ -2246,20 +2246,25 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         default: { 
           primary: "#808080", 
           secondary: "#F5F5F5",
-          bgColor: "rgba(128, 128, 128, 0.02)",
+          bgColor: "rgba(128, 128, 128, 0.06)",
           borderColor: "rgba(128, 128, 128, 0.12)"
         },
-        ml_models: { primary: "#7C3AED", secondary: "#F3E8FF" },
+        ml_models: { 
+          primary: "#808080", 
+          secondary: "#F5F5F5",
+          bgColor: "rgba(128, 128, 128, 0.06)",
+          borderColor: "rgba(128, 128, 128, 0.12)"
+        },
         exports: { 
           primary: "#808080", 
           secondary: "#F5F5F5",
-          bgColor: "rgba(128, 128, 128, 0.02)",
+          bgColor: "rgba(128, 128, 128, 0.06)",
           borderColor: "rgba(128, 128, 128, 0.12)"
         },
         external_apis: { 
           primary: "#808080", 
           secondary: "#F5F5F5",
-          bgColor: "rgba(128, 128, 128, 0.02)",
+          bgColor: "rgba(128, 128, 128, 0.06)",
           borderColor: "rgba(128, 128, 128, 0.12)"
         },
       };
@@ -2294,22 +2299,20 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       }
 
       // Helper: Create background color with opacity
-      function getSourceBgColor(sourceId, opacity = 0.03) {
+      function getSourceBgColor(sourceId, opacity = 0.04) {
         const colors = getSourceColors(sourceId);
-        // Use pre-defined bgColor if available (for default/external_apis)
-        if (colors.bgColor) return colors.bgColor;
+        // Use primary color to create background with specified opacity
         const rgb = hexToRgb(colors.primary);
-        if (!rgb) return 'rgba(175, 206, 252, 0.04)'; // fallback to default
+        if (!rgb) return `rgba(128, 128, 128, ${opacity})`; // fallback to gray
         return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
       }
 
       // Helper: Create border color with opacity
-      function getSourceBorderColor(sourceId, opacity = 0.12) {
+      function getSourceBorderColor(sourceId, opacity = 0.20) {
         const colors = getSourceColors(sourceId);
-        // Use pre-defined borderColor if available (for default/external_apis)
-        if (colors.borderColor) return colors.borderColor;
+        // Use primary color to create border with specified opacity
         const rgb = hexToRgb(colors.primary);
-        if (!rgb) return 'rgba(26, 108, 231, 0.20)'; // fallback to default
+        if (!rgb) return `rgba(128, 128, 128, ${opacity})`; // fallback to gray
         return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
       }
 
@@ -2846,8 +2849,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         } = data;
         
         // Get colors for this source
-        const bgColor = getSourceBgColor(sourceId, 0.03);
-        const borderColor = getSourceBorderColor(sourceId, 0.12);
+        const bgColor = getSourceBgColor(sourceId, 0.04);
+        const borderColor = getSourceBorderColor(sourceId, 0.20);
+        const collapsedBorderColor = getSourceBorderColor(sourceId, 0.30);
         const isSingleItem = items.length === 1;
         const isCollapsed = dbCollapsed || schemaCollapsed;
 
@@ -3136,7 +3140,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             className: `graph-group-db-header ${dbCollapsed ? 'collapsed' : ''}`,
             onClick: handleDbHeaderClick,
             style: dbCollapsed ? {
-              border: `1px solid ${borderColor}`,
+              border: `1px solid ${collapsedBorderColor}`,
               borderRadius: '12px',
               padding: '8px 12px'
             } : undefined
@@ -3394,8 +3398,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         };
 
         // Get colors for this platform
-        const bgColor = getSourceBgColor(platformId, 0.03);
-        const borderColor = getSourceBorderColor(platformId, 0.12);
+        const bgColor = getSourceBgColor(platformId, 0);
+        const borderColor = getSourceBorderColor(platformId, 0.20);
+        const collapsedBorderColor = getSourceBorderColor(platformId, 0.30);
 
         // Determine group label based on item types
         const getGroupLabel = () => {
@@ -3458,7 +3463,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             className: `graph-group-db-header ${collapsed ? 'collapsed' : ''}`,
             onClick: handleHeaderClick,
             style: collapsed ? {
-              border: `1px solid ${borderColor}`,
+              border: `1px solid ${collapsedBorderColor}`,
               borderRadius: '12px',
               padding: '8px 12px'
             } : undefined

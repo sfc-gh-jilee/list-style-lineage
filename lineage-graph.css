@@ -338,7 +338,8 @@
   /* border: 1px solid #DEE3EA; */
   border-radius: 8px;
   padding: 8px;
-  min-width: 320px;
+  width: 352px;
+  box-sizing: border-box;
   z-index: 1;
 }
 
@@ -384,9 +385,11 @@
 
 /* Schema Section */
 .graph-group-schema-section {
-  background: rgba(46, 192, 245, 0.08);
+  background: rgba(46, 192, 245, 0.06);
   border-radius: 12px;
   padding: 8px;
+  width: 336px;
+  box-sizing: border-box;
 }
 
 .graph-group-schema-header {
@@ -408,13 +411,15 @@
   margin-bottom: 0;
 }
 
-/* Maintain width when collapsed */
+/* Fixed width for group containers */
 .graph-group-container {
-  min-width: 340px;
+  width: 352px;
+  box-sizing: border-box;
 }
 
 .graph-platform-container {
-  min-width: 340px;
+  width: 352px;
+  box-sizing: border-box;
 }
 
 /* Collapsed states for headers */
@@ -713,7 +718,8 @@
   background: transparent;
   border: none;
   padding: 8px;
-  min-width: 320px;
+  width: 352px;
+  box-sizing: border-box;
   z-index: 1;
 }
 
