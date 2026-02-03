@@ -6865,8 +6865,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             ];
         console.log('combinedEdges count:', combinedEdges.length, 'lineage edges in combined:', combinedEdges.filter(e => e.data?.isColumnLineage).length);
 
-        // Use smaller zoom for narrower screens
-        const defaultZoom = window.innerWidth < 1112 ? 0.75 : 0.875;
+        const defaultZoom = 1;
         
         return React.createElement(ReactFlowComponent, {
           nodes,
