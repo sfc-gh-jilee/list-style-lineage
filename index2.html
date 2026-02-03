@@ -3476,6 +3476,150 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       }
 
       // =============================================
+      // Component: Node Hover Actions (lineage arrows + menu)
+      // =============================================
+      function NodeHoverActions({ position, itemId, isColumn, columnName }) {
+        // position: 'left' or 'right'
+        const icon = position === 'left' 
+          ? './img/arrow-left.svg' 
+          : './img/ui/arrow-right.svg';
+        const title = position === 'left' 
+          ? 'Show upstream (-1)' 
+          : 'Show downstream (+1)';
+        
+        return React.createElement('div', {
+          className: `node-hover-actions ${position}`,
+          onClick: (e) => e.stopPropagation()
+        },
+          React.createElement('button', {
+            className: 'hover-action-btn',
+            title: title,
+            onClick: (e) => {
+              e.stopPropagation();
+              console.log(`${position} lineage action for ${itemId}${columnName ? ':' + columnName : ''}`);
+            }
+          },
+            React.createElement('img', { 
+              src: icon, 
+              alt: position === 'left' ? '<' : '>'
+            })
+          )
+        );
+      }
+
+      // =============================================
+      // Component: Node Inline Actions (stats + more menu)
+      // =============================================
+      function NodeInlineActions({ itemId, isColumn, columnName }) {
+        const [menuOpen, setMenuOpen] = React.useState(false);
+        const menuRef = React.useRef(null);
+        
+        // Close menu when clicking outside
+        React.useEffect(() => {
+          if (!menuOpen) return;
+          
+          const handleClickOutside = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+              setMenuOpen(false);
+            }
+          };
+          
+          document.addEventListener('mousedown', handleClickOutside);
+          return () => document.removeEventListener('mousedown', handleClickOutside);
+        }, [menuOpen]);
+        
+        return React.createElement('div', {
+          className: 'node-inline-actions',
+          ref: menuRef,
+          onClick: (e) => e.stopPropagation()
+        },
+          // Stats button
+          React.createElement('button', {
+            className: 'inline-action-btn stats-btn',
+            title: 'View stats',
+            onClick: (e) => {
+              e.stopPropagation();
+              console.log(`Stats for ${itemId}${columnName ? ':' + columnName : ''}`);
+            }
+          },
+            React.createElement('img', { 
+              src: './img/ui/popularity.svg', 
+              alt: 'Stats'
+            })
+          ),
+          // More menu button
+          React.createElement('button', {
+            className: 'inline-action-btn more-btn',
+            title: 'More actions',
+            onClick: (e) => {
+              e.stopPropagation();
+              setMenuOpen(!menuOpen);
+            }
+          },
+            React.createElement('img', { 
+              src: './img/ui/ellipsis-horizontal.svg', 
+              alt: '...'
+            })
+          ),
+          // Dropdown menu
+          React.createElement('div', {
+            className: `node-action-menu ${menuOpen ? 'open' : ''}`
+          },
+            React.createElement('div', {
+              className: 'node-action-menu-item',
+              onClick: () => { console.log('Show SQL'); setMenuOpen(false); }
+            },
+              React.createElement('img', { src: './img/ui/format-code.svg', alt: '' }),
+              'Show SQL'
+            ),
+            React.createElement('div', {
+              className: 'node-action-menu-item disabled'
+            },
+              React.createElement('img', { src: './img/info-outline.svg', alt: '' }),
+              'Open Info'
+            ),
+            React.createElement('div', {
+              className: 'node-action-menu-item',
+              onClick: () => { console.log('Search'); setMenuOpen(false); }
+            },
+              React.createElement('img', { src: './img/ui/search.svg', alt: '' }),
+              'Search'
+            ),
+            React.createElement('div', { className: 'node-action-menu-divider' }),
+            React.createElement('div', {
+              className: 'node-action-menu-item',
+              onClick: () => { console.log('Open All Upstream'); setMenuOpen(false); }
+            },
+              React.createElement('img', { src: './img/arrow-left.svg', alt: '' }),
+              'Open All Upstream'
+            ),
+            React.createElement('div', {
+              className: 'node-action-menu-item',
+              onClick: () => { console.log('Close All Upstream'); setMenuOpen(false); }
+            },
+              React.createElement('img', { src: './img/arrow-left-close.svg', alt: '' }),
+              'Close All Upstream'
+            ),
+            React.createElement('div', { className: 'node-action-menu-divider' }),
+            React.createElement('div', {
+              className: 'node-action-menu-item',
+              onClick: () => { console.log('Open All Downstream'); setMenuOpen(false); }
+            },
+              React.createElement('img', { src: './img/ui/arrow-right.svg', alt: '' }),
+              'Open All Downstream'
+            ),
+            React.createElement('div', {
+              className: 'node-action-menu-item',
+              onClick: () => { console.log('Close All Downstream'); setMenuOpen(false); }
+            },
+              React.createElement('img', { src: './img/arrow-right-close.svg', alt: '' }),
+              'Close All Downstream'
+            )
+          )
+        );
+      }
+
+      // =============================================
       // Component: Children List (Columns/Features)
       // =============================================
       function ChildrenList({ 
@@ -3572,6 +3716,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             onMouseEnter: () => onChildHover?.(child.name),
             onMouseLeave: () => onChildHover?.(null)
           },
+            // Left hover action (upstream arrow)
+            React.createElement(NodeHoverActions, { 
+              position: 'left', 
+              itemId: itemId, 
+              isColumn: true, 
+              columnName: child.name 
+            }),
             // Left handle for column input (target)
             showHandles && React.createElement(Handle, {
               type: 'target',
@@ -3611,6 +3762,19 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             !child.importance && !isPinned && React.createElement('span', { 
               className: 'graph-child-type' 
             }, child.type),
+            // Inline actions (stats + menu)
+            React.createElement(NodeInlineActions, { 
+              itemId: itemId, 
+              isColumn: true, 
+              columnName: child.name 
+            }),
+            // Right hover action (downstream arrow)
+            React.createElement(NodeHoverActions, { 
+              position: 'right', 
+              itemId: itemId, 
+              isColumn: true, 
+              columnName: child.name 
+            }),
             // Right handle for column output (source)
             showHandles && React.createElement(Handle, {
               type: 'source',
@@ -3772,6 +3936,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           'data-item-id': item.id,
           className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''} ${isLineageActive ? 'column-lineage-active' : ''} ${leafClasses}`
         },
+          // Left hover action (upstream arrow)
+          React.createElement(NodeHoverActions, { position: 'left', itemId: item.id }),
           // Header (clickable to select item)
           React.createElement('div', { 
             className: 'graph-expanded-header',
@@ -3785,8 +3951,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             React.createElement('div', { className: 'graph-expanded-info' },
               React.createElement('img', { className: 'graph-expanded-icon', src: item.icon, alt: '' }),
               React.createElement('span', { className: 'graph-expanded-name' }, item.name)
-            )
+            ),
+            // Inline actions (stats + menu)
+            React.createElement(NodeInlineActions, { itemId: item.id })
           ),
+          // Right hover action (downstream arrow)
+          React.createElement(NodeHoverActions, { position: 'right', itemId: item.id }),
           // Tab bar for models with features and outputs
           childrenExpanded && isModelWithTabs && React.createElement('div', { 
             className: 'graph-expanded-tabs'
@@ -4153,6 +4323,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               onItemClick?.(item, id);
             }
           },
+            // Left hover action (upstream arrow)
+            React.createElement(NodeHoverActions, { position: 'left', itemId: item.id }),
             React.createElement(Handle, {
               type: 'target',
               position: Position.Left,
@@ -4161,6 +4333,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }),
             React.createElement('img', { className: 'graph-group-item-icon', src: item.icon, alt: '' }),
             React.createElement('span', { className: 'graph-group-item-name' }, item.name),
+            // Inline actions (stats + menu)
+            React.createElement(NodeInlineActions, { itemId: item.id }),
+            // Right hover action (downstream arrow)
+            React.createElement(NodeHoverActions, { position: 'right', itemId: item.id }),
             React.createElement(Handle, {
               type: 'source',
               position: Position.Right,
@@ -4440,6 +4616,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               onItemClick?.(item, id);
             }
           },
+            // Left hover action (upstream arrow)
+            React.createElement(NodeHoverActions, { position: 'left', itemId: item.id }),
             React.createElement(Handle, {
               type: 'target',
               position: Position.Left,
@@ -4448,6 +4626,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }),
             React.createElement('img', { className: 'graph-platform-item-icon', src: item.icon, alt: '' }),
             React.createElement('span', { className: 'graph-platform-item-name' }, item.name),
+            // Inline actions (stats + menu)
+            React.createElement(NodeInlineActions, { itemId: item.id }),
+            // Right hover action (downstream arrow)
+            React.createElement(NodeHoverActions, { position: 'right', itemId: item.id }),
             React.createElement(Handle, {
               type: 'source',
               position: Position.Right,
