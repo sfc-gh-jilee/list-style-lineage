@@ -3553,8 +3553,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             if (relatedTarget && relatedTarget.closest && relatedTarget.closest('.node-hover-actions-portal')) {
               return;
             }
-            // Hide instantly
-            setIsVisible(false);
+            // Hide both buttons instantly
+            window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
           };
           
           // For expanded cards, track mouse movement to show/hide based on child hover
@@ -3593,9 +3593,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           isOverHitAreaRef.current = true;
         };
         
-        const handleHitAreaMouseLeave = () => {
+        const handleHitAreaMouseLeave = (e) => {
           isOverHitAreaRef.current = false;
-          setIsVisible(false);
+          // Check if moving to the other button's hit area
+          const relatedTarget = e.relatedTarget;
+          if (relatedTarget && relatedTarget.closest && relatedTarget.closest('.node-hover-actions-portal')) {
+            return; // Don't hide if moving to the other button
+          }
+          // Hide both buttons together
+          window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
         };
         
         // Listen for hide event from paired button
