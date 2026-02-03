@@ -3598,6 +3598,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setIsVisible(false);
         };
         
+        // Listen for hide event from paired button
+        React.useEffect(() => {
+          const handleHideEvent = () => {
+            isOverHitAreaRef.current = false;
+            setIsVisible(false);
+          };
+          
+          window.addEventListener(`hideHoverButtons-${itemId}`, handleHideEvent);
+          return () => {
+            window.removeEventListener(`hideHoverButtons-${itemId}`, handleHideEvent);
+          };
+        }, [itemId]);
+        
+        // Hide both buttons when clicked
+        const handleButtonClick = (e) => {
+          e.stopPropagation();
+          // Dispatch event to hide paired button
+          window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
+          console.log(`${position} lineage action for ${itemId}${columnName ? ':' + columnName : ''}`);
+        };
+        
         // Invisible marker to find parent node
         const marker = React.createElement('span', {
           ref: markerRef,
@@ -3632,10 +3653,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 left: position === 'left' ? 0 : 'auto',
                 right: position === 'right' ? 0 : 'auto'
               },
-              onClick: (e) => {
-                e.stopPropagation();
-                console.log(`${position} lineage action for ${itemId}${columnName ? ':' + columnName : ''}`);
-              }
+              onClick: handleButtonClick
             },
               React.createElement('img', { 
                 src: icon, 
