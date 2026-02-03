@@ -3593,13 +3593,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           isOverHitAreaRef.current = true;
         };
         
-        const handleHitAreaMouseLeave = (e) => {
+        const handleHitAreaMouseLeave = () => {
           isOverHitAreaRef.current = false;
-          // Check if moving to the other button's hit area
-          const relatedTarget = e.relatedTarget;
-          if (relatedTarget && relatedTarget.closest && relatedTarget.closest('.node-hover-actions-portal')) {
-            return; // Don't hide if moving to the other button
-          }
           // Hide both buttons together
           window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
         };
