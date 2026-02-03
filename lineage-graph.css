@@ -1289,8 +1289,9 @@
   opacity: 1;
 }
 
-/* Column items: only show inline actions on hover or focused, not when parent is selected */
+/* Column items: show inline actions on hover, selected, or focused */
 .graph-child-item:hover > .node-inline-actions,
+.graph-child-item.selected > .node-inline-actions,
 .graph-child-item.focused > .node-inline-actions {
   opacity: 1;
 }
