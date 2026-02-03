@@ -3507,6 +3507,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         );
       }
 
+      // Global registry to close all open menus
+      const nodeMenuRegistry = new Set();
+      
+      function closeAllNodeMenus() {
+        nodeMenuRegistry.forEach(closeFunc => closeFunc());
+      }
+      
       // =============================================
       // Component: Node Inline Actions (stats + more menu)
       // =============================================
@@ -3516,14 +3523,25 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const buttonRef = React.useRef(null);
         const menuRef = React.useRef(null);
         
+        // Register close function for this menu
+        const closeMenu = React.useCallback(() => setMenuOpen(false), []);
+        
+        React.useEffect(() => {
+          nodeMenuRegistry.add(closeMenu);
+          return () => nodeMenuRegistry.delete(closeMenu);
+        }, [closeMenu]);
+        
         // Calculate menu position when opening
         const openMenu = (e) => {
           e.stopPropagation();
+          // Close all other menus first
+          closeAllNodeMenus();
+          
           if (buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
             setMenuPosition({
               top: rect.bottom + 4,
-              left: rect.right - 180 // menu width is 180px, align right edge with button
+              left: rect.left // align left edge of menu with left edge of button
             });
           }
           setMenuOpen(true);
