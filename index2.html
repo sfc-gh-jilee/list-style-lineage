@@ -3502,6 +3502,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           const isExpandedCard = parentNode.classList.contains('graph-expanded-card');
           
+          const isColumnItem = parentNode.classList.contains('graph-child-item');
+          
           const updateButtonPosition = () => {
             const rect = parentNode.getBoundingClientRect();
             // For expanded cards, align with center of header/name (header has 12px padding + ~10px to center of 20px line)
@@ -3509,11 +3511,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             const topOffset = isExpandedCard ? 22 : rect.height / 2;
             
             // Hit area dimensions: extends toward node to cover the gap
-            // Button is 24x24, gap to node is 12px, we extend 8px into node for overlap
+            // Button is 24x24, gap varies: 12px for columns, 8px for object cards
             const buttonSize = 24;
-            const gap = 12;
+            const gap = isColumnItem ? 12 : 8;
             const overlap = 8;
-            const hitAreaWidth = buttonSize + gap + overlap; // 44px
+            const hitAreaWidth = buttonSize + gap + overlap;
             const hitAreaHeight = buttonSize + 16; // 40px (8px above and below)
             
             setHitAreaSize({ width: hitAreaWidth, height: hitAreaHeight });
