@@ -3498,12 +3498,22 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           const parentNode = markerRef.current.closest('.graph-group-item, .graph-platform-item, .graph-expanded-card, .graph-child-item');
           if (!parentNode) return;
           
-          const showButtons = () => {
+          const isExpandedCard = parentNode.classList.contains('graph-expanded-card');
+          
+          const updateButtonPosition = () => {
             const rect = parentNode.getBoundingClientRect();
             setButtonPosition({
               top: rect.top + rect.height / 2 - 12,
               left: position === 'left' ? rect.left - 28 : rect.right + 4
             });
+          };
+          
+          const showButtons = (e) => {
+            // For expanded cards, don't show if hovering on a child item inside
+            if (isExpandedCard && e.target.closest('.graph-child-item')) {
+              return;
+            }
+            updateButtonPosition();
             setIsVisible(true);
           };
           
@@ -3516,12 +3526,32 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             setIsVisible(false);
           };
           
+          // For expanded cards, track mouse movement to show/hide based on child hover
+          const handleMouseMove = (e) => {
+            if (!isExpandedCard) return;
+            
+            const isOverChild = e.target.closest('.graph-child-item');
+            if (isOverChild) {
+              setIsVisible(false);
+            } else {
+              updateButtonPosition();
+              setIsVisible(true);
+            }
+          };
+          
           parentNode.addEventListener('mouseenter', showButtons);
           parentNode.addEventListener('mouseleave', hideButtons);
+          
+          if (isExpandedCard) {
+            parentNode.addEventListener('mousemove', handleMouseMove);
+          }
           
           return () => {
             parentNode.removeEventListener('mouseenter', showButtons);
             parentNode.removeEventListener('mouseleave', hideButtons);
+            if (isExpandedCard) {
+              parentNode.removeEventListener('mousemove', handleMouseMove);
+            }
           };
         }, [position]);
         
