@@ -1239,18 +1239,18 @@
 }
 
 /* Show on hover and when selected */
-.graph-group-item:hover .node-hover-actions,
-.graph-group-item.selected .node-hover-actions,
-.graph-platform-item:hover .node-hover-actions,
-.graph-platform-item.selected .node-hover-actions,
-.graph-expanded-card:hover .node-hover-actions,
-.graph-expanded-card.selected .node-hover-actions {
+.graph-group-item:hover > .node-hover-actions,
+.graph-group-item.selected > .node-hover-actions,
+.graph-platform-item:hover > .node-hover-actions,
+.graph-platform-item.selected > .node-hover-actions,
+.graph-expanded-card:hover > .node-hover-actions,
+.graph-expanded-card.selected > .node-hover-actions {
   opacity: 1;
   pointer-events: auto;
 }
 
-/* Column items: only show hover actions on hover, not when selected */
-.graph-child-item:hover .node-hover-actions {
+/* Column items: only show hover actions on hover, not when parent is selected */
+.graph-child-item:hover > .node-hover-actions {
   opacity: 1;
   pointer-events: auto;
 }
@@ -1304,13 +1304,13 @@
 .graph-group-item.selected .node-inline-actions,
 .graph-platform-item:hover .node-inline-actions,
 .graph-platform-item.selected .node-inline-actions,
-.graph-expanded-card:hover .node-inline-actions,
-.graph-expanded-card.selected .node-inline-actions {
+.graph-expanded-card:hover > .graph-expanded-header .node-inline-actions,
+.graph-expanded-card.selected > .graph-expanded-header .node-inline-actions {
   opacity: 1;
 }
 
-/* Column items: only show inline actions on hover, not when selected */
-.graph-child-item:hover .node-inline-actions {
+/* Column items: only show inline actions on hover, not when parent is selected */
+.graph-child-item:hover > .node-inline-actions {
   opacity: 1;
 }
 
