@@ -1190,6 +1190,26 @@
             panelEdgeView.classList.add('hidden');
             panelColumnView.classList.add('hidden');
             
+            // Error banner
+            const errorBanner = document.getElementById('panelErrorBanner');
+            const errorMessage = document.getElementById('panelErrorMessage');
+            if (itemData.hasError && itemData.errorMessage) {
+              errorMessage.textContent = itemData.errorMessage;
+              errorBanner.classList.remove('hidden');
+            } else {
+              errorBanner.classList.add('hidden');
+            }
+            
+            // Warning banner
+            const warningBanner = document.getElementById('panelWarningBanner');
+            const warningMessage = document.getElementById('panelWarningMessage');
+            if (itemData.hasWarning && itemData.warningMessage) {
+              warningMessage.textContent = itemData.warningMessage;
+              warningBanner.classList.remove('hidden');
+            } else {
+              warningBanner.classList.add('hidden');
+            }
+            
             // Header
             panelTitle.textContent = itemData.name || 'Unknown';
             panelIcon.src = itemData.icon || './img/ui/table.svg';
@@ -1758,6 +1778,10 @@
             panelObjectView.classList.add('hidden');
             panelEdgeView.classList.remove('hidden');
             panelColumnView.classList.add('hidden');
+            
+            // Hide edge error banner (error shows on node panel, not edge panel)
+            const edgeErrorBanner = document.getElementById('panelEdgeErrorBanner');
+            edgeErrorBanner.classList.add('hidden');
             
             // Truncate names for title
             const sourceName = sourceItem.name || 'Source';
@@ -2969,6 +2993,24 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <button class="panel-tab" data-tab="downstream" id="panelDownstreamTab">Downstream (0)</button>
         </div>
         
+        <!-- Error Banner -->
+        <div class="panel-error-banner hidden" id="panelErrorBanner">
+          <img class="panel-error-banner-icon" src="./img/ui/error-circle-2.svg" alt="Error">
+          <div class="panel-error-banner-content">
+            <span class="panel-error-banner-title">Error</span>
+            <span class="panel-error-banner-message" id="panelErrorMessage">An error occurred</span>
+          </div>
+        </div>
+        
+        <!-- Warning Banner -->
+        <div class="panel-warning-banner hidden" id="panelWarningBanner">
+          <img class="panel-warning-banner-icon" src="./img/ui/warning-triangle-2.svg" alt="Warning">
+          <div class="panel-warning-banner-content">
+            <span class="panel-warning-banner-title">Warning</span>
+            <span class="panel-warning-banner-message" id="panelWarningMessage">A warning occurred</span>
+          </div>
+        </div>
+        
         <div class="panel-content">
           <!-- Details Tab Content -->
           <div class="panel-tab-content active" data-tab-content="details" id="panelDetailsContent">
@@ -3037,6 +3079,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <button class="panel-tab" data-tab="sql">SQL</button>
           <button class="panel-tab" data-tab="storedprocs" id="panelStoredProcsTab">Procedures (0)</button>
           <button class="panel-tab" data-tab="tasks" id="panelTasksTab">Tasks (0)</button>
+        </div>
+        
+        <!-- Error Banner -->
+        <div class="panel-error-banner hidden" id="panelEdgeErrorBanner">
+          <img class="panel-error-banner-icon" src="./img/ui/error-circle-2.svg" alt="Error">
+          <div class="panel-error-banner-content">
+            <span class="panel-error-banner-title">Error</span>
+            <span class="panel-error-banner-message" id="panelEdgeErrorMessage">An error occurred</span>
+          </div>
         </div>
         
         <div class="panel-content">
@@ -3953,7 +4004,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       // =============================================
       // Component: Node Inline Actions (stats + more menu)
       // =============================================
-      function NodeInlineActions({ itemId, isColumn, columnName }) {
+      function NodeInlineActions({ itemId, isColumn, columnName, hasError, errorMessage, hasWarning, warningMessage }) {
         const [menuOpen, setMenuOpen] = React.useState(false);
         const [menuPosition, setMenuPosition] = React.useState({ top: 0, left: 0 });
         const buttonRef = React.useRef(null);
@@ -4108,20 +4159,24 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           className: 'node-inline-actions',
           onClick: (e) => e.stopPropagation()
         },
-          // Stats button
-          React.createElement('button', {
-            className: 'inline-action-btn stats-btn',
-            title: 'View stats',
-            onClick: (e) => {
-              e.stopPropagation();
-              console.log(`Stats for ${itemId}${columnName ? ':' + columnName : ''}`);
-            }
-          },
-            React.createElement('img', { 
-              src: './img/ui/popularity.svg', 
-              alt: 'Stats'
-            })
-          ),
+          // Show error icon, warning icon, or stats button (priority: error > warning > stats)
+          hasError 
+            ? React.createElement(NodeErrorIcon, { errorMessage: errorMessage || 'An error occurred' })
+            : hasWarning
+              ? React.createElement(NodeWarningIcon, { warningMessage: warningMessage || 'A warning occurred' })
+              : React.createElement('button', {
+                  className: 'inline-action-btn stats-btn',
+                  title: 'View stats',
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    console.log(`Stats for ${itemId}${columnName ? ':' + columnName : ''}`);
+                  }
+                },
+                  React.createElement('img', { 
+                    src: './img/ui/popularity.svg', 
+                    alt: 'Stats'
+                  })
+                ),
           // More menu button
           React.createElement('button', {
             ref: buttonRef,
@@ -4136,6 +4191,185 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           ),
           // Render menu via portal to body (outside React Flow zoom transform)
           menuOpen && ReactDOM.createPortal(menuContent, document.body)
+        );
+      }
+
+      // =============================================
+      // Component: Node Error Icon with Popover
+      // =============================================
+      function NodeErrorIcon({ errorMessage }) {
+        const [showPopover, setShowPopover] = React.useState(false);
+        const [popoverPosition, setPopoverPosition] = React.useState({ top: 0, left: 0 });
+        const iconRef = React.useRef(null);
+        const hideTimeoutRef = React.useRef(null);
+        
+        const handleMouseEnter = () => {
+          if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+          }
+          if (iconRef.current) {
+            const rect = iconRef.current.getBoundingClientRect();
+            // Position popover below the icon, left edges aligned
+            setPopoverPosition({
+              top: rect.bottom,
+              left: rect.left
+            });
+          }
+          setShowPopover(true);
+        };
+        
+        const handleMouseLeave = () => {
+          hideTimeoutRef.current = setTimeout(() => {
+            setShowPopover(false);
+          }, 150);
+        };
+        
+        const handlePopoverMouseEnter = () => {
+          if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+          }
+        };
+        
+        const handlePopoverMouseLeave = () => {
+          hideTimeoutRef.current = setTimeout(() => {
+            setShowPopover(false);
+          }, 150);
+        };
+        
+        // Cleanup timeout on unmount
+        React.useEffect(() => {
+          return () => {
+            if (hideTimeoutRef.current) {
+              clearTimeout(hideTimeoutRef.current);
+            }
+          };
+        }, []);
+        
+        const popoverContent = React.createElement('div', {
+          className: 'error-popover',
+          style: {
+            position: 'fixed',
+            top: popoverPosition.top,
+            left: popoverPosition.left,
+            zIndex: 99999
+          },
+          onMouseEnter: handlePopoverMouseEnter,
+          onMouseLeave: handlePopoverMouseLeave
+        },
+          React.createElement('div', { className: 'error-popover-header' },
+            // React.createElement('img', { 
+            //   className: 'error-popover-icon', 
+            //   src: './img/ui/error-circle.svg', 
+            //   alt: 'Error' 
+            // }),
+            React.createElement('span', { className: 'error-popover-title' }, 'Error')
+          ),
+          React.createElement('div', { className: 'error-popover-message' }, errorMessage)
+        );
+        
+        return React.createElement(React.Fragment, null,
+          React.createElement('button', {
+            ref: iconRef,
+            className: 'node-error-icon',
+            title: 'View error',
+            onMouseEnter: handleMouseEnter,
+            onMouseLeave: handleMouseLeave,
+            onClick: (e) => e.stopPropagation()
+          },
+            React.createElement('img', { 
+              src: './img/ui/error-circle.svg', 
+              alt: 'Error' 
+            })
+          ),
+          showPopover && ReactDOM.createPortal(popoverContent, document.body)
+        );
+      }
+
+      // =============================================
+      // Component: Node Warning Icon with Popover
+      // =============================================
+      function NodeWarningIcon({ warningMessage }) {
+        const [showPopover, setShowPopover] = React.useState(false);
+        const [popoverPosition, setPopoverPosition] = React.useState({ top: 0, left: 0 });
+        const iconRef = React.useRef(null);
+        const hideTimeoutRef = React.useRef(null);
+        
+        const handleMouseEnter = () => {
+          if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+          }
+          if (iconRef.current) {
+            const rect = iconRef.current.getBoundingClientRect();
+            setPopoverPosition({
+              top: rect.bottom,
+              left: rect.left
+            });
+          }
+          setShowPopover(true);
+        };
+        
+        const handleMouseLeave = () => {
+          hideTimeoutRef.current = setTimeout(() => {
+            setShowPopover(false);
+          }, 150);
+        };
+        
+        const handlePopoverMouseEnter = () => {
+          if (hideTimeoutRef.current) {
+            clearTimeout(hideTimeoutRef.current);
+            hideTimeoutRef.current = null;
+          }
+        };
+        
+        const handlePopoverMouseLeave = () => {
+          hideTimeoutRef.current = setTimeout(() => {
+            setShowPopover(false);
+          }, 150);
+        };
+        
+        React.useEffect(() => {
+          return () => {
+            if (hideTimeoutRef.current) {
+              clearTimeout(hideTimeoutRef.current);
+            }
+          };
+        }, []);
+        
+        const popoverContent = React.createElement('div', {
+          className: 'warning-popover',
+          style: {
+            position: 'fixed',
+            top: popoverPosition.top,
+            left: popoverPosition.left,
+            zIndex: 99999
+          },
+          onMouseEnter: handlePopoverMouseEnter,
+          onMouseLeave: handlePopoverMouseLeave
+        },
+          React.createElement('div', { className: 'warning-popover-header' },
+            React.createElement('span', { className: 'warning-popover-title' }, 'Warning')
+          ),
+          React.createElement('div', { className: 'warning-popover-message' }, warningMessage)
+        );
+        
+        return React.createElement(React.Fragment, null,
+          React.createElement('button', {
+            ref: iconRef,
+            className: 'node-warning-icon',
+            title: 'View warning',
+            onMouseEnter: handleMouseEnter,
+            onMouseLeave: handleMouseLeave,
+            onClick: (e) => e.stopPropagation()
+          },
+            React.createElement('img', { 
+              src: './img/ui/warning-triangle.svg', 
+              alt: 'Warning' 
+            })
+          ),
+          showPopover && ReactDOM.createPortal(popoverContent, document.body)
         );
       }
 
@@ -4347,7 +4581,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Regular children list (scrollable) - hide in column lineage mode when only pinned columns exist (non-source items)
           !(columnLineageMode && pinnedColumns.length > 0 && filteredRegularChildren.length === 0 && !showAllColumns) && React.createElement('div', { 
             className: 'graph-children-list nowheel',
-            style: { maxHeight: listHeight || 240 },
+            style: { maxHeight: listHeight || 244 },
             onWheelCapture: (e) => {
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation();
@@ -4459,10 +4693,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           isLeafUpstream ? 'leaf-upstream' : '',
           isLeafDownstream ? 'leaf-downstream' : ''
         ].filter(Boolean).join(' ');
+        const hasErrorExpanded = item.hasError || false;
+        const hasWarningExpanded = item.hasWarning || false;
+        const errorClassExpanded = hasErrorExpanded ? 'has-error' : (hasWarningExpanded ? 'has-warning' : '');
 
         return React.createElement('div', { 
           'data-item-id': item.id,
-          className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''} ${isLineageActive ? 'column-lineage-active' : ''} ${leafClasses}`
+          className: `graph-expanded-card ${isSelected ? 'selected' : ''} ${isFocal ? 'focal' : ''} ${isLineageActive ? 'column-lineage-active' : ''} ${leafClasses} ${errorClassExpanded}`,
+          style: { position: 'relative' }
         },
           // Left hover action (upstream arrow)
           React.createElement(NodeHoverActions, { 
@@ -4485,8 +4723,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               React.createElement('img', { className: 'graph-expanded-icon', src: item.icon, alt: '' }),
               React.createElement('span', { className: 'graph-expanded-name' }, item.name)
             ),
-            // Inline actions (stats + menu)
-            React.createElement(NodeInlineActions, { itemId: item.id })
+            // Inline actions (stats + menu + error/warning icon)
+            React.createElement(NodeInlineActions, { 
+              itemId: item.id,
+              hasError: item.hasError,
+              errorMessage: item.errorMessage,
+              hasWarning: item.hasWarning,
+              warningMessage: item.warningMessage
+            })
           ),
           // Right hover action (downstream arrow)
           React.createElement(NodeHoverActions, { 
@@ -4754,11 +4998,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               item.isLeafUpstream ? 'leaf-upstream' : '',
               item.isLeafDownstream ? 'leaf-downstream' : ''
             ].filter(Boolean).join(' ');
+            const hasErrorExpanded = item.hasError || false;
+            const hasWarningExpanded = item.hasWarning || false;
+            const errorClassExpanded = hasErrorExpanded ? 'has-error' : (hasWarningExpanded ? 'has-warning' : '');
             
             return React.createElement('div', {
               key: item.id,
               'data-item-id': item.id,
-              className: `graph-expanded-card selected ${item.isFocal ? 'focal' : ''} ${leafClassesExpanded}`,
+              className: `graph-expanded-card selected ${item.isFocal ? 'focal' : ''} ${leafClassesExpanded} ${errorClassExpanded}`,
               onClick: (e) => {
                 e.stopPropagation();
                 onItemClick?.(item, id);
@@ -4776,7 +5023,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 React.createElement('div', { className: 'graph-expanded-info' },
                   React.createElement('img', { className: 'graph-expanded-icon', src: item.icon, alt: '' }),
                   React.createElement('span', { className: 'graph-expanded-name' }, item.name)
-                )
+                ),
+                // Inline actions (stats + menu + error icon)
+                React.createElement(NodeInlineActions, { 
+                  itemId: item.id,
+                  hasError: item.hasError,
+                  errorMessage: item.errorMessage
+                })
               ),
               React.createElement('button', {
                 className: 'graph-toggle-children-btn',
@@ -4816,14 +5069,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               item.isLeafUpstream ? 'leaf-upstream' : '',
               item.isLeafDownstream ? 'leaf-downstream' : ''
             ].filter(Boolean).join(' ');
+            const hasErrorSingle = item.hasError || false;
+            const hasWarningSingle = item.hasWarning || false;
+            const errorClassSingle = hasErrorSingle ? 'has-error' : (hasWarningSingle ? 'has-warning' : '');
             
             return React.createElement('div', {
               key: item.id,
-              className: `graph-group-card ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClasses}`,
+              className: `graph-group-card ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClasses} ${errorClassSingle}`,
               onClick: (e) => {
                 e.stopPropagation();
                 onItemClick?.(item, id);
-              }
+              },
+              style: { position: 'relative' }
             },
               React.createElement(Handle, {
                 type: 'target',
@@ -4834,7 +5091,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               item.isFocal && React.createElement('div', { className: 'graph-group-card-badge' }, 'Currently viewing'),
               React.createElement('div', { className: 'graph-group-card-content' },
                 React.createElement('img', { className: 'graph-group-card-icon', src: item.icon, alt: '' }),
-                React.createElement('span', { className: 'graph-group-card-name' }, item.name)
+                React.createElement('span', { className: 'graph-group-card-name' }, item.name),
+                // Inline actions (stats + menu + error icon)
+                React.createElement(NodeInlineActions, { 
+                  itemId: item.id,
+                  hasError: item.hasError,
+                  errorMessage: item.errorMessage
+                })
               ),
               React.createElement(Handle, {
                 type: 'source',
@@ -4851,15 +5114,19 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             item.isLeafUpstream ? 'leaf-upstream' : '',
             item.isLeafDownstream ? 'leaf-downstream' : ''
           ].filter(Boolean).join(' ');
+          const hasError = item.hasError || false;
+          const hasWarning = item.hasWarning || false;
+          const errorClass = hasError ? 'has-error' : (hasWarning ? 'has-warning' : '');
           
           return React.createElement('div', {
             key: item.id,
             'data-item-id': item.id,
-            className: `graph-group-item ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClassesCompact}`,
+            className: `graph-group-item ${isSelected ? 'selected' : ''} ${item.isFocal ? 'focal' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClassesCompact} ${errorClass}`,
             onClick: (e) => {
               e.stopPropagation();
               onItemClick?.(item, id);
-            }
+            },
+            style: { position: 'relative' }
           },
             // Left hover action (upstream arrow)
             React.createElement(NodeHoverActions, { 
@@ -4876,8 +5143,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }),
             React.createElement('img', { className: 'graph-group-item-icon', src: item.icon, alt: '' }),
             React.createElement('span', { className: 'graph-group-item-name' }, item.name),
-            // Inline actions (stats + menu)
-            React.createElement(NodeInlineActions, { itemId: item.id }),
+            // Inline actions (stats + menu + error/warning icon)
+            React.createElement(NodeInlineActions, { 
+              itemId: item.id,
+              hasError: item.hasError,
+              errorMessage: item.errorMessage,
+              hasWarning: item.hasWarning,
+              warningMessage: item.warningMessage
+            }),
             // Right hover action (downstream arrow)
             React.createElement(NodeHoverActions, { 
               position: 'right', 
@@ -5154,15 +5427,19 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             item.isLeafUpstream ? 'leaf-upstream' : '',
             item.isLeafDownstream ? 'leaf-downstream' : ''
           ].filter(Boolean).join(' ');
+          const hasErrorPlatform = item.hasError || false;
+          const hasWarningPlatform = item.hasWarning || false;
+          const errorClassPlatform = hasErrorPlatform ? 'has-error' : (hasWarningPlatform ? 'has-warning' : '');
           
           return React.createElement('div', {
             key: item.id,
             'data-item-id': item.id,
-            className: `graph-platform-item ${isSelected ? 'selected' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClassesPlatform}`,
+            className: `graph-platform-item ${isSelected ? 'selected' : ''} ${isAdjacent ? 'edge-adjacent' : ''} ${leafClassesPlatform} ${errorClassPlatform}`,
             onClick: (e) => {
               e.stopPropagation();
               onItemClick?.(item, id);
-            }
+            },
+            style: { position: 'relative' }
           },
             // Left hover action (upstream arrow)
             React.createElement(NodeHoverActions, { 
@@ -5179,8 +5456,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }),
             React.createElement('img', { className: 'graph-platform-item-icon', src: item.icon, alt: '' }),
             React.createElement('span', { className: 'graph-platform-item-name' }, item.name),
-            // Inline actions (stats + menu)
-            React.createElement(NodeInlineActions, { itemId: item.id }),
+            // Inline actions (stats + menu + error/warning icon)
+            React.createElement(NodeInlineActions, { 
+              itemId: item.id,
+              hasError: item.hasError,
+              errorMessage: item.errorMessage,
+              hasWarning: item.hasWarning,
+              warningMessage: item.warningMessage
+            }),
             // Right hover action (downstream arrow)
             React.createElement(NodeHoverActions, { 
               position: 'right', 
@@ -5322,6 +5605,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           targetPosition,
         });
 
+        // Check if edge is dimmed (e.g., during column lineage mode)
+        const isDimmed = style?.opacity !== undefined && style.opacity < 1;
+
         // Determine what icon to show based on edge metadata
         const getEdgeIcon = () => {
           if (!data) return null;
@@ -5357,6 +5643,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
 
         const iconInfo = getEdgeIcon();
         const hasIcon = iconInfo !== null;
+        
+        // Check if this is an error edge
+        const isErrorEdge = data?.isFromError || false;
 
         return createElement(
           React.Fragment,
@@ -5375,7 +5664,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             createElement(
               'div',
               {
-                className: `edge-icon-container ${selected ? 'selected' : ''} edge-icon-${iconInfo.type}`,
+                className: `edge-icon-container ${selected ? 'selected' : ''} ${isDimmed ? 'dimmed' : ''} edge-icon-${iconInfo.type}`,
                 style: {
                   position: 'absolute',
                   transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
@@ -5881,6 +6170,37 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           });
         }
         
+        // Build set of items with errors/warnings and compute affected downstream items
+        const errorItemIds = new Set();
+        const warningItemIds = new Set();
+        const affectedItemIds = new Set();
+        
+        // First pass: collect all items with errors or warnings
+        allItems.forEach(item => {
+          if (item.hasError) {
+            errorItemIds.add(item.id);
+          }
+          if (item.hasWarning) {
+            warningItemIds.add(item.id);
+          }
+        });
+        
+        // Second pass: compute all items downstream of error items (affected)
+        function findAllDownstream(itemId, visited = new Set()) {
+          if (visited.has(itemId)) return;
+          visited.add(itemId);
+          
+          const item = allItems.find(i => i.id === itemId);
+          if (item?.downstream) {
+            item.downstream.forEach(downstreamId => {
+              affectedItemIds.add(downstreamId);
+              findAllDownstream(downstreamId, visited);
+            });
+          }
+        }
+        
+        errorItemIds.forEach(errorId => findAllDownstream(errorId));
+        
         allItems.forEach(item => {
           if (item.downstream && item.downstream.length > 0) {
             item.downstream.forEach(targetItemId => {
@@ -5898,6 +6218,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 // Use custom edge type with icon if edge has special metadata
                 const hasSpecialMeta = edgeHasMetadata(edgeMeta);
                 
+                // Determine edge error state classes
+                // Edges from error or warning nodes both use affected-by-error style (gray dash-dot)
+                const isFromError = errorItemIds.has(item.id);
+                const isFromWarning = warningItemIds.has(item.id);
+                const isAffected = affectedItemIds.has(item.id) && !errorItemIds.has(item.id);
+                const edgeErrorClass = (isFromError || isFromWarning) ? 'affected-by-error' : '';
+                
+                // Determine marker color based on error state (all affected edges use gray)
+                const markerColor = (isFromError || isFromWarning) ? '#BDC4D5' : '#BDC4D5';
+                
                 edges.push({
                   id: `edge-${item.id}-${targetItemId}`,
                   source: sourceMapping.nodeId,
@@ -5906,17 +6236,22 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                   targetHandle: targetMapping.targetHandle,
                   type: hasSpecialMeta ? 'iconEdge' : 'default',
                   animated: false,
+                  className: edgeErrorClass,
+                  zIndex: 0,
                   markerEnd: {
                     type: MarkerType.ArrowClosed,
                     width: 12,
                     height: 12,
-                    color: '#BDC4D5',
+                    color: markerColor,
                   },
                   data: {
                     sourceItemId: item.id,
                     targetItemId: targetItemId,
                     sourceItem: item,
                     targetItem: targetItem,
+                    isFromError: isFromError,
+                    isFromWarning: isFromWarning,
+                    isAffectedByError: isAffected,
                     // Include edge metadata
                     queryType: edgeMeta?.queryType || null,
                     runBy: edgeMeta?.runBy || null,
@@ -6332,15 +6667,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             // Always clear edge selection state and reset edge styles
             setSelectedEdge(null);
             setAdjacentItemIds(new Set());
-            setEdges(eds => eds.map(e => ({
-              ...e,
-              selected: false,
-              zIndex: 0,
-              markerEnd: {
-                ...e.markerEnd,
-                color: '#BDC4D5',
-              },
-            })));
+            setEdges(eds => eds.map(e => {
+              const isErrorEdge = e.data?.isFromError;
+              return {
+                ...e,
+                selected: false,
+                zIndex: 0,
+                markerEnd: {
+                  ...e.markerEnd,
+                  color: '#BDC4D5',
+                },
+              };
+            }));
             
             // Center view on the parent node containing the column
             if (reactFlowInstance) {
@@ -6388,15 +6726,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Always clear edge selection state and reset edge styles
           setSelectedEdge(null);
           setAdjacentItemIds(new Set());
-          setEdges(eds => eds.map(e => ({
-            ...e,
-            selected: false,
-            zIndex: 0,
-            markerEnd: {
-              ...e.markerEnd,
-              color: '#BDC4D5',
-            },
-          })));
+          setEdges(eds => eds.map(e => {
+            const isErrorEdge = e.data?.isFromError;
+            return {
+              ...e,
+              selected: false,
+              zIndex: 0,
+              markerEnd: {
+                ...e.markerEnd,
+                color: '#BDC4D5',
+              },
+            };
+          }));
           
           // Set up expanded items and selected children for lineage view
           const newExpandedItems = { [itemId]: true };
@@ -6872,8 +7213,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
-          // Remove column lineage edges from React Flow's edge state
-          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+          // Remove column lineage edges and reset any dimmed styles from React Flow's edge state
+          setEdges(currentEdges => currentEdges
+            .filter(e => !e.data?.isColumnLineage)
+            .map(e => ({
+              ...e,
+              // Reset any dimmed opacity styles
+              style: e.style ? { ...e.style, opacity: undefined } : undefined
+            }))
+          );
           setExpandedItems({});
           setSelectedChildren({});
           setShowAllColumnsItems({}); // Reset show all columns state
@@ -6999,8 +7347,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
-          // Remove column lineage edges from React Flow's edge state
-          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+          // Remove column lineage edges and reset dimmed styles from React Flow's edge state
+          setEdges(currentEdges => currentEdges
+            .filter(e => !e.data?.isColumnLineage)
+            .map(e => ({ ...e, style: e.style ? { ...e.style, opacity: undefined } : undefined }))
+          );
           setShowAllColumnsItems({});
           // Clear refs
           selectedColumnLineageRef.current = null;
@@ -7013,21 +7364,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setHoveredChild(null);
           setHoverPreviewEdges([]);
           
-          // Reset edge styles to default
-          setEdges(eds => eds.map(e => ({
-            ...e,
-            selected: false,
-            zIndex: 0,
-            className: '',
-            animated: false,
-            style: {},
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 10,
-              height: 10,
-              color: '#BDC4D5',
-            },
-          })));
+          // Reset edge styles to default (preserve error state)
+          setEdges(eds => eds.map(e => {
+            const isErrorEdge = e.data?.isFromError;
+            const isWarningEdge = e.data?.isFromWarning;
+            const isAffectedEdge = e.data?.isAffectedByError;
+            const errorClass = (isErrorEdge || isWarningEdge) ? 'affected-by-error' : '';
+            return {
+              ...e,
+              selected: false,
+              zIndex: 0,
+              className: errorClass,
+              animated: false,
+              style: {},
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                width: 10,
+                height: 10,
+                color: '#BDC4D5',
+              },
+            };
+          }));
           
           // Set the new selected item
           setSelectedItem(item);
@@ -7060,7 +7417,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               dataQuality: item.dataQuality,
               tags: item.tags,
               downstream: item.downstream,
-              upstream: item.upstream
+              upstream: item.upstream,
+              hasError: item.hasError,
+              errorMessage: item.errorMessage,
+              hasWarning: item.hasWarning,
+              warningMessage: item.warningMessage
             });
           }
           
@@ -7085,8 +7446,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
-          // Remove column lineage edges from React Flow's edge state
-          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+          // Remove column lineage edges and reset dimmed styles from React Flow's edge state
+          setEdges(currentEdges => currentEdges
+            .filter(e => !e.data?.isColumnLineage)
+            .map(e => ({ ...e, style: e.style ? { ...e.style, opacity: undefined } : undefined }))
+          );
           setShowAllColumnsItems({});
           // Clear refs
           selectedColumnLineageRef.current = null;
@@ -7117,16 +7481,22 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           // Update edges to mark selected edge (bring to top via CSS z-index)
           // Also reset opacity to 1 for all edges (clears column lineage dimming)
-          setEdges(eds => eds.map(e => ({
-            ...e,
-            selected: e.id === edge.id,
-            zIndex: e.id === edge.id ? 1000 : 0,
-            style: { ...e.style, opacity: 1 },
-            markerEnd: {
-              ...e.markerEnd,
-              color: e.id === edge.id ? '#1A6CE7' : '#BDC4D5',
-            },
-          })));
+          // Use blue color for selected edges, gray for unselected
+          setEdges(eds => eds.map(e => {
+            const selectedColor = '#1A6CE7';
+            const defaultColor = '#BDC4D5';
+            const defaultZIndex = 0;
+            return {
+              ...e,
+              selected: e.id === edge.id,
+              zIndex: e.id === edge.id ? 1000 : defaultZIndex,
+              style: { ...e.style, opacity: 1 },
+              markerEnd: {
+                ...e.markerEnd,
+                color: e.id === edge.id ? selectedColor : defaultColor,
+              },
+            };
+          }));
           
           // Update side panel with edge info
           if (window.sharedSelection && edgeData.sourceItem && edgeData.targetItem) {
@@ -7256,8 +7626,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 setSelectedColumnLineage(null);
                 setRelatedColumns(new Map());
                 setColumnLineageEdges([]);
-                // Remove column lineage edges from React Flow's edge state
-                setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+                // Remove column lineage edges and reset dimmed styles from React Flow's edge state
+                setEdges(currentEdges => currentEdges
+                  .filter(e => !e.data?.isColumnLineage)
+                  .map(e => ({ ...e, style: e.style ? { ...e.style, opacity: undefined } : undefined }))
+                );
                 setShowAllColumnsItems({});
                 // Clear refs
                 selectedColumnLineageRef.current = null;
@@ -7270,21 +7643,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 setHoveredChild(null);
                 setHoverPreviewEdges([]);
                 
-                // Reset edge styles to default
-                setEdges(eds => eds.map(e => ({
-                  ...e,
-                  selected: false,
-                  zIndex: 0,
-                  className: '',
-                  animated: false,
-                  style: {},
-                  markerEnd: {
-                    type: MarkerType.ArrowClosed,
-                    width: 10,
-                    height: 10,
-                    color: '#BDC4D5',
-                  },
-                })));
+                // Reset edge styles to default (preserve error/warning state)
+                setEdges(eds => eds.map(e => {
+                  const isErrorEdge = e.data?.isFromError;
+                  const isWarningEdge = e.data?.isFromWarning;
+                  const isAffectedEdge = e.data?.isAffectedByError;
+                  const errorClass = (isErrorEdge || isWarningEdge) ? 'affected-by-error' : '';
+                  return {
+                    ...e,
+                    selected: false,
+                    zIndex: 0,
+                    className: errorClass,
+                    animated: false,
+                    style: {},
+                    markerEnd: {
+                      type: MarkerType.ArrowClosed,
+                      width: 10,
+                      height: 10,
+                      color: '#BDC4D5',
+                    },
+                  };
+                }));
                 
                 // Set the new selected item
                 setSelectedItem({ id: itemId, ...itemData });
@@ -8015,8 +8394,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
-          // Remove column lineage edges from React Flow's edge state
-          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+          // Remove column lineage edges and reset dimmed styles from React Flow's edge state
+          setEdges(currentEdges => currentEdges
+            .filter(e => !e.data?.isColumnLineage)
+            .map(e => ({ ...e, style: e.style ? { ...e.style, opacity: undefined } : undefined }))
+          );
           setShowAllColumnsItems({});
           // Clear refs
           selectedColumnLineageRef.current = null;
@@ -8024,23 +8406,29 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setHoveredChild(null);
           setHoverPreviewEdges([]);
           
-          // Clear edge selection state and reset edge styles to default
+          // Clear edge selection state and reset edge styles to default (preserve error state)
           setSelectedEdge(null);
           setAdjacentItemIds(new Set());
-          setEdges(eds => eds.map(e => ({
-            ...e,
-            selected: false,
-            zIndex: 0,
-            className: '',
-            animated: false,
-            style: {},
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 10,
-              height: 10,
-              color: '#BDC4D5',
-            },
-          })));
+          setEdges(eds => eds.map(e => {
+            const isErrorEdge = e.data?.isFromError;
+            const isWarningEdge = e.data?.isFromWarning;
+            const isAffectedEdge = e.data?.isAffectedByError;
+            const errorClass = (isErrorEdge || isWarningEdge) ? 'affected-by-error' : '';
+            return {
+              ...e,
+              selected: false,
+              zIndex: 0,
+              className: errorClass,
+              animated: false,
+              style: {},
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                width: 10,
+                height: 10,
+                color: '#BDC4D5',
+              },
+            };
+          }));
         }, [setEdges]);
 
         if (isLoading) {

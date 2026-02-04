@@ -238,6 +238,8 @@ const mockLineageData = {
                   dataQuality: 'High',
                   tags: ['raw', 'fivetran', 'daily-sync'],
                   rowCount: 2847563,
+                  hasError: true,
+                  errorMessage: 'Fivetran sync failed: Connection timeout to Shopify API. Last successful sync was 12 hours ago.',
                   columns: [
                     { name: 'ORDER_ID', type: 'VARCHAR', isPrimaryKey: true, description: 'Primary key - Shopify order ID' },
                     { name: 'CUSTOMER_ID', type: 'VARCHAR', isForeignKey: true, description: 'Foreign key to CUSTOMERS table' },
@@ -435,6 +437,8 @@ const mockLineageData = {
                   createdAt: '2023-06-20',
                   dataQuality: 'High',
                   tags: ['staging', 'dbt', 'orders', 'tested'],
+                  hasWarning: true,
+                  warningMessage: 'Data may be stale. Upstream source ORDERS has a sync error.',
                   rowCount: 2847563,
                   columns: [
                     { name: 'ORDER_ID', type: 'VARCHAR', isPrimaryKey: true, description: 'Order unique identifier' },

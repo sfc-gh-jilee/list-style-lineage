@@ -379,6 +379,108 @@ body {
   display: none;
 }
 
+/* Panel Error Banner */
+.panel-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  margin: 20px 16px 4px;
+  background: #FFD1DC;
+  border: none;
+  border-radius: 8px;
+}
+
+.panel-error-banner.hidden {
+  display: none;
+}
+
+.panel-error-banner-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.panel-error-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.panel-error-banner-title {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  color: #66000E;
+  line-height: 16px;
+  letter-spacing: 0;
+}
+
+.panel-error-banner-message {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  color: #66000E;
+  line-height: 18px;
+  letter-spacing: 0;
+  word-wrap: break-word;
+}
+
+/* Panel Warning Banner */
+.panel-warning-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  margin: 20px 16px 4px;
+  background: #FFEDCD;
+  border: none;
+  border-radius: 8px;
+}
+
+.panel-warning-banner.hidden {
+  display: none;
+}
+
+.panel-warning-banner-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.panel-warning-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.panel-warning-banner-title {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  color: #653E03;
+  line-height: 16px;
+  letter-spacing: 0;
+}
+
+.panel-warning-banner-message {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  color: #653E03;
+  line-height: 18px;
+  letter-spacing: 0;
+  word-wrap: break-word;
+}
+
 /* Panel Tab Content */
 .panel-tab-content {
   display: none;
@@ -1366,6 +1468,30 @@ body {
 .dark-mode .panel-tab.active {
   color: #60A5FA;
   border-bottom-color: #60A5FA;
+}
+
+.dark-mode .panel-error-banner {
+  background: #5C1A2A;
+}
+
+.dark-mode .panel-error-banner-title {
+  color: #FCA5A5;
+}
+
+.dark-mode .panel-error-banner-message {
+  color: #FECACA;
+}
+
+.dark-mode .panel-warning-banner {
+  background: #451A03;
+}
+
+.dark-mode .panel-warning-banner-title {
+  color: #FCD34D;
+}
+
+.dark-mode .panel-warning-banner-message {
+  color: #FDE68A;
 }
 
 .dark-mode .panel-subtabs {
