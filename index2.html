@@ -7083,11 +7083,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               });
               
               if (targetNode) {
-                // Use responsive zoom level for consistency with initial load
-                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
+                // Set zoom to 100% on column selection
                 const x = targetNode.position.x + (targetNode.width || 304) / 2;
                 const y = targetNode.position.y + (targetNode.height || 100) / 2;
-                reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
+                reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
               }
             }
             return;
@@ -7154,11 +7153,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             });
             
             if (targetNode) {
-              // Use responsive zoom level for consistency with initial load
-              const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
+              // Set zoom to 100% on column selection
               const x = targetNode.position.x + (targetNode.width || 304) / 2;
               const y = targetNode.position.y + (targetNode.height || 100) / 2;
-              reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
+              reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
             }
           }
           
@@ -7819,14 +7817,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             });
           }
           
-          // Center view on the selected node (keep current zoom)
+          // Center view on the selected node (set zoom to 100%)
           if (reactFlowInstance && nodeId) {
             const node = reactFlowInstance.getNode(nodeId);
             if (node) {
-              const currentZoom = reactFlowInstance.getZoom();
               const x = node.position.x + (node.width || 304) / 2;
               const y = node.position.y + (node.height || 40) / 2;
-              reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
+              reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
             }
           }
         }, [reactFlowInstance, setEdges]);
@@ -7922,8 +7919,6 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             const targetNode = reactFlowInstance.getNode(edge.target);
             
             if (sourceNode && targetNode) {
-              const currentZoom = reactFlowInstance.getZoom();
-              
               // Calculate center points of source and target nodes
               const sourceX = sourceNode.position.x + (sourceNode.width || 304) / 2;
               const sourceY = sourceNode.position.y + (sourceNode.height || 100) / 2;
@@ -7934,7 +7929,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               const midX = (sourceX + targetX) / 2;
               const midY = (sourceY + targetY) / 2;
               
-              reactFlowInstance.setCenter(midX, midY, { zoom: currentZoom, duration: 300 });
+              // Set zoom to 100% on edge selection
+              reactFlowInstance.setCenter(midX, midY, { zoom: 1, duration: 300 });
             }
           }
         }, [setEdges, reactFlowInstance]);
@@ -8005,13 +8001,65 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 }
               }
               
-              // Center after a short delay to allow side panel to open and layout to settle
+              // Fit view after layout has settled (CSS transitions take 200ms, layout updates take up to 250ms)
+              // Use a longer delay to ensure DOM is fully measured and nodes are positioned
               setTimeout(() => {
-                // Use smaller zoom for narrower screens
-                const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
-                console.log('onInit - centering to:', { x, y, zoomLevel });
-                instance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
-              }, 50);
+                console.log('onInit - fitting view to all nodes');
+                // Get the actual bounds from measured node dimensions
+                const allNodes = instance.getNodes();
+                if (allNodes.length > 0) {
+                  // Calculate bounds manually using measured heights
+                  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                  allNodes.forEach(node => {
+                    const nodeEl = document.querySelector(`[data-id="${node.id}"]`);
+                    const measuredHeight = nodeEl ? nodeEl.getBoundingClientRect().height : (node.data.height || 100);
+                    const width = node.width || node.data.width || 304;
+                    
+                    minX = Math.min(minX, node.position.x);
+                    minY = Math.min(minY, node.position.y);
+                    maxX = Math.max(maxX, node.position.x + width);
+                    maxY = Math.max(maxY, node.position.y + measuredHeight);
+                  });
+                  
+                  // Calculate the center of all nodes
+                  const centerX = (minX + maxX) / 2;
+                  const centerY = (minY + maxY) / 2;
+                  
+                  // Calculate zoom to fit with padding
+                  const graphContainer = document.querySelector('.react-flow');
+                  if (graphContainer) {
+                    const containerRect = graphContainer.getBoundingClientRect();
+                    const contentWidth = maxX - minX;
+                    const contentHeight = maxY - minY;
+                    const padding = 0.03; // 3% padding on each side
+                    const zoomX = (containerRect.width * (1 - padding * 2)) / contentWidth;
+                    const zoomY = (containerRect.height * (1 - padding * 2)) / contentHeight;
+                    const zoom = Math.min(zoomX, zoomY, 1); // Cap at 1 (100%)
+                    
+                    console.log('onInit - calculated bounds:', { minX, minY, maxX, maxY, centerX, centerY, zoom });
+                    instance.setCenter(centerX, centerY, { zoom, duration: 300 });
+                    
+                    // Hide loading after centering animation completes
+                    setTimeout(() => {
+                      setIsLoading(false);
+                    }, 350);
+                  } else {
+                    instance.fitView({ padding: 0.03, duration: 300 });
+                    // Hide loading after fitView animation completes
+                    setTimeout(() => {
+                      setIsLoading(false);
+                    }, 350);
+                  }
+                } else {
+                  // No nodes, just hide loading
+                  setIsLoading(false);
+                }
+              }, 400);
+            } else {
+              // No focal node, hide loading
+              setTimeout(() => {
+                setIsLoading(false);
+              }, 100);
             }
           }, 100);
         }, []);
@@ -8088,11 +8136,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                     const posY = targetNode.position.y;
                     // Only center if we have valid coordinates
                     if (typeof posX === 'number' && typeof posY === 'number' && !isNaN(posX) && !isNaN(posY)) {
-                      // Use responsive zoom level for consistency
-                      const zoomLevel = window.innerWidth < 1112 ? 0.75 : 1;
+                      // Set zoom to 100% on selection from list view
                       const x = posX + (targetNode.width || targetNode.data.width || 304) / 2;
                       const y = posY + (targetNode.height || targetNode.data.height || 100) / 2;
-                      reactFlowInstance.setCenter(x, y, { zoom: zoomLevel, duration: 300 });
+                      reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
                     }
                   }
                 }
@@ -8201,7 +8248,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               setNodes(nodesWithSelection);
               setEdges(initialEdges);
             }
-            setIsLoading(false);
+            // Note: isLoading will be set to false in onInit after centering completes
           }
           
           initLayout();
@@ -8632,11 +8679,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 }
               }
               
-              // Center on the node
-              const currentZoom = reactFlowInstance.getZoom();
+              // Center on the node (set zoom to 100% for indirect selection actions)
               const x = targetNode.position.x + (targetNode.width || targetNode.data.width || 304) / 2;
               const y = targetNode.position.y + (targetNode.height || targetNode.data.height || 100) / 2;
-              reactFlowInstance.setCenter(x, y, { zoom: currentZoom, duration: 300 });
+              reactFlowInstance.setCenter(x, y, { zoom: 1, duration: 300 });
             }
           };
           
@@ -8835,13 +8881,6 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           }));
         }, [setEdges]);
 
-        if (isLoading) {
-          return React.createElement('div', { className: 'graph-loading' },
-            React.createElement('div', { className: 'graph-loading-spinner' }),
-            'Loading graph...'
-          );
-        }
-
         // Combine regular edges with hover preview edges
         // In column lineage mode, dim non-lineage edges (lineage edges are already in the edges state)
         console.log('Render: columnLineageMode:', columnLineageMode, 'edges count:', edges.length, 'lineage edges:', edges.filter(e => e.data?.isColumnLineage).map(e => e.id));
@@ -8866,7 +8905,25 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
 
         const defaultZoom = 1;
         
-        return React.createElement(ReactFlowComponent, {
+        // Render both loading overlay and ReactFlow (ReactFlow hidden during loading)
+        // This ensures onInit gets called so we can hide loading after centering
+        return React.createElement('div', { className: 'graph-container-wrapper', style: { width: '100%', height: '100%', position: 'relative' } },
+          // Loading overlay
+          isLoading && React.createElement('div', { className: 'graph-loading' },
+            React.createElement('div', { className: 'graph-loading-spinner' }),
+            React.createElement('span', { className: 'graph-loading-text' }, 'Loading lineage graph...')
+          ),
+          // ReactFlow (hidden during loading via CSS)
+          React.createElement('div', { 
+            className: 'graph-flow-container',
+            style: { 
+              width: '100%', 
+              height: '100%',
+              opacity: isLoading ? 0 : 1,
+              transition: 'opacity 0.2s ease-in-out'
+            } 
+          },
+            React.createElement(ReactFlowComponent, {
           nodes,
           edges: combinedEdges,
           onNodesChange,
@@ -8913,14 +8970,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               bottom: 16
             }
           }),
-          React.createElement(Controls, { 
-            showInteractive: false,
-            position: 'bottom-right',
-            style: {
-              bottom: 16
-            }
-          })
-        );
+            React.createElement(Controls, { 
+              showInteractive: false,
+              position: 'bottom-right',
+              style: {
+                bottom: 16
+              }
+            })
+          ) // end ReactFlowComponent
+        ) // end graph-flow-container
+      ); // end graph-container-wrapper
       }
 
       // =============================================
