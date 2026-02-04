@@ -3518,26 +3518,26 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, [position]);
         
         // Determine icon and title based on current state
-        // Priority: if nodes are visible (can collapse), show collapse action first
-        // Only show expand if nothing visible yet but more depth available
+        // Priority: if MORE depth available beyond current, show expand
+        // Only show collapse if at max expansion (no more to show)
         const getIconAndTitle = () => {
           if (position === 'left') {
             // Upstream button
-            if (actionState.canCollapse) {
-              // Nodes are visible - show collapse (inward arrow: chevron-right pointing toward focal)
-              return { icon: './img/ui/chevron-right.svg', title: 'Collapse upstream (-1 depth)' };
-            } else if (actionState.canExpand) {
-              // No nodes visible but more available - show expand (outward arrow)
+            if (actionState.canExpand) {
+              // More depth available - show expand (outward arrow)
               return { icon: './img/ui/chevron-left.svg', title: 'Expand upstream (+1 depth)' };
+            } else if (actionState.canCollapse) {
+              // At max expansion - show collapse (inward arrow)
+              return { icon: './img/ui/chevron-right.svg', title: 'Collapse upstream (-1 depth)' };
             }
           } else {
             // Downstream button
-            if (actionState.canCollapse) {
-              // Nodes are visible - show collapse (inward arrow: chevron-left pointing toward focal)
-              return { icon: './img/ui/chevron-left.svg', title: 'Collapse downstream (-1 depth)' };
-            } else if (actionState.canExpand) {
-              // No nodes visible but more available - show expand (outward arrow)
+            if (actionState.canExpand) {
+              // More depth available - show expand (outward arrow)
               return { icon: './img/ui/chevron-right.svg', title: 'Expand downstream (+1 depth)' };
+            } else if (actionState.canCollapse) {
+              // At max expansion - show collapse (inward arrow)
+              return { icon: './img/ui/chevron-left.svg', title: 'Collapse downstream (-1 depth)' };
             }
           }
           return { icon: null, title: '' };
@@ -3694,9 +3694,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
         }, [itemId]);
         
-        // Handle button click - collapse or expand (collapse takes priority when nodes are visible)
+        // Handle button click - expand or collapse (expand takes priority when more depth available)
         const handleButtonClick = (e) => {
           e.stopPropagation();
+          e.preventDefault();
           // Dispatch event to hide paired button
           window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
           
@@ -3704,18 +3705,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           if (!expansion) return;
           
           if (position === 'left') {
-            // Upstream - collapse takes priority when nodes are visible
-            if (actionState.canCollapse) {
-              expansion.collapseUpstream();
-            } else if (actionState.canExpand) {
+            // Upstream - expand takes priority when more depth available
+            if (actionState.canExpand) {
               expansion.expandUpstream();
+            } else if (actionState.canCollapse) {
+              expansion.collapseUpstream();
             }
           } else {
-            // Downstream - collapse takes priority when nodes are visible
-            if (actionState.canCollapse) {
-              expansion.collapseDownstream();
-            } else if (actionState.canExpand) {
+            // Downstream - expand takes priority when more depth available
+            if (actionState.canExpand) {
               expansion.expandDownstream();
+            } else if (actionState.canCollapse) {
+              expansion.collapseDownstream();
             }
           }
         };
@@ -3742,7 +3743,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             },
             onMouseEnter: handleHitAreaMouseEnter,
             onMouseLeave: handleHitAreaMouseLeave,
-            onClick: (e) => e.stopPropagation()
+            onClick: (e) => { e.stopPropagation(); e.preventDefault(); },
+            onMouseDown: (e) => { e.stopPropagation(); e.preventDefault(); }
           },
             React.createElement('button', {
               className: 'hover-action-btn',
@@ -6720,7 +6722,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           relayoutOnDepthChange();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [expansionDepth.upstream, expansionDepth.downstream, expandedItems, collapseState]);
+        }, [expansionDepth.upstream, expansionDepth.downstream]);
 
         // Update nodes when selection or expanded state changes
         useEffect(() => {
