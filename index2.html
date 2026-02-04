@@ -3482,17 +3482,65 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const [isVisible, setIsVisible] = React.useState(false);
         const [buttonPosition, setButtonPosition] = React.useState({ top: 0, left: 0 });
         const [hitAreaSize, setHitAreaSize] = React.useState({ width: 24, height: 24 });
+        const [actionState, setActionState] = React.useState({ canExpand: false, canCollapse: false });
         const markerRef = React.useRef(null);
         const isOverHitAreaRef = React.useRef(false);
         const showTimeoutRef = React.useRef(null);
         
-        // position: 'left' or 'right'
-        const icon = position === 'left' 
-          ? './img/ui/chevron-left.svg' 
-          : './img/ui/chevron-right.svg';
-        const title = position === 'left' 
-          ? 'Show upstream (-1)' 
-          : 'Show downstream (+1)';
+        // Determine action state based on global lineage expansion
+        React.useEffect(() => {
+          const updateActionState = () => {
+            const expansion = window.lineageExpansion;
+            if (!expansion) {
+              setActionState({ canExpand: false, canCollapse: false });
+              return;
+            }
+            
+            if (position === 'left') {
+              // Left = upstream
+              setActionState({
+                canExpand: expansion.canExpandUpstream(),
+                canCollapse: expansion.canCollapseUpstream()
+              });
+            } else {
+              // Right = downstream
+              setActionState({
+                canExpand: expansion.canExpandDownstream(),
+                canCollapse: expansion.canCollapseDownstream()
+              });
+            }
+          };
+          
+          updateActionState();
+          // Poll for changes since expansion state is global
+          const interval = setInterval(updateActionState, 100);
+          return () => clearInterval(interval);
+        }, [position]);
+        
+        // Determine icon and title based on current state
+        // If can expand: show outward arrow (left for upstream, right for downstream)
+        // If can only collapse: show inward arrow (right for upstream, left for downstream)
+        const getIconAndTitle = () => {
+          if (position === 'left') {
+            // Upstream button
+            if (actionState.canExpand) {
+              return { icon: './img/ui/chevron-left.svg', title: 'Expand upstream (+1 depth)' };
+            } else if (actionState.canCollapse) {
+              return { icon: './img/ui/chevron-right.svg', title: 'Collapse upstream (-1 depth)' };
+            }
+          } else {
+            // Downstream button
+            if (actionState.canExpand) {
+              return { icon: './img/ui/chevron-right.svg', title: 'Expand downstream (+1 depth)' };
+            } else if (actionState.canCollapse) {
+              return { icon: './img/ui/chevron-left.svg', title: 'Collapse downstream (-1 depth)' };
+            }
+          }
+          return { icon: null, title: '' };
+        };
+        
+        const { icon, title } = getIconAndTitle();
+        const hasAction = actionState.canExpand || actionState.canCollapse;
         
         // Listen for hover on parent node
         React.useEffect(() => {
@@ -3642,12 +3690,30 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
         }, [itemId]);
         
-        // Hide both buttons when clicked
+        // Handle button click - expand or collapse
         const handleButtonClick = (e) => {
           e.stopPropagation();
           // Dispatch event to hide paired button
           window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
-          console.log(`${position} lineage action for ${itemId}${columnName ? ':' + columnName : ''}`);
+          
+          const expansion = window.lineageExpansion;
+          if (!expansion) return;
+          
+          if (position === 'left') {
+            // Upstream
+            if (actionState.canExpand) {
+              expansion.expandUpstream();
+            } else if (actionState.canCollapse) {
+              expansion.collapseUpstream();
+            }
+          } else {
+            // Downstream
+            if (actionState.canExpand) {
+              expansion.expandDownstream();
+            } else if (actionState.canCollapse) {
+              expansion.collapseDownstream();
+            }
+          }
         };
         
         // Invisible marker to find parent node
@@ -3657,7 +3723,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         });
         
         // The actual button rendered via portal with extended invisible hit area
-        const button = isVisible && ReactDOM.createPortal(
+        // Only show button if there's an action available
+        const button = isVisible && hasAction && icon && ReactDOM.createPortal(
           React.createElement('div', {
             className: 'node-hover-actions-portal',
             style: {
@@ -5160,6 +5227,41 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       }
 
       // =============================================
+      // Filter Data by Expansion Depth
+      // Returns filtered data and max available depths
+      // =============================================
+      function filterDataByDepth(data, upstreamDepth, downstreamDepth) {
+        // Find max available depths in the data
+        let maxUpstream = 0;
+        let maxDownstream = 0;
+        
+        data.depths.forEach(depth => {
+          if (depth.level < 0) {
+            maxUpstream = Math.max(maxUpstream, Math.abs(depth.level));
+          } else if (depth.level > 0) {
+            maxDownstream = Math.max(maxDownstream, depth.level);
+          }
+        });
+        
+        // Filter depths based on current expansion
+        const filteredDepths = data.depths.filter(depth => {
+          if (depth.level === 0) return true; // Always include focal
+          if (depth.level < 0) {
+            // Upstream: level -1 needs upstreamDepth >= 1, level -2 needs >= 2, etc.
+            return Math.abs(depth.level) <= upstreamDepth;
+          } else {
+            // Downstream: level 1 needs downstreamDepth >= 1, etc.
+            return depth.level <= downstreamDepth;
+          }
+        });
+        
+        return {
+          filteredData: { ...data, depths: filteredDepths },
+          maxAvailable: { upstream: maxUpstream, downstream: maxDownstream }
+        };
+      }
+      
+      // =============================================
       // Transform Mock Data to Nodes & Edges
       // Groups with compact cards, focal as single card
       // =============================================
@@ -5392,6 +5494,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const relatedColumnsRef = React.useRef(new Map()); // Ref for relatedColumns to avoid stale closures
         const selectedColumnLineageRef = React.useRef(null); // Ref for selectedColumnLineage to avoid stale closures
         
+        // Depth expansion state for hover button actions
+        // upstreamDepth: how many upstream levels expanded (1 = -1 from focal, 2 = -2 from focal, etc.)
+        // downstreamDepth: how many downstream levels expanded (1 = +1 from focal, 2 = +2 from focal, etc.)
+        const [expansionDepth, setExpansionDepth] = useState({ upstream: 1, downstream: 1 });
+        const [maxAvailableDepth, setMaxAvailableDepth] = useState({ upstream: 0, downstream: 0 });
+        
         const reactFlowInstance = useReactFlow();
 
         // Calculate node height based on collapse state and expanded items
@@ -5490,6 +5598,35 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               ...prev[nodeId],
               collapsed: !prev[nodeId]?.collapsed
             }
+          }));
+        }, []);
+
+        // Handle expand/collapse lineage depth
+        const handleExpandUpstream = useCallback(() => {
+          setExpansionDepth(prev => ({
+            ...prev,
+            upstream: Math.min(prev.upstream + 1, maxAvailableDepth.upstream)
+          }));
+        }, [maxAvailableDepth.upstream]);
+        
+        const handleCollapseUpstream = useCallback(() => {
+          setExpansionDepth(prev => ({
+            ...prev,
+            upstream: Math.max(prev.upstream - 1, 0)
+          }));
+        }, []);
+        
+        const handleExpandDownstream = useCallback(() => {
+          setExpansionDepth(prev => ({
+            ...prev,
+            downstream: Math.min(prev.downstream + 1, maxAvailableDepth.downstream)
+          }));
+        }, [maxAvailableDepth.downstream]);
+        
+        const handleCollapseDownstream = useCallback(() => {
+          setExpansionDepth(prev => ({
+            ...prev,
+            downstream: Math.max(prev.downstream - 1, 0)
           }));
         }, []);
 
@@ -6425,8 +6562,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               });
             }
             
+            // Filter data by initial expansion depth (1 level upstream and downstream)
+            const { filteredData, maxAvailable } = filterDataByDepth(
+              window.mockLineageData,
+              expansionDepth.upstream,
+              expansionDepth.downstream
+            );
+            setMaxAvailableDepth(maxAvailable);
+            
             const { nodes: initialNodes, edges: initialEdges, allItems } = transformDataToNodesAndEdges(
-              window.mockLineageData, 
+              filteredData, 
               handleItemClick,
               initialSelectedId,
               {
@@ -6468,6 +6613,55 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           initLayout();
         // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
+
+        // Re-layout when expansion depth changes
+        useEffect(() => {
+          // Skip initial render (handled by initLayout)
+          if (nodes.length === 0) return;
+          
+          async function relayoutOnDepthChange() {
+            const currentSelectedId = columnLineageMode ? null : (selectedItem?.id || window.sharedSelection?.selectedItemId);
+            
+            // Filter data by current expansion depth
+            const { filteredData, maxAvailable } = filterDataByDepth(
+              window.mockLineageData,
+              expansionDepth.upstream,
+              expansionDepth.downstream
+            );
+            setMaxAvailableDepth(maxAvailable);
+            
+            const { nodes: newNodes, edges: newEdges } = transformDataToNodesAndEdges(
+              filteredData, 
+              handleItemClick,
+              currentSelectedId,
+              {
+                onToggleDbCollapse: handleToggleDbCollapse,
+                onToggleSchemaCollapse: handleToggleSchemaCollapse,
+                onTogglePlatformCollapse: handleTogglePlatformCollapse,
+              }
+            );
+            
+            try {
+              const layoutedNodes = await calculateLayout(newNodes, newEdges);
+              const nodesWithSelection = layoutedNodes.map(node => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  selectedItemId: currentSelectedId
+                }
+              }));
+              setNodes(nodesWithSelection);
+              setEdges(newEdges);
+            } catch (error) {
+              console.error('Layout error on depth change:', error);
+              setNodes(newNodes);
+              setEdges(newEdges);
+            }
+          }
+          
+          relayoutOnDepthChange();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [expansionDepth.upstream, expansionDepth.downstream]);
 
         // Update nodes when selection or expanded state changes
         useEffect(() => {
@@ -6713,6 +6907,26 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             delete window.centerOnNode;
           };
         }, [reactFlowInstance, selectedItem]);
+        
+        // Expose expansion depth handlers globally
+        useEffect(() => {
+          window.lineageExpansion = {
+            depth: expansionDepth,
+            maxDepth: maxAvailableDepth,
+            expandUpstream: handleExpandUpstream,
+            collapseUpstream: handleCollapseUpstream,
+            expandDownstream: handleExpandDownstream,
+            collapseDownstream: handleCollapseDownstream,
+            canExpandUpstream: () => expansionDepth.upstream < maxAvailableDepth.upstream,
+            canCollapseUpstream: () => expansionDepth.upstream > 0,
+            canExpandDownstream: () => expansionDepth.downstream < maxAvailableDepth.downstream,
+            canCollapseDownstream: () => expansionDepth.downstream > 0,
+          };
+          
+          return () => {
+            delete window.lineageExpansion;
+          };
+        }, [expansionDepth, maxAvailableDepth, handleExpandUpstream, handleCollapseUpstream, handleExpandDownstream, handleCollapseDownstream]);
 
         // Handle window resize to adjust zoom level at breakpoint
         useEffect(() => {
