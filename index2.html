@@ -5275,11 +5275,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const upstreamMap = new Map();
         
         // Initialize all items with empty upstream arrays
+        let totalItems = 0;
         data.depths.forEach(depth => {
           depth.groups.forEach(group => {
             if (group.schemas) {
               group.schemas.forEach(schema => {
                 schema.items.forEach(item => {
+                  totalItems++;
                   if (!upstreamMap.has(item.id)) {
                     upstreamMap.set(item.id, []);
                   }
@@ -5287,6 +5289,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               });
             } else if (group.items) {
               group.items.forEach(item => {
+                totalItems++;
                 if (!upstreamMap.has(item.id)) {
                   upstreamMap.set(item.id, []);
                 }
@@ -5294,8 +5297,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
           });
         });
+        console.log('[DEBUG computeUpstreamMap] Total items found:', totalItems, 'Map size:', upstreamMap.size);
         
         // Build upstream relationships by inverting downstream
+        let downstreamRelationsFound = 0;
         data.depths.forEach(depth => {
           depth.groups.forEach(group => {
             if (group.schemas) {
@@ -5303,8 +5308,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 schema.items.forEach(item => {
                   if (item.downstream) {
                     item.downstream.forEach(downstreamId => {
+                      downstreamRelationsFound++;
                       if (upstreamMap.has(downstreamId)) {
                         upstreamMap.get(downstreamId).push(item.id);
+                      } else {
+                        console.log('[DEBUG] Downstream target not found:', downstreamId, 'from item:', item.id);
                       }
                     });
                   }
@@ -5314,8 +5322,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               group.items.forEach(item => {
                 if (item.downstream) {
                   item.downstream.forEach(downstreamId => {
+                    downstreamRelationsFound++;
                     if (upstreamMap.has(downstreamId)) {
                       upstreamMap.get(downstreamId).push(item.id);
+                    } else {
+                      console.log('[DEBUG] Downstream target not found:', downstreamId, 'from item:', item.id);
                     }
                   });
                 }
@@ -5323,6 +5334,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
           });
         });
+        console.log('[DEBUG computeUpstreamMap] Downstream relations processed:', downstreamRelationsFound);
         
         console.log('[DEBUG computeUpstreamMap] upstreamMap for fct_customer_orders:', upstreamMap.get('fct_customer_orders'));
         return upstreamMap;
