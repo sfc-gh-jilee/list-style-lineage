@@ -6865,12 +6865,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             try {
               const layoutedNodes = await calculateLayout(initialNodes, initialEdges);
-              // Ensure selectedItemId is set on all nodes
+              // Ensure selectedItemId and columnLeafStatus are set on all nodes
               const nodesWithSelection = layoutedNodes.map(node => ({
                 ...node,
                 data: {
                   ...node.data,
-                  selectedItemId: initialSelectedId
+                  selectedItemId: initialSelectedId,
+                  columnLeafStatus: columnLeafStatus
                 }
               }));
               setNodes(nodesWithSelection);
@@ -6878,12 +6879,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               
             } catch (error) {
               console.error('Layout error:', error);
-              // Ensure selectedItemId is set even on error
+              // Ensure selectedItemId and columnLeafStatus are set even on error
               const nodesWithSelection = initialNodes.map(node => ({
                 ...node,
                 data: {
                   ...node.data,
-                  selectedItemId: initialSelectedId
+                  selectedItemId: initialSelectedId,
+                  columnLeafStatus: columnLeafStatus
                 }
               }));
               setNodes(nodesWithSelection);
@@ -6963,6 +6965,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                     columnLineageMode: columnLineageMode,
                     sourceColumn: selectedColumnLineage,
                     relatedColumns: relatedColumns,
+                    columnLeafStatus: columnLeafStatus,
                     showAllColumnsItems: showAllColumnsItems,
                     onShowAllColumns: handleShowAllColumns,
                     itemActiveTabs: itemActiveTabs,
