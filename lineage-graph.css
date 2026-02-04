@@ -145,7 +145,7 @@
 .react-flow__edge.inactive .react-flow__edge-path {
   stroke: #BDC4D5 !important;
   stroke-width: 1px !important;
-  stroke-dasharray: 24 8 8 8 !important;
+  stroke-dasharray: 36 6 6 6 !important;
   opacity: 0.7;
 }
 
@@ -153,7 +153,7 @@
 .react-flow__edge.inactive:hover .react-flow__edge-path {
   stroke: #8A94A8 !important;
   stroke-width: 1px !important;
-  stroke-dasharray: 24 8 8 8 !important;
+  stroke-dasharray: 36 6 6 6 !important;
   opacity: 0.85;
 }
 
@@ -2330,7 +2330,8 @@
 }
 
 .node-error-icon:hover {
-  background: rgba(211, 19, 47, 0.08);
+  /* background: #FFD1DC; */
+  color: #66000E;
 }
 
 .node-error-icon img {
@@ -2354,7 +2355,8 @@
 }
 
 .node-warning-icon:hover {
-  background: rgba(245, 158, 11, 0.12);
+  /* background: #FFEDCD; */
+  color: #653E03;
 }
 
 .node-warning-icon img {
@@ -2509,7 +2511,7 @@
   font-family: Inter, sans-serif;
   font-size: 13px;
   font-weight: 600;
-  color: #B45309;
+  color: #653E03;
 }
 
 .warning-popover-message {
@@ -2528,13 +2530,13 @@
 .react-flow__edge.affected-by-error .react-flow__edge-path {
   stroke: #BDC4D5 !important;
   stroke-width: 1px !important;
-  stroke-dasharray: 24 8 8 8 !important;
+  stroke-dasharray: 36 6 6 6 !important;
   opacity: 0.7;
 }
 
 .react-flow__edge.affected-by-error:hover .react-flow__edge-path {
   stroke: #8A94A8 !important;
-  stroke-dasharray: 24 8 8 8 !important;
+  stroke-dasharray: 36 6 6 6 !important;
   opacity: 0.85;
 }
 
@@ -2542,7 +2544,7 @@
 .react-flow__edge.affected-by-error.selected .react-flow__edge-path {
   stroke: #1A6CE7 !important;
   stroke-width: 2px !important;
-  stroke-dasharray: 24 8 8 8 !important;
+  stroke-dasharray: 36 6 6 6 !important;
   animation: none !important;
   opacity: 1;
 }
@@ -2551,7 +2553,7 @@
 .react-flow__edge.affected-by-error.selected:hover .react-flow__edge-path {
   stroke: #1A6CE7 !important;
   stroke-width: 2px !important;
-  stroke-dasharray: 24 8 8 8 !important;
+  stroke-dasharray: 36 6 6 6 !important;
   animation: none !important;
   opacity: 1;
 }
