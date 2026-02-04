@@ -184,6 +184,32 @@
       height: 100%;
       border: none;
     }
+
+    /* Right Edge Tab Placeholder */
+    .right-edge-tab {
+      position: fixed;
+      right: 0;
+      /* top: 50%; */
+      bottom: 24px;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      background: #2ab5e8;
+      border-radius: 8px 0 0 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+      transition: width 0.2s ease;
+    }
+
+    .right-edge-tab:hover {
+      width: 36px;
+      background: #38bdf8;
+    }
+
   </style>
 </head>
 <body>
@@ -201,6 +227,13 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- Right Edge Tab Placeholder -->
+  <div class="right-edge-tab" title="Placeholder">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 0C9.34521 4.74504 11.2107 6.64414 16 8L15.5596 8.12891C11.2387 9.43397 9.42175 11.2796 8.12793 15.5635L8 16C6.65479 11.255 4.78932 9.35586 0 8C4.78932 6.64414 6.65479 4.74504 8 0Z" fill="#fff"/>
+    </svg>
   </div>
 
   <!-- Fullscreen Modal -->
