@@ -3490,8 +3490,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         // Check if this item has lineage in the button's direction
         const hasLineageInDirection = position === 'left' ? hasUpstream : hasDownstream;
         
-        // Determine action state based on per-node lineage expansion
+        // Determine action state based on per-node lineage expansion (OBJECT level only)
         React.useEffect(() => {
+          // Skip for columns - they have different logic
+          if (isColumn) {
+            setActionState({ canExpand: false, canCollapse: false });
+            return;
+          }
+          
           const updateActionState = () => {
             const expansion = window.lineageExpansion;
             if (!expansion) {
@@ -3518,12 +3524,22 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Poll for changes since expansion state is global
           const interval = setInterval(updateActionState, 100);
           return () => clearInterval(interval);
-        }, [position, itemId]);
+        }, [position, itemId, isColumn]);
         
         // Determine icon and title based on current state
-        // Priority: if MORE depth available beyond current, show expand
-        // Only show collapse if at max expansion (no more to show)
+        // For columns: always show expand direction (triggers column lineage mode)
+        // For objects: show expand/collapse based on current expansion state
         const getIconAndTitle = () => {
+          // For columns: always show outward arrow (to indicate "view lineage")
+          if (isColumn) {
+            if (position === 'left') {
+              return { icon: './img/ui/chevron-left.svg', title: 'View upstream column lineage' };
+            } else {
+              return { icon: './img/ui/chevron-right.svg', title: 'View downstream column lineage' };
+            }
+          }
+          
+          // For objects: show expand/collapse based on state
           if (position === 'left') {
             // Upstream button
             if (actionState.canExpand) {
@@ -3547,9 +3563,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         };
         
         const { icon, title } = getIconAndTitle();
-        // Only show button if: there's an action available AND this item has lineage in this direction
-        // Use !! to ensure undefined/false both result in false
-        const hasAction = (actionState.canExpand || actionState.canCollapse) && !!hasLineageInDirection;
+        
+        // Determine if button should show:
+        // - For columns: show if there's lineage in that direction
+        // - For objects: show if there's an action AND lineage in that direction
+        const hasAction = isColumn 
+          ? !!hasLineageInDirection 
+          : (actionState.canExpand || actionState.canCollapse) && !!hasLineageInDirection;
         
         // Listen for hover on parent node
         React.useEffect(() => {
@@ -3699,13 +3719,25 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
         }, [itemId]);
         
-        // Handle button click - expand or collapse (expand takes priority when more depth available)
+        // Handle button click
+        // - For columns: trigger column lineage mode
+        // - For objects: expand or collapse (expand takes priority when more depth available)
         const handleButtonClick = (e) => {
           e.stopPropagation();
           e.preventDefault();
           // Dispatch event to hide paired button
           window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
           
+          // For columns: trigger column lineage mode by calling handleChildClick
+          if (isColumn && columnName) {
+            // Use a custom event to trigger column lineage mode
+            window.dispatchEvent(new CustomEvent('triggerColumnLineage', {
+              detail: { itemId, columnName }
+            }));
+            return;
+          }
+          
+          // For objects: use expansion system
           const expansion = window.lineageExpansion;
           if (!expansion) return;
           
@@ -4059,6 +4091,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             isLeafDownstream ? 'leaf-downstream' : ''
           ].filter(Boolean).join(' ');
           
+          // For hover actions: hasUpstream/hasDownstream is the opposite of isLeaf
+          const hasColumnUpstream = !isLeafUpstream;
+          const hasColumnDownstream = !isLeafDownstream;
+          
           return React.createElement('div', {
             key: child.name + '-' + index + (isPinned ? '-pinned' : ''),
             className: `graph-child-item ${isSelected ? 'selected' : ''} ${lineageClass || ''} ${isPinned ? 'pinned' : ''} ${leafClasses}`,
@@ -4074,7 +4110,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               position: 'left', 
               itemId: itemId, 
               isColumn: true, 
-              columnName: child.name 
+              columnName: child.name,
+              hasUpstream: hasColumnUpstream,
+              hasDownstream: hasColumnDownstream
             }),
             // Left handle for column input (target)
             showHandles && React.createElement(Handle, {
@@ -4126,7 +4164,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               position: 'right', 
               itemId: itemId, 
               isColumn: true, 
-              columnName: child.name 
+              columnName: child.name,
+              hasUpstream: hasColumnUpstream,
+              hasDownstream: hasColumnDownstream
             }),
             // Right handle for column output (source)
             showHandles && React.createElement(Handle, {
@@ -6105,6 +6145,21 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Edge creation is handled by useEffect below after render
           
         }, [columnLineageMode, selectedColumnLineage, reactFlowInstance, setEdges]);
+        
+        // Listen for column lineage trigger from hover action buttons
+        useEffect(() => {
+          const handleTriggerColumnLineage = (e) => {
+            const { itemId, columnName } = e.detail;
+            if (itemId && columnName) {
+              handleChildClick(itemId, columnName);
+            }
+          };
+          
+          window.addEventListener('triggerColumnLineage', handleTriggerColumnLineage);
+          return () => {
+            window.removeEventListener('triggerColumnLineage', handleTriggerColumnLineage);
+          };
+        }, [handleChildClick]);
         
         // Create column lineage edges AFTER items are expanded (handles must exist first)
         // Uses polling approach to handle rapid column switches
