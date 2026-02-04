@@ -3140,6 +3140,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const Handle = window.ReactFlow.Handle;
         const ReactFlowProvider = window.ReactFlow.ReactFlowProvider;
         const useReactFlow = window.ReactFlow.useReactFlow;
+        const useUpdateNodeInternals = window.ReactFlow.useUpdateNodeInternals;
         const BackgroundVariant = window.ReactFlow.BackgroundVariant;
         const MarkerType = window.ReactFlow.MarkerType;
         
@@ -5825,6 +5826,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const [expandedDownstream, setExpandedDownstream] = useState(new Set());
         
         const reactFlowInstance = useReactFlow();
+        const updateNodeInternals = useUpdateNodeInternals ? useUpdateNodeInternals() : null;
 
         // Calculate node height based on collapse state and expanded items
         const calculateNodeHeight = useCallback((nodeType, items, collapseInfo, expandedItemsState, selectedItemId, columnLineageModeState, sourceColumnState, relatedColumnsState) => {
@@ -6257,10 +6259,21 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setEdges([]);
           setColumnLineageEdges([]);
           
-          // Step 2: Force React Flow to refresh its node/handle registry by triggering a node update
-          // This is critical - React Flow caches handle positions and won't update without a node refresh
+          // Step 2: Force React Flow to refresh its node/handle registry
+          // Use updateNodeInternals API if available (proper way to update handles)
+          // Also do a position nudge as fallback
           const currentNodes = reactFlowInstance.getNodes();
-          // Add a tiny position offset and then reset to force handle recalculation
+          const nodeIds = currentNodes.map(n => n.id);
+          
+          if (updateNodeInternals) {
+            console.log('Using updateNodeInternals to refresh handle registry for', nodeIds.length, 'nodes');
+            // Update internals for all nodes to refresh handle positions
+            nodeIds.forEach(nodeId => {
+              updateNodeInternals(nodeId);
+            });
+          }
+          
+          // Also do position nudge as additional measure
           const refreshedNodes = currentNodes.map(n => ({
             ...n,
             position: { x: n.position.x + 0.001, y: n.position.y + 0.001 }
@@ -6275,6 +6288,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }
             }));
             setNodes(resetNodes);
+            
+            // Call updateNodeInternals again after position reset
+            if (updateNodeInternals) {
+              nodeIds.forEach(nodeId => {
+                updateNodeInternals(nodeId);
+              });
+            }
           }, 10);
           
           const createEdges = () => {
