@@ -1783,6 +1783,17 @@
             const edgeErrorBanner = document.getElementById('panelEdgeErrorBanner');
             edgeErrorBanner.classList.add('hidden');
             
+            // Show info banner for affected edges (source has warning = stale data)
+            const edgeInfoBanner = document.getElementById('panelEdgeInfoBanner');
+            const edgeInfoMessage = document.getElementById('panelEdgeInfoMessage');
+            if (sourceItem.hasWarning || sourceItem.hasError) {
+              const issueType = sourceItem.hasError ? 'error' : 'warning';
+              edgeInfoMessage.textContent = `The source ${sourceItem.name} has a ${issueType}. Data flowing through this edge may be stale or incomplete.`;
+              edgeInfoBanner.classList.remove('hidden');
+            } else {
+              edgeInfoBanner.classList.add('hidden');
+            }
+            
             // Truncate names for title
             const sourceName = sourceItem.name || 'Source';
             const targetName = targetItem.name || 'Target';
@@ -2999,6 +3010,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-error-banner-content">
             <span class="panel-error-banner-title">Error</span>
             <span class="panel-error-banner-message" id="panelErrorMessage">An error occurred</span>
+            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+              Ask Cortex Code
+            </button>
           </div>
         </div>
         
@@ -3008,6 +3023,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-warning-banner-content">
             <span class="panel-warning-banner-title">Warning</span>
             <span class="panel-warning-banner-message" id="panelWarningMessage">A warning occurred</span>
+            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+              Ask Cortex Code
+            </button>
           </div>
         </div>
         
@@ -3087,6 +3106,23 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <div class="panel-error-banner-content">
             <span class="panel-error-banner-title">Error</span>
             <span class="panel-error-banner-message" id="panelEdgeErrorMessage">An error occurred</span>
+            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+              Ask Cortex Code
+            </button>
+          </div>
+        </div>
+        
+        <!-- Info Banner (for affected edges) -->
+        <div class="panel-info-banner hidden" id="panelEdgeInfoBanner">
+          <img class="panel-info-banner-icon" src="./img/ui/info-circle.svg" alt="Info">
+          <div class="panel-info-banner-content">
+            <span class="panel-info-banner-title">Affected by upstream issue</span>
+            <span class="panel-info-banner-message" id="panelEdgeInfoMessage">This edge may be processing stale data due to an upstream sync failure.</span>
+            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+              Ask Cortex Code
+            </button>
           </div>
         </div>
         

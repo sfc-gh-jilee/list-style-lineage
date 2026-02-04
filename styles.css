@@ -407,6 +407,7 @@ body {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  align-items: flex-start;
 }
 
 .panel-error-banner-title {
@@ -458,6 +459,7 @@ body {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  align-items: flex-start;
 }
 
 .panel-warning-banner-title {
@@ -479,6 +481,89 @@ body {
   line-height: 18px;
   letter-spacing: 0;
   word-wrap: break-word;
+}
+
+/* Panel Info Banner (neutral) */
+.panel-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  margin: 20px 16px 4px;
+  background: #ECEEF1;
+  border: none;
+  border-radius: 8px;
+}
+
+.panel-info-banner.hidden {
+  display: none;
+}
+
+.panel-info-banner-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.panel-info-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.panel-info-banner-title {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  color: #1E252F;
+  line-height: 16px;
+  letter-spacing: 0;
+}
+
+.panel-info-banner-message {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  color: #1E252F;
+  line-height: 18px;
+  letter-spacing: 0;
+  word-wrap: break-word;
+}
+
+/* Panel Banner Action Button (Ask Cortex Code) */
+.panel-banner-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin-top: 8px;
+  background: #FFFFFF;
+  border: 1px solid #BDC4D5;
+  border-radius: 6px;
+  font-family: Inter, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1E252F;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.panel-banner-action-btn:hover {
+  background: #F5F7FA;
+  border-color: #BDC4D5;
+}
+
+.panel-banner-action-btn:active {
+  background: #ECEEF1;
+}
+
+.panel-banner-action-btn img {
+  flex-shrink: 0;
 }
 
 /* Panel Tab Content */
@@ -1492,6 +1577,33 @@ body {
 
 .dark-mode .panel-warning-banner-message {
   color: #FDE68A;
+}
+
+.dark-mode .panel-info-banner {
+  background: #334155;
+}
+
+.dark-mode .panel-info-banner-title {
+  color: #E2E8F0;
+}
+
+.dark-mode .panel-info-banner-message {
+  color: #CBD5E1;
+}
+
+.dark-mode .panel-banner-action-btn {
+  background: #1E293B;
+  border-color: #475569;
+  color: #E2E8F0;
+}
+
+.dark-mode .panel-banner-action-btn:hover {
+  background: #334155;
+  border-color: #64748B;
+}
+
+.dark-mode .panel-banner-action-btn:active {
+  background: #475569;
 }
 
 .dark-mode .panel-subtabs {
