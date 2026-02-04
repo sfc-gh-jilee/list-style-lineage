@@ -5324,6 +5324,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           });
         });
         
+        console.log('[DEBUG computeUpstreamMap] upstreamMap for fct_customer_orders:', upstreamMap.get('fct_customer_orders'));
         return upstreamMap;
       }
       
@@ -5381,10 +5382,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         
         // Get focal's upstream from computed map
         const focalUpstream = upstreamMap.get(focalId) || [];
+        console.log('[DEBUG computeVisibleNodes] focalId:', focalId);
+        console.log('[DEBUG computeVisibleNodes] focalUpstream:', focalUpstream);
+        console.log('[DEBUG computeVisibleNodes] expandedUpstream.has(focalId):', expandedUpstream.has(focalId));
         
         // BFS to find visible nodes
         // Traverse upstream from nodes that have expandedUpstream
         const upstreamQueue = expandedUpstream.has(focalId) ? [...focalUpstream] : [];
+        console.log('[DEBUG computeVisibleNodes] upstreamQueue:', upstreamQueue);
         while (upstreamQueue.length > 0) {
           const itemId = upstreamQueue.shift();
           if (visibleIds.has(itemId)) continue;
@@ -6792,6 +6797,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               initialExpandedDownstream,
               focalId
             );
+            console.log('[DEBUG initLayout] focalId:', focalId);
+            console.log('[DEBUG initLayout] visibleIds:', [...visibleIds]);
             
             // Filter data to only visible nodes
             const filteredData = filterDataByVisibility(window.mockLineageData, visibleIds);
