@@ -3159,6 +3159,75 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       // Also available: window.columnLineage, window.findRelatedColumns, etc.
 
       // =============================================
+      // Debug Helper: Check Column Lineage Edges in DOM
+      // =============================================
+      function debugColumnLineageEdges(context = '') {
+        console.log(`\n=== DEBUG: Column Lineage Edges ${context} ===`);
+        
+        // 1. Check React Flow's edge elements container
+        const reactFlowEdges = document.querySelector('.react-flow__edges');
+        if (!reactFlowEdges) {
+          console.log('❌ React Flow edges container not found!');
+          return;
+        }
+        console.log('✓ React Flow edges container found');
+        
+        // 2. Find all edge groups (each edge is typically in a <g> element)
+        const allEdgeGroups = reactFlowEdges.querySelectorAll('g.react-flow__edge');
+        console.log(`Total edges in DOM: ${allEdgeGroups.length}`);
+        
+        // 3. Find column lineage edges specifically
+        const columnEdges = reactFlowEdges.querySelectorAll('.column-lineage');
+        console.log(`Column lineage edges (.column-lineage): ${columnEdges.length}`);
+        
+        // 4. Inspect each column lineage edge
+        columnEdges.forEach((edge, i) => {
+          const edgeId = edge.getAttribute('data-testid') || edge.id || `edge-${i}`;
+          const pathElement = edge.querySelector('path');
+          const animatedPath = edge.querySelector('path.react-flow__edge-path');
+          
+          console.log(`  Edge ${i + 1} (${edgeId}):`);
+          console.log(`    - Has path element: ${!!pathElement}`);
+          
+          if (pathElement) {
+            const d = pathElement.getAttribute('d');
+            console.log(`    - Path 'd' attribute: ${d ? d.substring(0, 80) + '...' : 'EMPTY'}`);
+            console.log(`    - Path has valid coords: ${d && d.length > 10 && !d.includes('NaN')}`);
+            
+            // Check bounding box
+            try {
+              const bbox = pathElement.getBBox();
+              console.log(`    - Bounding box: ${bbox.width}x${bbox.height} at (${bbox.x}, ${bbox.y})`);
+              console.log(`    - Is visible (non-zero size): ${bbox.width > 0 || bbox.height > 0}`);
+            } catch (e) {
+              console.log(`    - getBBox error: ${e.message}`);
+            }
+          }
+          
+          // Check if animated
+          const isAnimated = edge.classList.contains('animated');
+          console.log(`    - Has 'animated' class: ${isAnimated}`);
+          
+          // Check computed style visibility
+          const style = window.getComputedStyle(edge);
+          console.log(`    - Computed visibility: ${style.visibility}, opacity: ${style.opacity}, display: ${style.display}`);
+        });
+        
+        // 5. Also check for any edges with column handle IDs
+        const edgesWithColumnHandles = reactFlowEdges.querySelectorAll('[class*="column-edge"]');
+        console.log(`Edges with 'column-edge' in class: ${edgesWithColumnHandles.length}`);
+        
+        // 6. Check if there are any SVG path elements with the blue stroke
+        const blueStrokePaths = reactFlowEdges.querySelectorAll('path[stroke="#1A6CE7"]');
+        console.log(`Paths with blue stroke (#1A6CE7): ${blueStrokePaths.length}`);
+        
+        console.log('=== END DEBUG ===\n');
+      }
+      
+      // Expose debug function globally for manual testing
+      window.debugColumnLineageEdges = debugColumnLineageEdges;
+
+      // =============================================
       // Column Leaf Status Helper
       // Precompute which columns are leaf nodes (no upstream/downstream)
       // =============================================
@@ -6376,6 +6445,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               console.log('Restoring base edges:', baseEdges.length, 'Adding lineage edges:', markedEdges.length);
               setEdges([...baseEdges, ...markedEdges]);
               
+              // Debug: Check immediately after setting edges
+              setTimeout(() => {
+                debugColumnLineageEdges('Immediately after setEdges');
+              }, 50);
+              
               // Also update our local state for combinedEdges calculation
               setColumnLineageEdges(newColumnEdges);
               
@@ -6423,10 +6497,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                       }, 10);
                     }
                     
-                    // Debug: Check DOM for rendered edges
+                    // Debug: Comprehensive check for rendered column lineage edges
                     setTimeout(() => {
-                      const columnEdgesInDom = document.querySelectorAll('.column-lineage');
-                      console.log(`Column lineage edges in DOM: ${columnEdgesInDom.length}`);
+                      debugColumnLineageEdges('After final refresh');
                     }, 100);
                   }
                 }, 150);
