@@ -6948,6 +6948,43 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             try {
               const layoutedNodes = await calculateLayout(newNodes, newEdges);
+              
+              // Get the current position of the focal node (or clicked node) before updating
+              // This helps us maintain visual stability during layout changes
+              let referenceNodeOldPos = null;
+              let referenceItemId = focalId; // Use focal node as reference
+              
+              if (reactFlowInstance) {
+                const currentNodes = reactFlowInstance.getNodes();
+                for (const node of currentNodes) {
+                  if (node.data.items) {
+                    const itemIndex = node.data.items.findIndex(item => item.id === referenceItemId);
+                    if (itemIndex !== -1) {
+                      referenceNodeOldPos = {
+                        x: node.position.x,
+                        y: node.position.y
+                      };
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              // Find the same reference node's new position after layout
+              let referenceNodeNewPos = null;
+              for (const node of layoutedNodes) {
+                if (node.data.items) {
+                  const itemIndex = node.data.items.findIndex(item => item.id === referenceItemId);
+                  if (itemIndex !== -1) {
+                    referenceNodeNewPos = {
+                      x: node.position.x,
+                      y: node.position.y
+                    };
+                    break;
+                  }
+                }
+              }
+              
               const nodesWithState = layoutedNodes.map(node => {
                 const nodeCollapseInfo = collapseState[node.id] || {};
                 return {
@@ -6980,10 +7017,29 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                   }
                 };
               });
+              
+              // If we have both old and new positions, compensate viewport immediately
+              // This prevents the visual "jump" when layout shifts
+              if (referenceNodeOldPos && referenceNodeNewPos && reactFlowInstance) {
+                const deltaX = referenceNodeNewPos.x - referenceNodeOldPos.x;
+                const deltaY = referenceNodeNewPos.y - referenceNodeOldPos.y;
+                
+                // Only compensate if there's a significant shift
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                  const viewport = reactFlowInstance.getViewport();
+                  // Adjust viewport to compensate for layout shift (nodes moved, so move viewport same direction)
+                  reactFlowInstance.setViewport({
+                    x: viewport.x - deltaX * viewport.zoom,
+                    y: viewport.y - deltaY * viewport.zoom,
+                    zoom: viewport.zoom
+                  }, { duration: 0 });
+                }
+              }
+              
               setNodes(nodesWithState);
               setEdges(newEdges);
               
-              // Center on the appropriate node after layout
+              // Center on the appropriate node after layout with smooth animation
               if (centerOnAfterLayout && reactFlowInstance) {
                 setTimeout(() => {
                   const targetItemId = centerOnAfterLayout.itemId;
@@ -7019,7 +7075,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                   
                   // Clear the center target
                   setCenterOnAfterLayout(null);
-                }, 100);
+                }, 50); // Reduced from 100ms since we now handle the instant shift
               }
             } catch (error) {
               console.error('Layout error on expansion change:', error);
