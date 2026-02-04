@@ -5930,14 +5930,37 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         // Track which node to center on after expansion/collapse
         const [centerOnAfterLayout, setCenterOnAfterLayout] = useState(null);
         
-        // Handle expand/collapse per-node lineage
-        // All expand/collapse actions deactivate column lineage mode since user is shifting focus to object-level
-        const handleExpandUpstream = useCallback((itemId) => {
-          // Deactivate column lineage mode when expanding depth columns
+        // Helper to deactivate column lineage mode while keeping only the source column selected
+        const deactivateColumnLineageKeepSource = useCallback(() => {
+          // Capture source column before clearing
+          const sourceCol = selectedColumnLineageRef.current;
+          
+          // Deactivate column lineage mode
           setColumnLineageMode(false);
           setSelectedColumnLineage(null);
           setRelatedColumns(new Map());
           setColumnLineageEdges([]);
+          setShowAllColumnsItems({});
+          
+          // Clear refs
+          selectedColumnLineageRef.current = null;
+          relatedColumnsRef.current = new Map();
+          
+          // Keep only the source column selected and its parent expanded
+          if (sourceCol) {
+            setSelectedChildren({ [sourceCol.itemId]: new Set([sourceCol.columnName]) });
+            setExpandedItems({ [sourceCol.itemId]: true });
+          } else {
+            setSelectedChildren({});
+            setExpandedItems({});
+          }
+        }, []);
+        
+        // Handle expand/collapse per-node lineage
+        // All expand/collapse actions deactivate column lineage mode since user is shifting focus to object-level
+        const handleExpandUpstream = useCallback((itemId) => {
+          // Deactivate column lineage mode, keeping source column selected
+          deactivateColumnLineageKeepSource();
           
           // Get the upstream connections of this item to find what will be newly visible
           const upstreamMap = computeUpstreamMap(window.mockLineageData);
@@ -5951,14 +5974,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             next.add(itemId);
             return next;
           });
-        }, []);
+        }, [deactivateColumnLineageKeepSource]);
         
         const handleCollapseUpstream = useCallback((itemId) => {
-          // Deactivate column lineage mode when collapsing depth columns
-          setColumnLineageMode(false);
-          setSelectedColumnLineage(null);
-          setRelatedColumns(new Map());
-          setColumnLineageEdges([]);
+          // Deactivate column lineage mode, keeping source column selected
+          deactivateColumnLineageKeepSource();
           
           // Center on the item that was clicked (the one whose upstream is being collapsed)
           setCenterOnAfterLayout({ itemId: itemId, direction: 'collapse' });
@@ -5967,14 +5987,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             next.delete(itemId);
             return next;
           });
-        }, []);
+        }, [deactivateColumnLineageKeepSource]);
         
         const handleExpandDownstream = useCallback((itemId) => {
-          // Deactivate column lineage mode when expanding depth columns
-          setColumnLineageMode(false);
-          setSelectedColumnLineage(null);
-          setRelatedColumns(new Map());
-          setColumnLineageEdges([]);
+          // Deactivate column lineage mode, keeping source column selected
+          deactivateColumnLineageKeepSource();
           
           // Find the item's downstream connections
           let downstreamItems = [];
@@ -6003,14 +6020,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             next.add(itemId);
             return next;
           });
-        }, []);
+        }, [deactivateColumnLineageKeepSource]);
         
         const handleCollapseDownstream = useCallback((itemId) => {
-          // Deactivate column lineage mode when collapsing depth columns
-          setColumnLineageMode(false);
-          setSelectedColumnLineage(null);
-          setRelatedColumns(new Map());
-          setColumnLineageEdges([]);
+          // Deactivate column lineage mode, keeping source column selected
+          deactivateColumnLineageKeepSource();
           
           // Center on the item that was clicked (the one whose downstream is being collapsed)
           setCenterOnAfterLayout({ itemId: itemId, direction: 'collapse' });
@@ -6019,7 +6033,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             next.delete(itemId);
             return next;
           });
-        }, []);
+        }, [deactivateColumnLineageKeepSource]);
 
         // Handle toggle item children expansion (columns/features)
         const handleToggleItemExpand = useCallback((itemId) => {
