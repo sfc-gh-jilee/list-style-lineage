@@ -2199,8 +2199,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             // Stored Procedures tab content
             const procCount = data.storedProcedures?.length || 0;
+            const hasFailedProcs = data.storedProcedures?.some(proc => proc.status === 'failed') || false;
             if (panelStoredProcsTab) {
-              panelStoredProcsTab.textContent = `Procedures (${procCount})`;
+              const errorDot = hasFailedProcs ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+              panelStoredProcsTab.innerHTML = `Procedures (${procCount})${errorDot}`;
             }
             if (data.storedProcedures && data.storedProcedures.length > 0) {
               panelStoredProcsContent.innerHTML = `
@@ -2226,6 +2228,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <span class="panel-card-meta-value">${proc.owner}</span>
                       </div>
                       ` : ''}
+                      ${proc.status === 'failed' ? `
+                      <div class="panel-card-actions">
+                        <button class="panel-sql-action-btn" title="Ask Cortex Code">
+                          <img src="./img/ui/ai.svg" width="16" height="16" alt="Ask Cortex Code">
+                          <span>Ask Cortex Code</span>
+                        </button>
+                      </div>
+                      ` : ''}
                     </div>
                   `).join('')}
                 </div>
@@ -2236,8 +2246,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             // Tasks tab content
             const taskCount = data.tasks?.length || 0;
+            const hasFailedTasks = data.tasks?.some(task => task.status === 'failed') || false;
             if (panelTasksTab) {
-              panelTasksTab.textContent = `Tasks (${taskCount})`;
+              const errorDot = hasFailedTasks ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+              panelTasksTab.innerHTML = `Tasks (${taskCount})${errorDot}`;
             }
             if (data.tasks && data.tasks.length > 0) {
               panelTasksContent.innerHTML = `
@@ -2261,6 +2273,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                       <div class="panel-card-meta">
                         <span class="panel-card-meta-label">Owner</span>
                         <span class="panel-card-meta-value">${task.owner}</span>
+                      </div>
+                      ` : ''}
+                      ${task.status === 'failed' ? `
+                      <div class="panel-card-actions">
+                        <button class="panel-sql-action-btn" title="Ask Cortex Code">
+                          <img src="./img/ui/ai.svg" width="16" height="16" alt="Ask Cortex Code">
+                          <span>Ask Cortex Code</span>
+                        </button>
                       </div>
                       ` : ''}
                     </div>
@@ -2429,24 +2449,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             const uniqueUpstream = new Set(upstreamColumns.map(c => `${c.itemId}:${c.columnName}`)).size;
             const uniqueDownstream = new Set(downstreamColumns.map(c => `${c.itemId}:${c.columnName}`)).size;
             
-            // Check if any parent objects of upstream/downstream columns have errors
-            const hasUpstreamError = upstreamColumns.some(c => {
-              const parentItem = itemMap.get(c.itemId);
-              return parentItem?.hasError;
-            });
-            const hasDownstreamError = downstreamColumns.some(c => {
-              const parentItem = itemMap.get(c.itemId);
-              return parentItem?.hasError;
-            });
-            
-            // Update tab labels with counts and error indicators
+            // Update tab labels with counts (no error indicators for column lineage)
             if (panelColumnUpstreamTab) {
-              const errorDot = hasUpstreamError ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
-              panelColumnUpstreamTab.innerHTML = `Upstream (${uniqueUpstream})${errorDot}`;
+              panelColumnUpstreamTab.innerHTML = `Upstream (${uniqueUpstream})`;
             }
             if (panelColumnDownstreamTab) {
-              const errorDot = hasDownstreamError ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
-              panelColumnDownstreamTab.innerHTML = `Downstream (${uniqueDownstream})${errorDot}`;
+              panelColumnDownstreamTab.innerHTML = `Downstream (${uniqueDownstream})`;
             }
             
             // Helper function to render the current column as the root node
@@ -3561,13 +3569,17 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <!-- SQL Tab Content -->
           <div class="panel-tab-content" data-tab-content="sql" id="panelEdgeSqlContent">
             <div class="panel-sql-toolbar">
-              <button class="panel-sql-action-btn" id="copySqlBtn" title="Copy SQL">
-                <img src="./img/ui/copy.svg" width="16" height="16" alt="Copy">
-                <span>Copy SQL</span>
+              <button class="panel-sql-action-btn" id="explainSqlBtn" title="Explain">
+                <img src="./img/ui/ai.svg" width="16" height="16" alt="Explain">
+                <span>Explain</span>
               </button>
-              <button class="panel-sql-action-btn" id="openInWorksheetBtn" title="Open in Worksheet">
-                <img src="./img/ui/open-in-worksheet.svg" width="16" height="16" alt="Open in Worksheet">
-                <span>Open in Worksheet</span>
+              <button class="panel-sql-action-btn" id="copySqlBtn" title="Copy">
+                <img src="./img/ui/copy.svg" width="16" height="16" alt="Copy">
+                <span>Copy</span>
+              </button>
+              <button class="panel-sql-action-btn" id="openInWorksheetBtn" title="Worksheet">
+                <img src="./img/ui/open-in-worksheet.svg" width="16" height="16" alt="Worksheet">
+                <span>Worksheet</span>
               </button>
             </div>
             <pre class="panel-sql-code" id="panelSqlQuery">SELECT * FROM table;</pre>

@@ -1211,6 +1211,17 @@ body {
   color: #1E252F;
 }
 
+.panel-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.dark-mode .panel-card-actions {
+  border-top-color: #334155;
+}
+
 /* Dark mode for card metadata */
 .dark-mode .panel-card-meta {
   border-top-color: #334155;

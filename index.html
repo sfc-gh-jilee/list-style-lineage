@@ -1413,7 +1413,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             // Stored Procedures section
             const procCount = data.storedProcedures?.length || 0;
-            panelStoredProcsTitle.textContent = `Stored procedures (${procCount})`;
+            const hasFailedProcs = data.storedProcedures?.some(proc => proc.status === 'failed') || false;
+            const procErrorDot = hasFailedProcs ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+            panelStoredProcsTitle.innerHTML = `Stored procedures (${procCount})${procErrorDot}`;
             if (data.storedProcedures && data.storedProcedures.length > 0) {
               panelStoredProcsSection.style.display = 'block';
               panelStoredProcsContent.innerHTML = `
@@ -1439,6 +1441,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <span class="panel-card-meta-value">${proc.owner}</span>
                       </div>
                       ` : ''}
+                      ${proc.status === 'failed' ? `
+                      <div class="panel-card-actions">
+                        <button class="panel-sql-action-btn" title="Ask Cortex Code">
+                          <img src="./img/ui/ai.svg" width="16" height="16" alt="Ask Cortex Code">
+                          <span>Ask Cortex Code</span>
+                        </button>
+                      </div>
+                      ` : ''}
                     </div>
                   `).join('')}
                 </div>
@@ -1450,7 +1460,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             // Tasks section
             const taskCount = data.tasks?.length || 0;
-            panelTasksTitle.textContent = `Tasks (${taskCount})`;
+            const hasFailedTasks = data.tasks?.some(task => task.status === 'failed') || false;
+            const taskErrorDot = hasFailedTasks ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+            panelTasksTitle.innerHTML = `Tasks (${taskCount})${taskErrorDot}`;
             if (data.tasks && data.tasks.length > 0) {
               panelTasksSection.style.display = 'block';
               panelTasksContent.innerHTML = `
@@ -1474,6 +1486,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                       <div class="panel-card-meta">
                         <span class="panel-card-meta-label">Owner</span>
                         <span class="panel-card-meta-value">${task.owner}</span>
+                      </div>
+                      ` : ''}
+                      ${task.status === 'failed' ? `
+                      <div class="panel-card-actions">
+                        <button class="panel-sql-action-btn" title="Ask Cortex Code">
+                          <img src="./img/ui/ai.svg" width="16" height="16" alt="Ask Cortex Code">
+                          <span>Ask Cortex Code</span>
+                        </button>
                       </div>
                       ` : ''}
                     </div>
@@ -2558,13 +2578,17 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             </div>
             <div class="panel-section-content">
               <div class="panel-sql-toolbar">
-                <button class="panel-sql-action-btn" id="copySqlBtn" title="Copy SQL">
-                  <img src="./img/ui/copy.svg" width="16" height="16" alt="Copy">
-                  <span>Copy SQL</span>
+                <button class="panel-sql-action-btn" id="explainSqlBtn" title="Explain">
+                  <img src="./img/ui/ai.svg" width="16" height="16" alt="Explain">
+                  <span>Explain</span>
                 </button>
-                <button class="panel-sql-action-btn" id="openInWorksheetBtn" title="Open in Worksheet">
-                  <img src="./img/ui/open-in-worksheet.svg" width="16" height="16" alt="Open in Worksheet">
-                  <span>Open in Worksheet</span>
+                <button class="panel-sql-action-btn" id="copySqlBtn" title="Copy">
+                  <img src="./img/ui/copy.svg" width="16" height="16" alt="Copy">
+                  <span>Copy</span>
+                </button>
+                <button class="panel-sql-action-btn" id="openInWorksheetBtn" title="Worksheet">
+                  <img src="./img/ui/open-in-worksheet.svg" width="16" height="16" alt="Worksheet">
+                  <span>Worksheet</span>
                 </button>
               </div>
               <pre class="panel-sql-code" id="panelSqlQuery">SELECT * FROM table;</pre>
