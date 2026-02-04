@@ -3731,6 +3731,21 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           style: { display: 'none' }
         });
         
+        // Debug: log render conditions (only when visible to avoid spam)
+        React.useEffect(() => {
+          if (isVisible) {
+            console.log(`[NodeHoverActions DEBUG] ${position} button for ${itemId}:`, {
+              isVisible,
+              hasAction,
+              hasLineageInDirection,
+              hasUpstream,
+              hasDownstream,
+              actionState,
+              icon
+            });
+          }
+        }, [isVisible, hasAction, hasLineageInDirection, hasUpstream, hasDownstream, actionState, icon, position, itemId]);
+        
         // The actual button rendered via portal with extended invisible hit area
         // Only show button if there's an action available
         const button = isVisible && hasAction && icon && ReactDOM.createPortal(
