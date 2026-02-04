@@ -1589,7 +1589,18 @@ WHERE amount IS NOT NULL
             const nodeInfoBanner = document.getElementById('panelNodeInfoBanner');
             const nodeInfoMessage = document.getElementById('panelNodeInfoMessage');
             if (itemData.hasUpstreamIssues && itemData.upstreamIssueMessage) {
-              nodeInfoMessage.textContent = itemData.upstreamIssueMessage;
+              // If there's an upstream source, make it a clickable link within the message
+              if (itemData.upstreamIssueSource && itemData.upstreamIssueNodeId) {
+                const message = itemData.upstreamIssueMessage;
+                const sourceName = itemData.upstreamIssueSource;
+                const linkedMessage = message.replace(
+                  sourceName,
+                  `<a href="#" class="banner-object-link" data-object-id="${itemData.upstreamIssueNodeId}" title="Click to select ${sourceName} in graph">${sourceName}</a>`
+                );
+                nodeInfoMessage.innerHTML = linkedMessage;
+              } else {
+                nodeInfoMessage.textContent = itemData.upstreamIssueMessage;
+              }
               nodeInfoBanner.classList.remove('hidden');
             } else {
               nodeInfoBanner.classList.add('hidden');

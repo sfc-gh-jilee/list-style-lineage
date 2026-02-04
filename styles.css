@@ -548,10 +548,10 @@ body {
 .banner-object-link {
   color: inherit;
   text-decoration: underline;
-  text-decoration-style: dashed;
+  text-decoration-style: dotted;
   text-underline-offset: 2px;
   cursor: pointer;
-  font-weight: 500;
+  /* font-weight: 500; */
   transition: all 0.15s ease;
 }
 
@@ -570,6 +570,51 @@ body {
 
 .panel-info-banner .banner-object-link {
   color: #1E252F;
+}
+
+/* Panel Banner Link */
+.panel-banner-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1973E8;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.panel-banner-link:hover {
+  color: #1557B0;
+  text-decoration: underline;
+}
+
+.panel-banner-link img {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.panel-error-banner .panel-banner-link {
+  color: #66000E;
+}
+
+.panel-error-banner .panel-banner-link:hover {
+  color: #4A000A;
+}
+
+.panel-warning-banner .panel-banner-link {
+  color: #653E03;
+}
+
+.panel-warning-banner .panel-banner-link:hover {
+  color: #4A2D02;
+}
+
+.panel-info-banner .panel-banner-link {
+  color: #1973E8;
 }
 
 /* Panel Banner Action Button (Ask Cortex Code) */
@@ -1700,6 +1745,26 @@ body {
 
 .dark-mode .panel-info-banner .banner-object-link {
   color: #CBD5E1;
+}
+
+.dark-mode .panel-banner-link {
+  color: #60A5FA;
+}
+
+.dark-mode .panel-banner-link:hover {
+  color: #93C5FD;
+}
+
+.dark-mode .panel-error-banner .panel-banner-link {
+  color: #FCA5A5;
+}
+
+.dark-mode .panel-warning-banner .panel-banner-link {
+  color: #FCD34D;
+}
+
+.dark-mode .panel-info-banner .panel-banner-link {
+  color: #60A5FA;
 }
 
 .dark-mode .panel-banner-action-btn {
