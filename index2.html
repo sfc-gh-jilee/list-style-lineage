@@ -1266,16 +1266,22 @@
             }
             
             // Comment/Description
-            panelComment.textContent = itemData.description || itemData.comment || '—';
+            const commentValue = itemData.description || itemData.comment;
+            panelComment.textContent = commentValue || '-';
+            panelComment.classList.toggle('empty', !commentValue);
             
             // Owner
-            panelOwner.textContent = itemData.owner || '—';
+            panelOwner.textContent = itemData.owner || '-';
+            panelOwner.classList.toggle('empty', !itemData.owner);
             
             // Created date
-            panelCreated.textContent = itemData.createdAt || itemData.created || '—';
+            const createdValue = itemData.createdAt || itemData.created;
+            panelCreated.textContent = createdValue || '-';
+            panelCreated.classList.toggle('empty', !createdValue);
             
             // Data quality
-            panelQuality.textContent = itemData.dataQuality || '—';
+            panelQuality.textContent = itemData.dataQuality || '-';
+            panelQuality.classList.toggle('empty', !itemData.dataQuality);
             
             // Count for details section - show primary data type count with dynamic label
             const columns = itemData.columns || [];
@@ -1295,7 +1301,8 @@
             }
             
             panelColumnCountLabel.textContent = countLabel;
-            panelColumnCount.textContent = primaryCount > 0 ? primaryCount.toString() : '—';
+            panelColumnCount.textContent = primaryCount > 0 ? primaryCount.toString() : '-';
+            panelColumnCount.classList.toggle('empty', primaryCount === 0);
             
             // Tags
             if (itemData.tags && itemData.tags.length > 0) {
@@ -1308,8 +1315,10 @@
                   <span class="panel-tag-value">${tag}</span>
                 </span>`
               ).join('');
+              panelTags.classList.remove('empty');
             } else {
-              panelTags.textContent = '—';
+              panelTags.textContent = '-';
+              panelTags.classList.add('empty');
             }
             
             // Dynamic tab content based on object type
@@ -1533,12 +1542,18 @@
             const uniqueUpstream = new Set(upstreamObjects.map(o => o.id)).size;
             const uniqueDownstream = new Set(downstreamObjects.map(o => o.id)).size;
             
-            // Update tab labels with counts
+            // Check if any upstream/downstream objects have errors
+            const hasUpstreamError = upstreamObjects.some(o => o.hasError);
+            const hasDownstreamError = downstreamObjects.some(o => o.hasError);
+            
+            // Update tab labels with counts and error indicators
             if (panelUpstreamTab) {
-              panelUpstreamTab.textContent = `Upstream (${uniqueUpstream})`;
+              const errorDot = hasUpstreamError ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+              panelUpstreamTab.innerHTML = `Upstream (${uniqueUpstream})${errorDot}`;
             }
             if (panelDownstreamTab) {
-              panelDownstreamTab.textContent = `Downstream (${uniqueDownstream})`;
+              const errorDot = hasDownstreamError ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+              panelDownstreamTab.innerHTML = `Downstream (${uniqueDownstream})${errorDot}`;
             }
             
             // Helper function to render error/warning icon with popover data attributes
@@ -2144,12 +2159,19 @@
             
             // Edge details - use edgeData if available, otherwise defaults
             const data = edgeData || {};
-            panelQueryType.textContent = data.queryType || '—';
-            panelRunBy.textContent = data.runBy || '—';
-            panelRunOn.textContent = data.runOn || data.createdAt || '—';
-            panelDuration.textContent = data.duration || '—';
-            panelQueryId.textContent = data.queryId || '—';
-            panelRowCount.textContent = data.rowCount ? data.rowCount.toLocaleString() : '—';
+            panelQueryType.textContent = data.queryType || '-';
+            panelQueryType.classList.toggle('empty', !data.queryType);
+            panelRunBy.textContent = data.runBy || '-';
+            panelRunBy.classList.toggle('empty', !data.runBy);
+            const runOnValue = data.runOn || data.createdAt;
+            panelRunOn.textContent = runOnValue || '-';
+            panelRunOn.classList.toggle('empty', !runOnValue);
+            panelDuration.textContent = data.duration || '-';
+            panelDuration.classList.toggle('empty', !data.duration);
+            panelQueryId.textContent = data.queryId || '-';
+            panelQueryId.classList.toggle('empty', !data.queryId);
+            panelRowCount.textContent = data.rowCount ? data.rowCount.toLocaleString() : '-';
+            panelRowCount.classList.toggle('empty', !data.rowCount);
             
             // External Tool display
             const externalToolRow = document.getElementById('panelExternalToolRow');
@@ -2285,17 +2307,21 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             
             // Description
-            panelColumnDescription.textContent = columnData.description || '—';
+            panelColumnDescription.textContent = columnData.description || '-';
+            panelColumnDescription.classList.toggle('empty', !columnData.description);
             
             // Data Type
-            panelColumnType.textContent = columnData.type || '—';
+            panelColumnType.textContent = columnData.type || '-';
+            panelColumnType.classList.toggle('empty', !columnData.type);
             
             // Parent Object
-            panelColumnParent.textContent = parentItem?.name || '—';
+            panelColumnParent.textContent = parentItem?.name || '-';
+            panelColumnParent.classList.toggle('empty', !parentItem?.name);
             
             // Key Type
             if (columnData.isPrimaryKey || columnData.isForeignKey) {
               panelColumnKeyRow.style.display = 'flex';
+              panelColumnKeyType.classList.remove('empty');
               if (columnData.isPrimaryKey && columnData.isForeignKey) {
                 panelColumnKeyType.textContent = 'Primary Key, Foreign Key';
               } else if (columnData.isPrimaryKey) {
@@ -2403,12 +2429,24 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             const uniqueUpstream = new Set(upstreamColumns.map(c => `${c.itemId}:${c.columnName}`)).size;
             const uniqueDownstream = new Set(downstreamColumns.map(c => `${c.itemId}:${c.columnName}`)).size;
             
-            // Update tab labels with counts
+            // Check if any parent objects of upstream/downstream columns have errors
+            const hasUpstreamError = upstreamColumns.some(c => {
+              const parentItem = itemMap.get(c.itemId);
+              return parentItem?.hasError;
+            });
+            const hasDownstreamError = downstreamColumns.some(c => {
+              const parentItem = itemMap.get(c.itemId);
+              return parentItem?.hasError;
+            });
+            
+            // Update tab labels with counts and error indicators
             if (panelColumnUpstreamTab) {
-              panelColumnUpstreamTab.textContent = `Upstream (${uniqueUpstream})`;
+              const errorDot = hasUpstreamError ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+              panelColumnUpstreamTab.innerHTML = `Upstream (${uniqueUpstream})${errorDot}`;
             }
             if (panelColumnDownstreamTab) {
-              panelColumnDownstreamTab.textContent = `Downstream (${uniqueDownstream})`;
+              const errorDot = hasDownstreamError ? '<img class="panel-tab-error-dot" src="./img/ui/circle-error.svg" alt="Error">' : '';
+              panelColumnDownstreamTab.innerHTML = `Downstream (${uniqueDownstream})${errorDot}`;
             }
             
             // Helper function to render the current column as the root node
@@ -3392,27 +3430,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             <div class="panel-details-grid">
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Comment</span>
-                <span class="panel-detail-value" id="panelComment">—</span>
+                <span class="panel-detail-value empty" id="panelComment">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Owner</span>
-                <span class="panel-detail-value" id="panelOwner">—</span>
+                <span class="panel-detail-value empty" id="panelOwner">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Created</span>
-                <span class="panel-detail-value" id="panelCreated">—</span>
+                <span class="panel-detail-value empty" id="panelCreated">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Data Quality</span>
-                <span class="panel-detail-value" id="panelQuality">—</span>
+                <span class="panel-detail-value empty" id="panelQuality">-</span>
               </div>
               <div class="panel-detail-row" id="panelColumnCountRow">
                 <span class="panel-detail-label" id="panelColumnCountLabel">Columns</span>
-                <span class="panel-detail-value" id="panelColumnCount">—</span>
+                <span class="panel-detail-value empty" id="panelColumnCount">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Tags</span>
-                <span class="panel-detail-value panel-detail-tags" id="panelTags">—</span>
+                <span class="panel-detail-value panel-detail-tags empty" id="panelTags">-</span>
               </div>
             </div>
           </div>
@@ -3488,34 +3526,34 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             <div class="panel-details-grid">
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Query Type</span>
-                <span class="panel-detail-value" id="panelQueryType">—</span>
+                <span class="panel-detail-value empty" id="panelQueryType">-</span>
               </div>
               <div class="panel-detail-row" id="panelExternalToolRow" style="display: none;">
                 <span class="panel-detail-label">External Tool</span>
                 <span class="panel-detail-value panel-external-tool" id="panelExternalTool">
                   <img class="panel-external-tool-icon" id="panelExternalToolIcon" src="" width="16" height="16" alt="">
-                  <span id="panelExternalToolName">—</span>
+                  <span id="panelExternalToolName">-</span>
                 </span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Run By</span>
-                <span class="panel-detail-value" id="panelRunBy">—</span>
+                <span class="panel-detail-value empty" id="panelRunBy">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Run On</span>
-                <span class="panel-detail-value" id="panelRunOn">—</span>
+                <span class="panel-detail-value empty" id="panelRunOn">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Duration</span>
-                <span class="panel-detail-value" id="panelDuration">—</span>
+                <span class="panel-detail-value empty" id="panelDuration">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Query ID</span>
-                <span class="panel-detail-value" id="panelQueryId">—</span>
+                <span class="panel-detail-value empty" id="panelQueryId">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Row Count</span>
-                <span class="panel-detail-value" id="panelRowCount">—</span>
+                <span class="panel-detail-value empty" id="panelRowCount">-</span>
               </div>
             </div>
           </div>
@@ -3580,19 +3618,19 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             <div class="panel-details-grid">
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Description</span>
-                <span class="panel-detail-value panel-detail-description" id="panelColumnDescription">—</span>
+                <span class="panel-detail-value panel-detail-description empty" id="panelColumnDescription">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Data Type</span>
-                <span class="panel-detail-value" id="panelColumnType">—</span>
+                <span class="panel-detail-value empty" id="panelColumnType">-</span>
               </div>
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Parent Object</span>
-                <span class="panel-detail-value" id="panelColumnParent">—</span>
+                <span class="panel-detail-value empty" id="panelColumnParent">-</span>
               </div>
               <div class="panel-detail-row" id="panelColumnKeyRow" style="display: none;">
                 <span class="panel-detail-label">Key Type</span>
-                <span class="panel-detail-value" id="panelColumnKeyType">—</span>
+                <span class="panel-detail-value empty" id="panelColumnKeyType">-</span>
               </div>
             </div>
           </div>

@@ -379,6 +379,15 @@ body {
   display: none;
 }
 
+/* Panel Tab Error Dot */
+.panel-tab-error-dot {
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 /* Panel Error Banner */
 .panel-error-banner {
   display: flex;
@@ -738,6 +747,11 @@ body {
   vertical-align: middle;
 }
 
+.panel-tree-item-current .panel-tree-error-icon,
+.panel-tree-item-current .panel-tree-warning-icon {
+  display: none;
+}
+
 .panel-tree-error-icon:hover {
   background: rgba(211, 19, 47, 0.1);
 }
@@ -902,6 +916,10 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   /* white-space: nowrap; */
+}
+
+.panel-detail-value.empty {
+  color: #8C95A1;
 }
 
 .panel-detail-tags {
