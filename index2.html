@@ -3798,11 +3798,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Dispatch event to hide paired button
           window.dispatchEvent(new CustomEvent(`hideHoverButtons-${itemId}`));
           
-          // For columns: trigger column lineage mode by calling handleChildClick
+          // For columns: trigger column lineage expansion
+          // This will expand the object graph in the specified direction AND activate column lineage
           if (isColumn && columnName) {
-            // Use a custom event to trigger column lineage mode
+            // Use a custom event to trigger column lineage with expansion
             window.dispatchEvent(new CustomEvent('triggerColumnLineage', {
-              detail: { itemId, columnName }
+              detail: { itemId, columnName, direction: position } // 'left' = upstream, 'right' = downstream
             }));
             return;
           }
@@ -5930,6 +5931,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         // Track which node to center on after expansion/collapse
         const [centerOnAfterLayout, setCenterOnAfterLayout] = useState(null);
         
+        // Track pending column lineage to activate after object expansion completes
+        // { itemId, columnName, direction } - null when not pending
+        const [pendingColumnLineage, setPendingColumnLineage] = useState(null);
+        
         // Helper to deactivate column lineage mode while keeping only the source column selected
         const deactivateColumnLineageKeepSource = useCallback(() => {
           // Capture source column before clearing
@@ -6257,10 +6262,52 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, [columnLineageMode, selectedColumnLineage, reactFlowInstance, setEdges]);
         
         // Listen for column lineage trigger from hover action buttons
+        // This can expand object graph AND activate column lineage
         useEffect(() => {
           const handleTriggerColumnLineage = (e) => {
-            const { itemId, columnName } = e.detail;
-            if (itemId && columnName) {
+            const { itemId, columnName, direction } = e.detail;
+            if (!itemId || !columnName) return;
+            
+            // Find the parent item to get its id for expansion check
+            const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+            const parentItem = itemMap.get(itemId);
+            if (!parentItem) {
+              // Just activate column lineage without expansion
+              handleChildClick(itemId, columnName);
+              return;
+            }
+            
+            // Check if we need to expand the object graph in the specified direction
+            const expansion = window.lineageExpansion;
+            let needsExpansion = false;
+            
+            if (expansion && direction) {
+              if (direction === 'left') {
+                // Check if this item has upstream that's not yet visible
+                const upstreamMap = computeUpstreamMap(window.mockLineageData);
+                const upstreamIds = upstreamMap.get(itemId) || [];
+                // Check if any upstream is not currently expanded
+                needsExpansion = upstreamIds.length > 0 && !expandedUpstream.has(itemId);
+              } else if (direction === 'right') {
+                // Check if this item has downstream that's not yet visible
+                const downstreamIds = parentItem.downstream || [];
+                // Check if any downstream is not currently expanded
+                needsExpansion = downstreamIds.length > 0 && !expandedDownstream.has(itemId);
+              }
+            }
+            
+            if (needsExpansion) {
+              // Set pending column lineage to activate after expansion
+              setPendingColumnLineage({ itemId, columnName, direction });
+              
+              // Expand the object graph
+              if (direction === 'left') {
+                expansion.expandUpstream(itemId);
+              } else {
+                expansion.expandDownstream(itemId);
+              }
+            } else {
+              // No expansion needed, just activate column lineage
               handleChildClick(itemId, columnName);
             }
           };
@@ -6269,7 +6316,34 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           return () => {
             window.removeEventListener('triggerColumnLineage', handleTriggerColumnLineage);
           };
-        }, [handleChildClick]);
+        }, [handleChildClick, expandedUpstream, expandedDownstream]);
+        
+        // Handle pending column lineage after object expansion completes
+        // This effect triggers when expansion state changes and there's a pending column lineage
+        useEffect(() => {
+          if (!pendingColumnLineage) return;
+          
+          const { itemId, columnName, direction } = pendingColumnLineage;
+          
+          // Check if the expansion has completed
+          // The expansion is done when the item is in the correct expanded set
+          let expansionDone = false;
+          if (direction === 'left') {
+            expansionDone = expandedUpstream.has(itemId);
+          } else if (direction === 'right') {
+            expansionDone = expandedDownstream.has(itemId);
+          }
+          
+          if (expansionDone) {
+            // Clear pending state first to avoid re-triggering
+            setPendingColumnLineage(null);
+            
+            // Wait a bit for the layout to stabilize, then activate column lineage
+            setTimeout(() => {
+              handleChildClick(itemId, columnName);
+            }, 100);
+          }
+        }, [pendingColumnLineage, expandedUpstream, expandedDownstream, handleChildClick]);
         
         // Create column lineage edges AFTER items are expanded (handles must exist first)
         // Uses polling approach to handle rapid column switches
