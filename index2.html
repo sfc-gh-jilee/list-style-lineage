@@ -5816,8 +5816,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           }));
         }, []);
 
+        // Track which node to center on after expansion/collapse
+        const [centerOnAfterLayout, setCenterOnAfterLayout] = useState(null);
+        
         // Handle expand/collapse per-node lineage
         const handleExpandUpstream = useCallback((itemId) => {
+          // Get the upstream connections of this item to find what will be newly visible
+          const upstreamMap = computeUpstreamMap(window.mockLineageData);
+          const upstreamItems = upstreamMap.get(itemId) || [];
+          // Center on the first upstream item that will be added
+          if (upstreamItems.length > 0) {
+            setCenterOnAfterLayout({ itemId: upstreamItems[0], direction: 'upstream' });
+          }
           setExpandedUpstream(prev => {
             const next = new Set(prev);
             next.add(itemId);
@@ -5826,6 +5836,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, []);
         
         const handleCollapseUpstream = useCallback((itemId) => {
+          // Center on the item that was clicked (the one whose upstream is being collapsed)
+          setCenterOnAfterLayout({ itemId: itemId, direction: 'collapse' });
           setExpandedUpstream(prev => {
             const next = new Set(prev);
             next.delete(itemId);
@@ -5834,6 +5846,28 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, []);
         
         const handleExpandDownstream = useCallback((itemId) => {
+          // Find the item's downstream connections
+          let downstreamItems = [];
+          window.mockLineageData.depths.forEach(depth => {
+            depth.groups.forEach(group => {
+              const processItems = (items) => {
+                items.forEach(item => {
+                  if (item.id === itemId && item.downstream) {
+                    downstreamItems = item.downstream;
+                  }
+                });
+              };
+              if (group.schemas) {
+                group.schemas.forEach(schema => processItems(schema.items));
+              } else if (group.items) {
+                processItems(group.items);
+              }
+            });
+          });
+          // Center on the first downstream item that will be added
+          if (downstreamItems.length > 0) {
+            setCenterOnAfterLayout({ itemId: downstreamItems[0], direction: 'downstream' });
+          }
           setExpandedDownstream(prev => {
             const next = new Set(prev);
             next.add(itemId);
@@ -5842,6 +5876,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, []);
         
         const handleCollapseDownstream = useCallback((itemId) => {
+          // Center on the item that was clicked (the one whose downstream is being collapsed)
+          setCenterOnAfterLayout({ itemId: itemId, direction: 'collapse' });
           setExpandedDownstream(prev => {
             const next = new Set(prev);
             next.delete(itemId);
@@ -6943,6 +6979,45 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               });
               setNodes(nodesWithState);
               setEdges(newEdges);
+              
+              // Center on the appropriate node after layout
+              if (centerOnAfterLayout && reactFlowInstance) {
+                setTimeout(() => {
+                  const targetItemId = centerOnAfterLayout.itemId;
+                  // Find the node containing this item
+                  const allNodes = reactFlowInstance.getNodes();
+                  let targetNode = null;
+                  let itemPosition = null;
+                  
+                  for (const node of allNodes) {
+                    if (node.data.items) {
+                      const itemIndex = node.data.items.findIndex(item => item.id === targetItemId);
+                      if (itemIndex !== -1) {
+                        targetNode = node;
+                        // Calculate position within the node (approximate item position)
+                        const itemHeight = 40;
+                        const headerHeight = node.type === 'groupNode' ? 72 : 72; // db + schema headers
+                        itemPosition = {
+                          x: node.position.x + (node.width || 340) / 2,
+                          y: node.position.y + headerHeight + (itemIndex * itemHeight) + itemHeight / 2
+                        };
+                        break;
+                      }
+                    }
+                  }
+                  
+                  if (targetNode && itemPosition) {
+                    const currentZoom = reactFlowInstance.getZoom();
+                    reactFlowInstance.setCenter(itemPosition.x, itemPosition.y, { 
+                      zoom: currentZoom, 
+                      duration: 300 
+                    });
+                  }
+                  
+                  // Clear the center target
+                  setCenterOnAfterLayout(null);
+                }, 100);
+              }
             } catch (error) {
               console.error('Layout error on expansion change:', error);
               setNodes(newNodes);
@@ -6952,7 +7027,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           relayoutOnExpansionChange();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [expandedUpstream, expandedDownstream]);
+        }, [expandedUpstream, expandedDownstream, centerOnAfterLayout, reactFlowInstance]);
 
         // Update nodes when selection or expanded state changes
         useEffect(() => {
