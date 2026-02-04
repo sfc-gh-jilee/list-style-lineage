@@ -3548,21 +3548,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         
         const { icon, title } = getIconAndTitle();
         // Only show button if: there's an action available AND this item has lineage in this direction
-        const hasAction = (actionState.canExpand || actionState.canCollapse) && hasLineageInDirection !== false;
+        // Use !! to ensure undefined/false both result in false
+        const hasAction = (actionState.canExpand || actionState.canCollapse) && !!hasLineageInDirection;
         
         // Listen for hover on parent node
         React.useEffect(() => {
-          if (!markerRef.current) {
-            console.log(`[NodeHoverActions] No markerRef for ${itemId} [${position}]`);
-            return;
-          }
+          if (!markerRef.current) return;
           
           const parentNode = markerRef.current.closest('.graph-group-item, .graph-platform-item, .graph-expanded-card, .graph-child-item');
-          if (!parentNode) {
-            console.log(`[NodeHoverActions] No parent node found for ${itemId} [${position}]`);
-            return;
-          }
-          console.log(`[NodeHoverActions] Setup hover listener for ${itemId} [${position}] on`, parentNode.className);
+          if (!parentNode) return;
           
           const isExpandedCard = parentNode.classList.contains('graph-expanded-card');
           
@@ -3605,10 +3599,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
           
           const showButtons = (e) => {
-            console.log(`[NodeHoverActions] mouseenter detected for ${itemId} [${position}]`);
             // For expanded cards, don't show if hovering on a child item inside
             if (isExpandedCard && e.target.closest('.graph-child-item')) {
-              console.log(`[NodeHoverActions] Ignoring - hovering on child item`);
               return;
             }
             // Clear any pending show timeout
@@ -3617,7 +3609,6 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             // Delay showing by 400ms
             showTimeoutRef.current = setTimeout(() => {
-              console.log(`[NodeHoverActions] 400ms delay completed, setting isVisible=true for ${itemId} [${position}]`);
               updateButtonPosition();
               setIsVisible(true);
             }, 400);
@@ -3740,21 +3731,6 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           ref: markerRef,
           style: { display: 'none' }
         });
-        
-        // Debug: log render conditions (only when visible to avoid spam)
-        React.useEffect(() => {
-          if (isVisible) {
-            console.log(`[NodeHoverActions DEBUG] ${position} button for ${itemId}:`, {
-              isVisible,
-              hasAction,
-              hasLineageInDirection,
-              hasUpstream,
-              hasDownstream,
-              actionState,
-              icon
-            });
-          }
-        }, [isVisible, hasAction, hasLineageInDirection, hasUpstream, hasDownstream, actionState, icon, position, itemId]);
         
         // The actual button rendered via portal with extended invisible hit area
         // Only show button if there's an action available
@@ -5292,6 +5268,66 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       }
 
       // =============================================
+      // Compute Upstream Map (invert downstream relationships)
+      // Returns a Map: itemId -> array of upstream item IDs
+      // =============================================
+      function computeUpstreamMap(data) {
+        const upstreamMap = new Map();
+        
+        // Initialize all items with empty upstream arrays
+        data.depths.forEach(depth => {
+          depth.groups.forEach(group => {
+            if (group.schemas) {
+              group.schemas.forEach(schema => {
+                schema.items.forEach(item => {
+                  if (!upstreamMap.has(item.id)) {
+                    upstreamMap.set(item.id, []);
+                  }
+                });
+              });
+            } else if (group.items) {
+              group.items.forEach(item => {
+                if (!upstreamMap.has(item.id)) {
+                  upstreamMap.set(item.id, []);
+                }
+              });
+            }
+          });
+        });
+        
+        // Build upstream relationships by inverting downstream
+        data.depths.forEach(depth => {
+          depth.groups.forEach(group => {
+            if (group.schemas) {
+              group.schemas.forEach(schema => {
+                schema.items.forEach(item => {
+                  if (item.downstream) {
+                    item.downstream.forEach(downstreamId => {
+                      if (upstreamMap.has(downstreamId)) {
+                        upstreamMap.get(downstreamId).push(item.id);
+                      }
+                    });
+                  }
+                });
+              });
+            } else if (group.items) {
+              group.items.forEach(item => {
+                if (item.downstream) {
+                  item.downstream.forEach(downstreamId => {
+                    if (upstreamMap.has(downstreamId)) {
+                      upstreamMap.get(downstreamId).push(item.id);
+                    }
+                  });
+                }
+              });
+            }
+          });
+        });
+        
+        return upstreamMap;
+      }
+      
+      // =============================================
       // Compute Visible Nodes Based on Per-Node Expansion
       // Returns set of visible item IDs
       // =============================================
@@ -5315,6 +5351,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
           });
         });
+        
+        // Compute upstream map since items don't have upstream arrays in mockData
+        const upstreamMap = computeUpstreamMap(data);
         
         // Find focal item
         let focalItem = null;
@@ -5340,9 +5379,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         // Add focal
         visibleIds.add(focalId);
         
+        // Get focal's upstream from computed map
+        const focalUpstream = upstreamMap.get(focalId) || [];
+        
         // BFS to find visible nodes
         // Traverse upstream from nodes that have expandedUpstream
-        const upstreamQueue = expandedUpstream.has(focalId) ? [...(focalItem.upstream || [])] : [];
+        const upstreamQueue = expandedUpstream.has(focalId) ? [...focalUpstream] : [];
         while (upstreamQueue.length > 0) {
           const itemId = upstreamQueue.shift();
           if (visibleIds.has(itemId)) continue;
@@ -5353,8 +5395,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           visibleIds.add(itemId);
           
           // If this node also has its upstream expanded, add its upstream to queue
-          if (expandedUpstream.has(itemId) && item.upstream) {
-            upstreamQueue.push(...item.upstream);
+          if (expandedUpstream.has(itemId)) {
+            const itemUpstream = upstreamMap.get(itemId) || [];
+            upstreamQueue.push(...itemUpstream);
           }
         }
         
@@ -5418,6 +5461,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const edges = [];
         const allItems = [];
         const itemToHandleMap = new Map(); // Map item id to node id and handle id
+        
+        // Compute upstream relationships (items don't have upstream arrays in mockData)
+        const upstreamMap = computeUpstreamMap(data);
 
         data.depths.forEach((depth, depthIndex) => {
           depth.groups.forEach((group, groupIndex) => {
@@ -5435,12 +5481,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 const hasFocal = schema.items.some(item => item.isFocal);
                 
                 // Always use groupNode for database/schema structures
-                // Enrich items with database and schema info
+                // Enrich items with database and schema info, including computed upstream
                 const enrichedItems = schema.items.map(item => ({
                   ...item,
                   database: group.database,
                   schemaName: schema.name,
-                  sourceIcon: group.icon
+                  sourceIcon: group.icon,
+                  upstream: upstreamMap.get(item.id) || []
                 }));
                 
                 nodes.push({
@@ -5486,11 +5533,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               const baseHeight = 32 + 40 + 16 + 16 + 24; // = 128
               const nodeHeight = baseHeight + (group.items.length * itemHeight);
               
-              // Enrich items with platform info
+              // Enrich items with platform info, including computed upstream
               const enrichedPlatformItems = group.items.map(item => ({
                 ...item,
                 platform: group.name,
-                platformIcon: group.icon
+                platformIcon: group.icon,
+                upstream: upstreamMap.get(item.id) || []
               }));
               
               nodes.push({
