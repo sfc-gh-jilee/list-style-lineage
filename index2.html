@@ -6177,9 +6177,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           console.log('Column lineage edge effect triggered. Version:', currentVersion, 
             'Column:', selectedColumnLineage?.itemId + '.' + selectedColumnLineage?.columnName);
           
-          // FORCE CLEAR existing column lineage edges immediately to ensure clean slate
-          // This fixes the issue where switching columns doesn't update edges
-          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+          // AGGRESSIVE FIX: Force React Flow to rebuild its internal handle/edge registry
+          // by temporarily removing ALL edges, then re-adding base edges
+          // This fixes the issue where React Flow's handle cache doesn't update for dynamic handles
+          const currentEdges = reactFlowInstance.getEdges();
+          const baseEdges = currentEdges.filter(e => !e.data?.isColumnLineage);
+          
+          // Step 1: Clear ALL edges to reset React Flow's internal state
+          console.log('Clearing all edges to reset React Flow internal state. Base edges to restore:', baseEdges.length);
+          setEdges([]);
           setColumnLineageEdges([]);
           
           const createEdges = () => {
@@ -6365,13 +6371,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               }));
               
               // Add column lineage edges directly to React Flow's edge state
+              // Use the baseEdges captured at effect start (before we cleared all edges)
               // This ensures React Flow properly manages them internally
-              setEdges(currentEdges => {
-                // Remove any existing column lineage edges
-                const baseEdges = currentEdges.filter(e => !e.data?.isColumnLineage);
-                // Add new column lineage edges
-                return [...baseEdges, ...markedEdges];
-              });
+              console.log('Restoring base edges:', baseEdges.length, 'Adding lineage edges:', markedEdges.length);
+              setEdges([...baseEdges, ...markedEdges]);
               
               // Also update our local state for combinedEdges calculation
               setColumnLineageEdges(newColumnEdges);
@@ -6399,17 +6402,15 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                     
                     // Force React Flow to recalculate edge paths by creating NEW edge objects with fresh IDs
                     // This is critical - React Flow caches edge paths and won't recalculate if edge IDs are the same
-                    const timestamp = Date.now();
+                    const refreshTimestamp = Date.now();
                     const refreshedEdges = markedEdges.map(e => ({
                       ...e,
                       // Use timestamp suffix to force React Flow to treat as completely new edges
-                      id: `${e.id}-t${timestamp}`,
+                      id: `${e.id}-t${refreshTimestamp}`,
                     }));
                     
-                    setEdges(currentEdges => {
-                      const baseEdges = currentEdges.filter(e => !e.data?.isColumnLineage);
-                      return [...baseEdges, ...refreshedEdges];
-                    });
+                    // Use captured baseEdges, not current edges (which may be stale)
+                    setEdges([...baseEdges, ...refreshedEdges]);
                     setColumnLineageEdges([...newColumnEdges]);
                     
                     // Also trigger a minor viewport nudge to force React Flow to recalculate
