@@ -5931,7 +5931,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const [centerOnAfterLayout, setCenterOnAfterLayout] = useState(null);
         
         // Handle expand/collapse per-node lineage
+        // All expand/collapse actions deactivate column lineage mode since user is shifting focus to object-level
         const handleExpandUpstream = useCallback((itemId) => {
+          // Deactivate column lineage mode when expanding depth columns
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          
           // Get the upstream connections of this item to find what will be newly visible
           const upstreamMap = computeUpstreamMap(window.mockLineageData);
           const upstreamItems = upstreamMap.get(itemId) || [];
@@ -5947,6 +5954,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, []);
         
         const handleCollapseUpstream = useCallback((itemId) => {
+          // Deactivate column lineage mode when collapsing depth columns
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          
           // Center on the item that was clicked (the one whose upstream is being collapsed)
           setCenterOnAfterLayout({ itemId: itemId, direction: 'collapse' });
           setExpandedUpstream(prev => {
@@ -5957,6 +5970,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, []);
         
         const handleExpandDownstream = useCallback((itemId) => {
+          // Deactivate column lineage mode when expanding depth columns
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          
           // Find the item's downstream connections
           let downstreamItems = [];
           window.mockLineageData.depths.forEach(depth => {
@@ -5987,6 +6006,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, []);
         
         const handleCollapseDownstream = useCallback((itemId) => {
+          // Deactivate column lineage mode when collapsing depth columns
+          setColumnLineageMode(false);
+          setSelectedColumnLineage(null);
+          setRelatedColumns(new Map());
+          setColumnLineageEdges([]);
+          
           // Center on the item that was clicked (the one whose downstream is being collapsed)
           setCenterOnAfterLayout({ itemId: itemId, direction: 'collapse' });
           setExpandedDownstream(prev => {
