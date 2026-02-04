@@ -5275,13 +5275,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const upstreamMap = new Map();
         
         // Initialize all items with empty upstream arrays
-        let totalItems = 0;
         data.depths.forEach(depth => {
           depth.groups.forEach(group => {
             if (group.schemas) {
               group.schemas.forEach(schema => {
                 schema.items.forEach(item => {
-                  totalItems++;
                   if (!upstreamMap.has(item.id)) {
                     upstreamMap.set(item.id, []);
                   }
@@ -5289,7 +5287,6 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               });
             } else if (group.items) {
               group.items.forEach(item => {
-                totalItems++;
                 if (!upstreamMap.has(item.id)) {
                   upstreamMap.set(item.id, []);
                 }
@@ -5297,10 +5294,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
           });
         });
-        console.log('[DEBUG computeUpstreamMap] Total items found:', totalItems, 'Map size:', upstreamMap.size);
         
         // Build upstream relationships by inverting downstream
-        let downstreamRelationsFound = 0;
         data.depths.forEach(depth => {
           depth.groups.forEach(group => {
             if (group.schemas) {
@@ -5308,11 +5303,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 schema.items.forEach(item => {
                   if (item.downstream) {
                     item.downstream.forEach(downstreamId => {
-                      downstreamRelationsFound++;
                       if (upstreamMap.has(downstreamId)) {
                         upstreamMap.get(downstreamId).push(item.id);
-                      } else {
-                        console.log('[DEBUG] Downstream target not found:', downstreamId, 'from item:', item.id);
                       }
                     });
                   }
@@ -5322,11 +5314,8 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               group.items.forEach(item => {
                 if (item.downstream) {
                   item.downstream.forEach(downstreamId => {
-                    downstreamRelationsFound++;
                     if (upstreamMap.has(downstreamId)) {
                       upstreamMap.get(downstreamId).push(item.id);
-                    } else {
-                      console.log('[DEBUG] Downstream target not found:', downstreamId, 'from item:', item.id);
                     }
                   });
                 }
@@ -5334,9 +5323,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
           });
         });
-        console.log('[DEBUG computeUpstreamMap] Downstream relations processed:', downstreamRelationsFound);
         
-        console.log('[DEBUG computeUpstreamMap] upstreamMap for fct_customer_orders:', upstreamMap.get('fct_customer_orders'));
         return upstreamMap;
       }
       
@@ -5394,14 +5381,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         
         // Get focal's upstream from computed map
         const focalUpstream = upstreamMap.get(focalId) || [];
-        console.log('[DEBUG computeVisibleNodes] focalId:', focalId);
-        console.log('[DEBUG computeVisibleNodes] focalUpstream:', focalUpstream);
-        console.log('[DEBUG computeVisibleNodes] expandedUpstream.has(focalId):', expandedUpstream.has(focalId));
         
         // BFS to find visible nodes
         // Traverse upstream from nodes that have expandedUpstream
         const upstreamQueue = expandedUpstream.has(focalId) ? [...focalUpstream] : [];
-        console.log('[DEBUG computeVisibleNodes] upstreamQueue:', upstreamQueue);
         while (upstreamQueue.length > 0) {
           const itemId = upstreamQueue.shift();
           if (visibleIds.has(itemId)) continue;
@@ -5593,14 +5576,33 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         });
 
         // Create edges between items using handle mapping
-        // Also build a set of items that have upstream connections (appear in someone's downstream)
+        // Build itemsWithUpstream from FULL mockLineageData (not filtered data)
+        // This ensures leaf status reflects actual connections, not just visible ones
         const itemsWithUpstream = new Set();
+        if (window.mockLineageData) {
+          window.mockLineageData.depths.forEach(depth => {
+            depth.groups.forEach(group => {
+              const processItems = (items) => {
+                items.forEach(item => {
+                  if (item.downstream) {
+                    item.downstream.forEach(targetId => {
+                      itemsWithUpstream.add(targetId);
+                    });
+                  }
+                });
+              };
+              if (group.schemas) {
+                group.schemas.forEach(schema => processItems(schema.items));
+              } else if (group.items) {
+                processItems(group.items);
+              }
+            });
+          });
+        }
         
         allItems.forEach(item => {
           if (item.downstream && item.downstream.length > 0) {
             item.downstream.forEach(targetItemId => {
-              // Mark this target as having upstream connections
-              itemsWithUpstream.add(targetItemId);
               
               const sourceMapping = itemToHandleMap.get(item.id);
               const targetMapping = itemToHandleMap.get(targetItemId);
@@ -6809,8 +6811,6 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               initialExpandedDownstream,
               focalId
             );
-            console.log('[DEBUG initLayout] focalId:', focalId);
-            console.log('[DEBUG initLayout] visibleIds:', [...visibleIds]);
             
             // Filter data to only visible nodes
             const filteredData = filterDataByVisibility(window.mockLineageData, visibleIds);
