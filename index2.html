@@ -3518,22 +3518,26 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         }, [position]);
         
         // Determine icon and title based on current state
-        // If can expand: show outward arrow (left for upstream, right for downstream)
-        // If can only collapse: show inward arrow (right for upstream, left for downstream)
+        // Priority: if nodes are visible (can collapse), show collapse action first
+        // Only show expand if nothing visible yet but more depth available
         const getIconAndTitle = () => {
           if (position === 'left') {
             // Upstream button
-            if (actionState.canExpand) {
-              return { icon: './img/ui/chevron-left.svg', title: 'Expand upstream (+1 depth)' };
-            } else if (actionState.canCollapse) {
+            if (actionState.canCollapse) {
+              // Nodes are visible - show collapse (inward arrow: chevron-right pointing toward focal)
               return { icon: './img/ui/chevron-right.svg', title: 'Collapse upstream (-1 depth)' };
+            } else if (actionState.canExpand) {
+              // No nodes visible but more available - show expand (outward arrow)
+              return { icon: './img/ui/chevron-left.svg', title: 'Expand upstream (+1 depth)' };
             }
           } else {
             // Downstream button
-            if (actionState.canExpand) {
-              return { icon: './img/ui/chevron-right.svg', title: 'Expand downstream (+1 depth)' };
-            } else if (actionState.canCollapse) {
+            if (actionState.canCollapse) {
+              // Nodes are visible - show collapse (inward arrow: chevron-left pointing toward focal)
               return { icon: './img/ui/chevron-left.svg', title: 'Collapse downstream (-1 depth)' };
+            } else if (actionState.canExpand) {
+              // No nodes visible but more available - show expand (outward arrow)
+              return { icon: './img/ui/chevron-right.svg', title: 'Expand downstream (+1 depth)' };
             }
           }
           return { icon: null, title: '' };
@@ -3690,7 +3694,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
         }, [itemId]);
         
-        // Handle button click - expand or collapse
+        // Handle button click - collapse or expand (collapse takes priority when nodes are visible)
         const handleButtonClick = (e) => {
           e.stopPropagation();
           // Dispatch event to hide paired button
@@ -3700,18 +3704,18 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           if (!expansion) return;
           
           if (position === 'left') {
-            // Upstream
-            if (actionState.canExpand) {
-              expansion.expandUpstream();
-            } else if (actionState.canCollapse) {
+            // Upstream - collapse takes priority when nodes are visible
+            if (actionState.canCollapse) {
               expansion.collapseUpstream();
+            } else if (actionState.canExpand) {
+              expansion.expandUpstream();
             }
           } else {
-            // Downstream
-            if (actionState.canExpand) {
-              expansion.expandDownstream();
-            } else if (actionState.canCollapse) {
+            // Downstream - collapse takes priority when nodes are visible
+            if (actionState.canCollapse) {
               expansion.collapseDownstream();
+            } else if (actionState.canExpand) {
+              expansion.expandDownstream();
             }
           }
         };
