@@ -6247,7 +6247,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             'Column:', selectedColumnLineage?.itemId + '.' + selectedColumnLineage?.columnName);
           
           // AGGRESSIVE FIX: Force React Flow to rebuild its internal handle/edge registry
-          // by temporarily removing ALL edges, then re-adding base edges
+          // by temporarily removing ALL edges AND forcing a node refresh
           // This fixes the issue where React Flow's handle cache doesn't update for dynamic handles
           const currentEdges = reactFlowInstance.getEdges();
           const baseEdges = currentEdges.filter(e => !e.data?.isColumnLineage);
@@ -6256,6 +6256,26 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           console.log('Clearing all edges to reset React Flow internal state. Base edges to restore:', baseEdges.length);
           setEdges([]);
           setColumnLineageEdges([]);
+          
+          // Step 2: Force React Flow to refresh its node/handle registry by triggering a node update
+          // This is critical - React Flow caches handle positions and won't update without a node refresh
+          const currentNodes = reactFlowInstance.getNodes();
+          // Add a tiny position offset and then reset to force handle recalculation
+          const refreshedNodes = currentNodes.map(n => ({
+            ...n,
+            position: { x: n.position.x + 0.001, y: n.position.y + 0.001 }
+          }));
+          setNodes(refreshedNodes);
+          
+          // Reset positions after a tick
+          setTimeout(() => {
+            if (cancelled || lineageVersionRef.current !== currentVersion) return;
+            const resetNodes = reactFlowInstance.getNodes().map(n => ({
+              ...n,
+              position: { x: Math.round(n.position.x), y: Math.round(n.position.y) }
+            }));
+            setNodes(resetNodes);
+          }, 10);
           
           const createEdges = () => {
             // Skip if cancelled or version changed
@@ -6513,8 +6533,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
           };
           
-          // Start edge creation with a small initial delay to let React commit changes
-          const initialTimeoutId = setTimeout(createEdges, 20);
+          // Start edge creation with a delay to let React Flow update its handle registry
+          // The delay needs to be after the node position reset (10ms) + some buffer
+          const initialTimeoutId = setTimeout(createEdges, 50);
           
           // Also schedule multiple backup edge creations in case earlier ones fail
           // This helps ensure edges are always created when switching columns
