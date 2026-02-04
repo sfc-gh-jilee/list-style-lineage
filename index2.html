@@ -1210,6 +1210,16 @@
               warningBanner.classList.add('hidden');
             }
             
+            // Info banner (for nodes with upstream issues)
+            const nodeInfoBanner = document.getElementById('panelNodeInfoBanner');
+            const nodeInfoMessage = document.getElementById('panelNodeInfoMessage');
+            if (itemData.hasUpstreamIssues && itemData.upstreamIssueMessage) {
+              nodeInfoMessage.textContent = itemData.upstreamIssueMessage;
+              nodeInfoBanner.classList.remove('hidden');
+            } else {
+              nodeInfoBanner.classList.add('hidden');
+            }
+            
             // Header
             panelTitle.textContent = itemData.name || 'Unknown';
             panelIcon.src = itemData.icon || './img/ui/table.svg';
@@ -1531,6 +1541,28 @@
               panelDownstreamTab.textContent = `Downstream (${uniqueDownstream})`;
             }
             
+            // Helper function to render error/warning icon with popover data attributes
+            function renderErrorWarningIcon(obj) {
+              if (obj?.hasError && obj?.errorMessage) {
+                return `
+                  <button class="panel-tree-error-icon" 
+                          data-error-message="${obj.errorMessage.replace(/"/g, '&quot;')}"
+                          title="View error">
+                    <img src="./img/ui/error-circle.svg" alt="Error">
+                  </button>
+                `;
+              } else if (obj?.hasWarning && obj?.warningMessage) {
+                return `
+                  <button class="panel-tree-warning-icon" 
+                          data-warning-message="${obj.warningMessage.replace(/"/g, '&quot;')}"
+                          title="View warning">
+                    <img src="./img/ui/warning-triangle.svg" alt="Warning">
+                  </button>
+                `;
+              }
+              return '';
+            }
+            
             // Helper function to render the current object as the root node with group header
             // Group header must be one of two formats:
             // 1. [snowflake icon][db icon] DB_NAME / [schema icon] SCHEMA_NAME
@@ -1540,6 +1572,9 @@
               const objName = objData?.name || 'Unknown';
               const leafClasses = getObjectLeafClasses(objData?.id || currentItemId);
               const upstreamClass = isUpstream ? 'upstream-tree-group' : '';
+              
+              // Generate error/warning icon HTML
+              const errorWarningHtml = renderErrorWarningIcon(objData);
               
               // Generate group header based on db/schema or platform
               // Note: schema may be 'schema' (from buildItemMap) or 'schemaName' (from original data)
@@ -1582,6 +1617,7 @@
                         <div class="object-info">
                           <img class="object-icon" src="${objIcon}" alt="">
                           <span class="object-name">${objName}</span>
+                          ${errorWarningHtml}
                         </div>
                       </li>
                     </ul>
@@ -1658,11 +1694,13 @@
                         const objIcon = obj.icon || './img/ui/table.svg';
                         const objName = obj.name || 'Unknown';
                         const leafClasses = getObjectLeafClasses(obj.id);
+                        const errorWarningHtml = renderErrorWarningIcon(obj);
                         return `
                           <li class="panel-tree-item ${leafClasses}" data-item-id="${obj.id}" title="Select object">
                             <div class="object-info">
                               <img class="object-icon" src="${objIcon}" alt="">
                               <span class="object-name">${objName}</span>
+                              ${errorWarningHtml}
                             </div>
                           </li>
                         `;
@@ -1751,6 +1789,311 @@
                       scrollToItem(listItem, false); // false = don't select
                     }
                   }
+                });
+              });
+              
+              // Setup error/warning icon popover handlers
+              setupPanelTreeErrorWarningPopovers(container);
+            }
+            
+            // Setup error/warning icon popovers for panel tree items
+            function setupPanelTreeErrorWarningPopovers(container) {
+              let activePopover = null;
+              let hideTimeout = null;
+              
+              const hidePopover = () => {
+                if (activePopover) {
+                  activePopover.remove();
+                  activePopover = null;
+                }
+              };
+              
+              const showPopover = (iconBtn, isError) => {
+                hidePopover();
+                
+                const message = isError 
+                  ? iconBtn.dataset.errorMessage 
+                  : iconBtn.dataset.warningMessage;
+                
+                if (!message) return;
+                
+                const rect = iconBtn.getBoundingClientRect();
+                const popover = document.createElement('div');
+                popover.className = isError ? 'error-popover' : 'warning-popover';
+                popover.style.position = 'fixed';
+                popover.style.top = `${rect.bottom + 4}px`;
+                popover.style.left = `${rect.left}px`;
+                popover.style.zIndex = '99999';
+                
+                popover.innerHTML = `
+                  <div class="${isError ? 'error-popover-header' : 'warning-popover-header'}">
+                    <span class="${isError ? 'error-popover-title' : 'warning-popover-title'}">${isError ? 'Error' : 'Warning'}</span>
+                  </div>
+                  <div class="${isError ? 'error-popover-message' : 'warning-popover-message'}">${message}</div>
+                `;
+                
+                // Keep popover open when hovering over it
+                popover.addEventListener('mouseenter', () => {
+                  if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                  }
+                });
+                
+                popover.addEventListener('mouseleave', () => {
+                  hideTimeout = setTimeout(hidePopover, 150);
+                });
+                
+                document.body.appendChild(popover);
+                activePopover = popover;
+              };
+              
+              // Helper to check if a node is currently rendered in the graph
+              const isNodeInGraph = (nodeId) => {
+                if (!window.reactFlowInstance) return false;
+                const allNodes = window.reactFlowInstance.getNodes();
+                return allNodes.some(node => {
+                  if (node.data?.item?.id === nodeId) return true;
+                  if (node.data?.items?.some(item => item.id === nodeId)) return true;
+                  return false;
+                });
+              };
+              
+              // Helper to select object in graph when clicking error/warning icon
+              const selectObjectInGraph = (iconBtn) => {
+                const treeItem = iconBtn.closest('.panel-tree-item');
+                if (!treeItem) return;
+                
+                const targetId = treeItem.dataset.itemId;
+                if (!targetId) return;
+                
+                // Get the full item data from itemMap
+                const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+                const itemData = itemMap.get(targetId);
+                
+                if (!itemData) return;
+                
+                // Determine if this is upstream or downstream based on the container
+                const isUpstream = container.id === 'panelUpstreamList';
+                const isDownstream = container.id === 'panelDownstreamList';
+                
+                // Check if the node is already in the graph
+                const nodeInGraph = isNodeInGraph(targetId);
+                
+                if (!nodeInGraph && window.lineageExpansion) {
+                  // Node is not in graph, need to expand to show it
+                  // Get the current focal/selected item ID to expand from
+                  const currentItemId = window.sharedSelection?.selectedItemId;
+                  
+                  if (currentItemId) {
+                    // Build the path of items to expand to reach the target
+                    // For upstream: expand upstream from items that have target as upstream
+                    // For downstream: expand downstream from items that have target as downstream
+                    
+                    if (isUpstream) {
+                      // Find which items need to be expanded to reveal the target
+                      // Start from current item and expand upstream until target is reachable
+                      const expandPath = findUpstreamExpansionPath(currentItemId, targetId, itemMap);
+                      expandPath.forEach((itemToExpand, index) => {
+                        setTimeout(() => {
+                          if (window.lineageExpansion?.expandUpstream) {
+                            window.lineageExpansion.expandUpstream(itemToExpand);
+                          }
+                        }, index * 100); // Stagger expansions
+                      });
+                      
+                      // After expansions complete, select and center on target
+                      setTimeout(() => {
+                        selectAndCenterOnTarget(targetId, itemData);
+                      }, (expandPath.length + 1) * 150);
+                    } else if (isDownstream) {
+                      // Find which items need to be expanded to reveal the target
+                      const expandPath = findDownstreamExpansionPath(currentItemId, targetId, itemMap);
+                      expandPath.forEach((itemToExpand, index) => {
+                        setTimeout(() => {
+                          if (window.lineageExpansion?.expandDownstream) {
+                            window.lineageExpansion.expandDownstream(itemToExpand);
+                          }
+                        }, index * 100); // Stagger expansions
+                      });
+                      
+                      // After expansions complete, select and center on target
+                      setTimeout(() => {
+                        selectAndCenterOnTarget(targetId, itemData);
+                      }, (expandPath.length + 1) * 150);
+                    }
+                    return;
+                  }
+                }
+                
+                // Node is in graph or no expansion needed, select directly
+                selectAndCenterOnTarget(targetId, itemData);
+              };
+              
+              // Helper to find upstream expansion path
+              const findUpstreamExpansionPath = (fromId, toId, itemMap) => {
+                const path = [];
+                const visited = new Set();
+                const expansion = window.lineageExpansion;
+                
+                // BFS to find path from current to target through upstream relationships
+                const queue = [[fromId]];
+                visited.add(fromId);
+                
+                while (queue.length > 0) {
+                  const currentPath = queue.shift();
+                  const currentId = currentPath[currentPath.length - 1];
+                  
+                  // Check if current item has target in its upstream
+                  const currentItem = itemMap.get(currentId);
+                  
+                  // Find items that are upstream of currentId
+                  itemMap.forEach((item, id) => {
+                    if (item.downstream?.some(d => d.toLowerCase().trim() === currentItem?.name?.toLowerCase().trim())) {
+                      if (id === toId) {
+                        // Found the target! Return the path of items to expand
+                        // We need to expand upstream from each item in the path
+                        path.push(...currentPath.filter(p => {
+                          return expansion && !expansion.expandedUpstream?.has(p);
+                        }));
+                        return;
+                      }
+                      if (!visited.has(id)) {
+                        visited.add(id);
+                        queue.push([...currentPath, id]);
+                      }
+                    }
+                  });
+                  
+                  if (path.length > 0) break;
+                }
+                
+                // If no path found, just try expanding from the current item
+                if (path.length === 0 && expansion && !expansion.expandedUpstream?.has(fromId)) {
+                  path.push(fromId);
+                }
+                
+                return path;
+              };
+              
+              // Helper to find downstream expansion path
+              const findDownstreamExpansionPath = (fromId, toId, itemMap) => {
+                const path = [];
+                const visited = new Set();
+                const expansion = window.lineageExpansion;
+                
+                // BFS to find path from current to target through downstream relationships
+                const queue = [[fromId]];
+                visited.add(fromId);
+                
+                while (queue.length > 0) {
+                  const currentPath = queue.shift();
+                  const currentId = currentPath[currentPath.length - 1];
+                  const currentItem = itemMap.get(currentId);
+                  
+                  if (currentItem?.downstream) {
+                    for (const downName of currentItem.downstream) {
+                      // Find the item with this name
+                      let downId = null;
+                      itemMap.forEach((item, id) => {
+                        if (item.name?.toLowerCase().trim() === downName.toLowerCase().trim()) {
+                          downId = id;
+                        }
+                      });
+                      
+                      if (downId === toId) {
+                        // Found the target! Return path of items to expand
+                        path.push(...currentPath.filter(p => {
+                          return expansion && !expansion.expandedDownstream?.has(p);
+                        }));
+                        break;
+                      }
+                      
+                      if (downId && !visited.has(downId)) {
+                        visited.add(downId);
+                        queue.push([...currentPath, downId]);
+                      }
+                    }
+                  }
+                  
+                  if (path.length > 0) break;
+                }
+                
+                // If no path found, just try expanding from the current item
+                if (path.length === 0 && expansion && !expansion.expandedDownstream?.has(fromId)) {
+                  path.push(fromId);
+                }
+                
+                return path;
+              };
+              
+              // Helper to select and center on target
+              const selectAndCenterOnTarget = (targetId, itemData) => {
+                if (window.sharedSelection) {
+                  window.sharedSelection.setSelection(targetId, {
+                    id: targetId,
+                    name: itemData.name,
+                    icon: itemData.icon,
+                    type: itemData.type,
+                    database: itemData.database,
+                    schemaName: itemData.schemaName || itemData.schema,
+                    description: itemData.description,
+                    columns: itemData.columns,
+                    features: itemData.features,
+                    downstream: itemData.downstream,
+                    upstream: itemData.upstream,
+                    hasError: itemData.hasError,
+                    errorMessage: itemData.errorMessage,
+                    hasWarning: itemData.hasWarning,
+                    warningMessage: itemData.warningMessage
+                  });
+                }
+                
+                // Center on the node
+                if (window.centerOnNode) {
+                  window.centerOnNode(targetId);
+                }
+              };
+              
+              // Setup error icon handlers
+              container.querySelectorAll('.panel-tree-error-icon').forEach(iconBtn => {
+                iconBtn.addEventListener('mouseenter', () => {
+                  if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                  }
+                  showPopover(iconBtn, true);
+                });
+                
+                iconBtn.addEventListener('mouseleave', () => {
+                  hideTimeout = setTimeout(hidePopover, 150);
+                });
+                
+                iconBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  hidePopover();
+                  selectObjectInGraph(iconBtn);
+                });
+              });
+              
+              // Setup warning icon handlers
+              container.querySelectorAll('.panel-tree-warning-icon').forEach(iconBtn => {
+                iconBtn.addEventListener('mouseenter', () => {
+                  if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                  }
+                  showPopover(iconBtn, false);
+                });
+                
+                iconBtn.addEventListener('mouseleave', () => {
+                  hideTimeout = setTimeout(hidePopover, 150);
+                });
+                
+                iconBtn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  hidePopover();
+                  selectObjectInGraph(iconBtn);
                 });
               });
             }
@@ -2502,7 +2845,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             </button>
             <button class="toolbar-btn dropdown">
               <img src="./img/circle.svg" alt="" width="8" height="8">
-              ORGADMIN
+              WH_LG
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -3004,35 +3347,48 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <button class="panel-tab" data-tab="downstream" id="panelDownstreamTab">Downstream (0)</button>
         </div>
         
-        <!-- Error Banner -->
-        <div class="panel-error-banner hidden" id="panelErrorBanner">
-          <img class="panel-error-banner-icon" src="./img/ui/error-circle-2.svg" alt="Error">
-          <div class="panel-error-banner-content">
-            <span class="panel-error-banner-title">Error</span>
-            <span class="panel-error-banner-message" id="panelErrorMessage">An error occurred</span>
-            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
-              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
-              Ask Cortex Code
-            </button>
-          </div>
-        </div>
-        
-        <!-- Warning Banner -->
-        <div class="panel-warning-banner hidden" id="panelWarningBanner">
-          <img class="panel-warning-banner-icon" src="./img/ui/warning-triangle-2.svg" alt="Warning">
-          <div class="panel-warning-banner-content">
-            <span class="panel-warning-banner-title">Warning</span>
-            <span class="panel-warning-banner-message" id="panelWarningMessage">A warning occurred</span>
-            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
-              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
-              Ask Cortex Code
-            </button>
-          </div>
-        </div>
-        
         <div class="panel-content">
           <!-- Details Tab Content -->
           <div class="panel-tab-content active" data-tab-content="details" id="panelDetailsContent">
+            <!-- Error Banner -->
+            <div class="panel-error-banner hidden" id="panelErrorBanner">
+              <img class="panel-error-banner-icon" src="./img/ui/error-circle-2.svg" alt="Error">
+              <div class="panel-error-banner-content">
+                <span class="panel-error-banner-title">Error</span>
+                <span class="panel-error-banner-message" id="panelErrorMessage">An error occurred</span>
+                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                  <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+                  Ask Cortex Code
+                </button>
+              </div>
+            </div>
+            
+            <!-- Warning Banner -->
+            <div class="panel-warning-banner hidden" id="panelWarningBanner">
+              <img class="panel-warning-banner-icon" src="./img/ui/warning-triangle-2.svg" alt="Warning">
+              <div class="panel-warning-banner-content">
+                <span class="panel-warning-banner-title">Warning</span>
+                <span class="panel-warning-banner-message" id="panelWarningMessage">A warning occurred</span>
+                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                  <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+                  Ask Cortex Code
+                </button>
+              </div>
+            </div>
+            
+            <!-- Info Banner (for nodes with upstream issues) -->
+            <div class="panel-info-banner hidden" id="panelNodeInfoBanner">
+              <img class="panel-info-banner-icon" src="./img/ui/info-circle.svg" alt="Info">
+              <div class="panel-info-banner-content">
+                <span class="panel-info-banner-title">Upstream issues detected</span>
+                <span class="panel-info-banner-message" id="panelNodeInfoMessage">Some upstream data sources have errors or warnings that may affect this object's data quality.</span>
+                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                  <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+                  Ask Cortex Code
+                </button>
+              </div>
+            </div>
+            
             <div class="panel-details-grid">
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Comment</span>
@@ -3100,35 +3456,35 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           <button class="panel-tab" data-tab="tasks" id="panelTasksTab">Tasks (0)</button>
         </div>
         
-        <!-- Error Banner -->
-        <div class="panel-error-banner hidden" id="panelEdgeErrorBanner">
-          <img class="panel-error-banner-icon" src="./img/ui/error-circle-2.svg" alt="Error">
-          <div class="panel-error-banner-content">
-            <span class="panel-error-banner-title">Error</span>
-            <span class="panel-error-banner-message" id="panelEdgeErrorMessage">An error occurred</span>
-            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
-              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
-              Ask Cortex Code
-            </button>
-          </div>
-        </div>
-        
-        <!-- Info Banner (for affected edges) -->
-        <div class="panel-info-banner hidden" id="panelEdgeInfoBanner">
-          <img class="panel-info-banner-icon" src="./img/ui/info-circle.svg" alt="Info">
-          <div class="panel-info-banner-content">
-            <span class="panel-info-banner-title">Affected by upstream issue</span>
-            <span class="panel-info-banner-message" id="panelEdgeInfoMessage">This edge may be processing stale data due to an upstream sync failure.</span>
-            <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
-              <img src="./img/ui/ai.svg" alt="" width="16" height="16">
-              Ask Cortex Code
-            </button>
-          </div>
-        </div>
-        
         <div class="panel-content">
           <!-- Details Tab Content -->
           <div class="panel-tab-content active" data-tab-content="details" id="panelEdgeDetailsContent">
+            <!-- Error Banner -->
+            <div class="panel-error-banner hidden" id="panelEdgeErrorBanner">
+              <img class="panel-error-banner-icon" src="./img/ui/error-circle-2.svg" alt="Error">
+              <div class="panel-error-banner-content">
+                <span class="panel-error-banner-title">Error</span>
+                <span class="panel-error-banner-message" id="panelEdgeErrorMessage">An error occurred</span>
+                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                  <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+                  Ask Cortex Code
+                </button>
+              </div>
+            </div>
+            
+            <!-- Info Banner (for affected edges) -->
+            <div class="panel-info-banner hidden" id="panelEdgeInfoBanner">
+              <img class="panel-info-banner-icon" src="./img/ui/info-circle.svg" alt="Info">
+              <div class="panel-info-banner-content">
+                <span class="panel-info-banner-title">Affected by upstream issue</span>
+                <span class="panel-info-banner-message" id="panelEdgeInfoMessage">This edge may be processing stale data due to an upstream sync failure.</span>
+                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                  <img src="./img/ui/ai.svg" alt="" width="16" height="16">
+                  Ask Cortex Code
+                </button>
+              </div>
+            </div>
+            
             <div class="panel-details-grid">
               <div class="panel-detail-row">
                 <span class="panel-detail-label">Query Type</span>
@@ -7457,7 +7813,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               hasError: item.hasError,
               errorMessage: item.errorMessage,
               hasWarning: item.hasWarning,
-              warningMessage: item.warningMessage
+              warningMessage: item.warningMessage,
+              hasUpstreamIssues: item.hasUpstreamIssues,
+              upstreamIssueMessage: item.upstreamIssueMessage
             });
           }
           
@@ -7636,7 +7994,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                     dataQuality: focalItem.dataQuality,
                     tags: focalItem.tags,
                     downstream: focalItem.downstream,
-                    upstream: focalItem.upstream
+                    upstream: focalItem.upstream,
+                    hasError: focalItem.hasError,
+                    errorMessage: focalItem.errorMessage,
+                    hasWarning: focalItem.hasWarning,
+                    warningMessage: focalItem.warningMessage,
+                    hasUpstreamIssues: focalItem.hasUpstreamIssues,
+                    upstreamIssueMessage: focalItem.upstreamIssueMessage
                   });
                 }
               }
@@ -8195,6 +8559,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
 
         // Expose global function to center on selected/focal node
         useEffect(() => {
+          // Expose reactFlowInstance globally for checking if nodes are rendered
+          window.reactFlowInstance = reactFlowInstance;
+          
           window.centerOnSelectedNode = () => {
             if (!reactFlowInstance) return;
             
@@ -8274,6 +8641,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
           
           return () => {
+            delete window.reactFlowInstance;
             delete window.centerOnSelectedNode;
             delete window.centerOnNode;
           };

@@ -1932,7 +1932,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             </button>
             <button class="toolbar-btn dropdown">
               <img src="./img/circle.svg" alt="" width="8" height="8">
-              ORGADMIN
+              WH_LG
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -3157,7 +3157,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Regular children list (scrollable) - hide in column lineage mode when only pinned columns exist (non-source items)
           !(columnLineageMode && pinnedColumns.length > 0 && filteredRegularChildren.length === 0 && !showAllColumns) && React.createElement('div', { 
             className: 'graph-children-list nowheel',
-            style: { maxHeight: listHeight || 240 },
+            style: { maxHeight: listHeight || 244 },
             onWheelCapture: (e) => {
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation();
@@ -5235,10 +5235,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setAdjacentItemIds(adjacent);
           
           // Update edges to mark selected edge (bring to top via CSS z-index)
+          // Also reset opacity to 1 for all edges (clears column lineage dimming)
           setEdges(eds => eds.map(e => ({
             ...e,
             selected: e.id === edge.id,
             zIndex: e.id === edge.id ? 1000 : 0,
+            style: { ...e.style, opacity: 1 },
             markerEnd: {
               ...e.markerEnd,
               color: e.id === edge.id ? '#1A6CE7' : '#BDC4D5',

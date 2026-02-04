@@ -616,6 +616,8 @@ const mockLineageData = {
                   createdAt: '2023-06-25',
                   dataQuality: 'High',
                   tags: ['fact', 'dbt', 'core', 'revenue', 'certified'],
+                  hasUpstreamIssues: true,
+                  upstreamIssueMessage: 'Upstream data source ORDERS has a sync error. Data in this table may be stale.',
                   rowCount: 2847563,
                   columns: [
                     { name: 'ORDER_KEY', type: 'INTEGER', isPrimaryKey: true, description: 'Surrogate key for the order' },

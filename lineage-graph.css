@@ -2421,15 +2421,12 @@
 .error-popover {
   position: fixed;
   z-index: 9999;
-  min-width: 240px;
-  max-width: 304px;
+  min-width: 200px;
+  max-width: 240px;
   background: #FFFFFF;
   border-radius: 8px;
-  border-radius: 8px;
-  background: #FFF;
-  
-  /* Elevation/Elevation 2 */
-  box-shadow: var(--_Elevation-Elevation-2-X, 0) var(--_Elevation-Elevation-2-Y, 2px) var(--_Elevation-Elevation-2-Blur, 8px) 0 var(--_Elevation-Elevation-2-Color, rgba(25, 30, 36, 0.15));  padding: 12px 16px;
+  box-shadow: 0 2px 8px 0 rgba(25, 30, 36, 0.15);
+  padding: 12px;
   pointer-events: auto;
   animation: errorPopoverFadeIn 0.15s ease;
 }
@@ -2479,12 +2476,12 @@
 .warning-popover {
   position: fixed;
   z-index: 9999;
-  min-width: 240px;
-  max-width: 320px;
+  min-width: 200px;
+  max-width: 240px;
   background: #FFFFFF;
   border-radius: 8px;
   box-shadow: 0 2px 8px 0 rgba(25, 30, 36, 0.15);
-  padding: 12px 16px;
+  padding: 12px;
   pointer-events: auto;
   animation: warningPopoverFadeIn 0.15s ease;
 }

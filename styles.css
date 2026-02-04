@@ -385,7 +385,7 @@ body {
   align-items: flex-start;
   gap: 12px;
   padding: 16px 20px;
-  margin: 20px 16px 4px;
+  margin: 0 0 16px 0;
   background: #FFD1DC;
   border: none;
   border-radius: 8px;
@@ -437,7 +437,7 @@ body {
   align-items: flex-start;
   gap: 12px;
   padding: 16px 20px;
-  margin: 20px 16px 4px;
+  margin: 0 0 16px 0;
   background: #FFEDCD;
   border: none;
   border-radius: 8px;
@@ -489,7 +489,7 @@ body {
   align-items: flex-start;
   gap: 12px;
   padding: 16px 20px;
-  margin: 20px 16px 4px;
+  margin: 0 0 16px 0;
   background: #ECEEF1;
   border: none;
   border-radius: 8px;
@@ -717,6 +717,48 @@ body {
   text-align: center;
   padding: 12px;
   margin-top: 8px;
+}
+
+/* Panel tree error/warning icons */
+.panel-tree-error-icon,
+.panel-tree-warning-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
+.panel-tree-error-icon:hover {
+  background: rgba(211, 19, 47, 0.1);
+}
+
+.panel-tree-warning-icon:hover {
+  background: rgba(101, 62, 3, 0.1);
+}
+
+.panel-tree-error-icon img,
+.panel-tree-warning-icon img {
+  width: 16px;
+  height: 16px;
+}
+
+/* Dark mode */
+.dark-mode .panel-tree-error-icon:hover {
+  background: rgba(211, 19, 47, 0.2);
+}
+
+.dark-mode .panel-tree-warning-icon:hover {
+  background: rgba(255, 237, 205, 0.15);
 }
 
 /* Dark mode */
