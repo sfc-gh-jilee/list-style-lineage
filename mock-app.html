@@ -206,8 +206,219 @@
     }
 
     .right-edge-tab:hover {
-      width: 36px;
+      width: 48px;
       background: #38bdf8;
+    }
+
+    /* AI Response Bubble */
+    .ai-response-bubble {
+      position: fixed;
+      z-index: 10000;
+      width: 400px;
+      background: var(--Primitives-Level-3-background, #FBFBFB);
+      border-radius: 8px;
+      border: 1px solid var(--Primitives-Level-3-border, #BDC4D5);
+      box-shadow: 0 4px 16px 0 rgba(25, 30, 36, 0.20);
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+
+    .ai-response-bubble.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .ai-bubble-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      /* border-bottom: 1px solid #f1f5f9; */
+    }
+
+    .ai-bubble-icon {
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ai-bubble-icon svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .ai-bubble-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      flex: 1;
+    }
+
+    .ai-bubble-close {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .ai-bubble-close:hover {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .ai-bubble-content {
+      padding: 20px;
+      font-size: 12px;
+      line-height: 18px;
+      color: #1E252F;
+      height: 400px;
+      overflow-y: auto;
+    }
+
+    .ai-bubble-content p {
+      margin: 0 0 12px 0;
+    }
+
+    .ai-bubble-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .ai-bubble-content strong {
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .ai-bubble-content code {
+      background: var(--Status-Neutral-Background, #ECEEF1);
+      padding: 2px 6px;
+      border-radius: var(--XSmall, 4px);
+      border: 1px solid var(--Reusable-Border, #D5DAE4);
+      font-family: "Apercu Mono Pro", 'SF Mono', Monaco, monospace;
+      font-size: 11px;
+      font-weight: 400;
+      line-height: 11px;
+      color: var(--Reusable-Primary-text, #1E252F);
+    }
+
+    .ai-bubble-content ul, .ai-bubble-content ol {
+      margin: 0 0 12px 0;
+      padding-left: 20px;
+    }
+
+    .ai-bubble-content li {
+      margin-bottom: 4px;
+    }
+
+    .ai-bubble-content pre {
+      background: #F7F7F7;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 12px 0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .ai-bubble-content pre code {
+      background: transparent;
+      border: none;
+      color: #1E252F;
+      padding: 0;
+      font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    /* AI Bubble Footer */
+    .ai-bubble-footer {
+      padding: 12px 14px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: flex-end;
+      opacity: 1;
+    }
+
+    .ai-bubble-footer.hidden {
+      opacity: 0;
+    }
+
+    .ai-bubble-ask-more {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .ai-bubble-ask-more:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .ai-bubble-ask-more img {
+      opacity: 0.8;
+    }
+
+    /* Typing cursor animation */
+    .ai-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: #6366f1;
+      margin-left: 2px;
+      animation: blink 0.8s infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* Loading dots */
+    .ai-loading {
+      display: flex;
+      gap: 4px;
+      padding: 4px 0;
+    }
+
+    .ai-loading-dot {
+      width: 6px;
+      height: 6px;
+      background: #cbd5e1;
+      border-radius: 50%;
+      animation: loadingPulse 1.4s infinite ease-in-out;
+    }
+
+    .ai-loading-dot:nth-child(1) { animation-delay: 0s; }
+    .ai-loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .ai-loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes loadingPulse {
+      0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+      40% { transform: scale(1); opacity: 1; }
     }
 
   </style>
@@ -234,6 +445,32 @@
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M8 0C9.34521 4.74504 11.2107 6.64414 16 8L15.5596 8.12891C11.2387 9.43397 9.42175 11.2796 8.12793 15.5635L8 16C6.65479 11.255 4.78932 9.35586 0 8C4.78932 6.64414 6.65479 4.74504 8 0Z" fill="#fff"/>
     </svg>
+  </div>
+
+  <!-- AI Response Bubble -->
+  <div class="ai-response-bubble" id="aiResponseBubble">
+    <div class="ai-bubble-header">
+      <span class="ai-bubble-title">Cortex Code</span>
+      <button class="ai-bubble-close" id="aiBubbleClose" title="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="ai-bubble-content" id="aiBubbleContent">
+      <div class="ai-loading">
+        <div class="ai-loading-dot"></div>
+        <div class="ai-loading-dot"></div>
+        <div class="ai-loading-dot"></div>
+      </div>
+    </div>
+    <div class="ai-bubble-footer hidden" id="aiBubbleFooter">
+      <button class="ai-bubble-ask-more" id="aiBubbleAskMore">
+        <img src="./img/ui/ai.svg" width="16" height="16" alt="">
+        <span>Ask more</span>
+      </button>
+    </div>
   </div>
 
   <!-- Fullscreen Modal -->
@@ -318,6 +555,279 @@
       if (e.key === 'Escape' && fullscreenModal.classList.contains('active')) {
         closeModal();
       }
+      if (e.key === 'Escape' && aiResponseBubble.classList.contains('visible')) {
+        hideAiBubble();
+      }
+    });
+
+    // ========================================
+    // AI Response Streaming Effect
+    // ========================================
+    const aiResponseBubble = document.getElementById('aiResponseBubble');
+    const aiBubbleContent = document.getElementById('aiBubbleContent');
+    const aiBubbleClose = document.getElementById('aiBubbleClose');
+    const aiBubbleFooter = document.getElementById('aiBubbleFooter');
+    const aiBubbleAskMore = document.getElementById('aiBubbleAskMore');
+    
+    let streamingAbortController = null;
+
+    // Simple markdown parser
+    function parseMarkdown(text) {
+      // First pass: handle code blocks (protect them from other parsing)
+      const codeBlocks = [];
+      text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        codeBlocks.push(`<pre><code>${code}</code></pre>`);
+        return `__CODEBLOCK_${codeBlocks.length - 1}__`;
+      });
+      
+      // Split into lines for better list handling
+      const lines = text.split('\n');
+      const blocks = [];  // Array of {type: 'paragraph'|'list'|'code', content: string}
+      let currentParagraph = [];
+      let currentList = [];
+      
+      function flushParagraph() {
+        if (currentParagraph.length > 0) {
+          const text = currentParagraph.join(' ').trim();
+          if (text) {
+            blocks.push({ type: 'paragraph', content: applyInlineFormatting(text) });
+          }
+          currentParagraph = [];
+        }
+      }
+      
+      function flushList() {
+        if (currentList.length > 0) {
+          blocks.push({ type: 'list', content: currentList.join('') });
+          currentList = [];
+        }
+      }
+      
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        
+        // Check for code block placeholder
+        if (line.includes('__CODEBLOCK_')) {
+          flushParagraph();
+          flushList();
+          blocks.push({ type: 'code', content: line });
+          continue;
+        }
+        
+        // Check if this is a list item
+        const unorderedMatch = line.match(/^- (.+)$/);
+        const orderedMatch = line.match(/^\d+\. (.+)$/);
+        
+        if (unorderedMatch || orderedMatch) {
+          flushParagraph();
+          const content = unorderedMatch ? unorderedMatch[1] : orderedMatch[1];
+          currentList.push(`<li>${applyInlineFormatting(content)}</li>`);
+        } else if (line.trim() === '') {
+          // Empty line - flush everything
+          flushParagraph();
+          flushList();
+        } else {
+          // Regular text line
+          flushList();
+          currentParagraph.push(line);
+        }
+      }
+      
+      // Flush remaining content
+      flushParagraph();
+      flushList();
+      
+      // Build final HTML
+      let html = blocks.map(block => {
+        switch (block.type) {
+          case 'list':
+            return `<ul>${block.content}</ul>`;
+          case 'code':
+            return block.content;
+          case 'paragraph':
+          default:
+            return `<p>${block.content}</p>`;
+        }
+      }).join('');
+      
+      // Restore code blocks
+      codeBlocks.forEach((block, i) => {
+        html = html.replace(`__CODEBLOCK_${i}__`, block);
+      });
+      
+      return html;
+    }
+    
+    // Apply inline formatting (bold, italic, code)
+    function applyInlineFormatting(text) {
+      return text
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    }
+
+    // Wrap content in proper HTML structure (simplified - parseMarkdown now handles this)
+    function wrapParagraphs(html) {
+      return html;
+    }
+
+    // Stream text with typing effect
+    async function streamText(text, options = {}) {
+      const {
+        minDelay = 5,
+        maxDelay = 15,
+        chunkSize = 3,  // characters per chunk
+        initialDelay = 200
+      } = options;
+
+      streamingAbortController = new AbortController();
+      const signal = streamingAbortController.signal;
+
+      // Hide footer and show loading dots initially
+      aiBubbleFooter.classList.add('hidden');
+      aiBubbleContent.innerHTML = `
+        <div class="ai-loading">
+          <div class="ai-loading-dot"></div>
+          <div class="ai-loading-dot"></div>
+          <div class="ai-loading-dot"></div>
+        </div>
+      `;
+
+      // Wait before starting
+      await sleep(initialDelay);
+      if (signal.aborted) return;
+
+      let displayedText = '';
+      let i = 0;
+
+      while (i < text.length) {
+        if (signal.aborted) return;
+
+        // Add chunk of characters
+        const chunk = text.slice(i, i + chunkSize);
+        displayedText += chunk;
+        i += chunkSize;
+
+        // Parse and display with cursor
+        const parsedHtml = wrapParagraphs(parseMarkdown(displayedText));
+        aiBubbleContent.innerHTML = parsedHtml + '<span class="ai-cursor"></span>';
+
+        // Variable delay for natural feel
+        const delay = Math.random() * (maxDelay - minDelay) + minDelay;
+        
+        // Longer pause after punctuation
+        const lastChar = chunk[chunk.length - 1];
+        const punctuationDelay = /[.!?]/.test(lastChar) ? 60 : 
+                                  /[,;:]/.test(lastChar) ? 30 : 0;
+        
+        await sleep(delay + punctuationDelay);
+      }
+
+      // Remove cursor and show footer when done
+      if (!signal.aborted) {
+        const parsedHtml = wrapParagraphs(parseMarkdown(displayedText));
+        aiBubbleContent.innerHTML = parsedHtml;
+        aiBubbleFooter.classList.remove('hidden');
+      }
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Show AI bubble anchored to the sparkle tab (bottom right)
+    function showAiBubble(message) {
+      // Stop any ongoing streaming
+      if (streamingAbortController) {
+        streamingAbortController.abort();
+      }
+
+      // Position the bubble from bottom-right corner
+      const bubble = aiResponseBubble;
+      const sparkleTab = document.querySelector('.right-edge-tab');
+      const sparkleRect = sparkleTab.getBoundingClientRect();
+      
+      const gap = 12;
+      
+      // Calculate distance from right and bottom edges
+      const right = (window.innerWidth - sparkleRect.left) + gap;
+      const bottom = (window.innerHeight - sparkleRect.bottom) - gap;
+
+      // Clear any left/top positioning and use right/bottom
+      bubble.style.left = 'auto';
+      bubble.style.top = 'auto';
+      bubble.style.right = right + 'px';
+      bubble.style.bottom = bottom + 'px';
+
+      // Show bubble
+      bubble.classList.add('visible');
+
+      // Start streaming the message
+      streamText(message);
+    }
+
+    // Hide AI bubble
+    function hideAiBubble() {
+      if (streamingAbortController) {
+        streamingAbortController.abort();
+      }
+      aiResponseBubble.classList.remove('visible');
+      aiBubbleFooter.classList.add('hidden');
+    }
+
+    // Ask more button click handler
+    aiBubbleAskMore.addEventListener('click', () => {
+      // Placeholder - in production this would open a chat or input
+      console.log('Ask more clicked');
+    });
+
+    aiBubbleClose.addEventListener('click', hideAiBubble);
+
+    // Click outside to close
+    document.addEventListener('click', (e) => {
+      if (aiResponseBubble.classList.contains('visible') && 
+          !aiResponseBubble.contains(e.target)) {
+        hideAiBubble();
+      }
+    });
+
+    // ========================================
+    // PostMessage listener for iframe communication
+    // ========================================
+    window.addEventListener('message', (event) => {
+      const { type, data } = event.data || {};
+
+      switch (type) {
+        case 'showAiResponse':
+          // data: { message }
+          showAiBubble(data.message);
+          break;
+
+        case 'hideAiResponse':
+          hideAiBubble();
+          break;
+
+        case 'openFullscreen':
+          openModal();
+          break;
+      }
+    });
+
+    // ========================================
+    // Demo: Test with sparkle button
+    // ========================================
+    const rightEdgeTab = document.querySelector('.right-edge-tab');
+    const demoMessages = [
+      `**orders_fact** is a core fact table that tracks all customer orders.\n\nIt contains:\n- Order ID and timestamps\n- Customer references via \`customer_id\`\n- Product line items\n- Payment and shipping status\n\nThis table has **12 downstream dependencies** including revenue dashboards and customer analytics.`,
+      `This column \`total_amount\` is calculated as:\n\n\`\`\`sql\nSUM(line_items.quantity * line_items.unit_price)\n\`\`\`\n\nIt's used in **5 downstream models** for revenue reporting.`,
+      `**Data Quality Alert**\n\nThe \`customer_dim\` table has:\n- 2.3% null values in \`email\` column\n- 156 duplicate records detected\n- Last refreshed: 2 hours ago\n\nRecommendation: Review the source system ETL process.`
+    ];
+    let demoIndex = 0;
+
+    rightEdgeTab.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showAiBubble(demoMessages[demoIndex % demoMessages.length]);
+      demoIndex++;
     });
   </script>
 </body>

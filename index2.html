@@ -721,6 +721,7 @@
         const panelRowCount = document.getElementById('panelRowCount');
         const panelSqlQuery = document.getElementById('panelSqlQuery');
         const copySqlBtn = document.getElementById('copySqlBtn');
+        const explainSqlBtn = document.getElementById('explainSqlBtn');
         const openInWorksheetBtn = document.getElementById('openInWorksheetBtn');
         const panelStoredProcsContent = document.getElementById('panelStoredProcsContent');
         const panelTasksContent = document.getElementById('panelTasksContent');
@@ -1031,6 +1032,194 @@
           });
         }
 
+        // =============================================
+        // AI Assistant Integration (Cortex Code)
+        // =============================================
+        
+        // Send AI request to parent frame (mock-app.html)
+        // The popup will appear near the sparkle tab in the bottom right
+        function sendAiRequest(message) {
+          if (!window.parent || window.parent === window) {
+            console.log('AI Request (no parent frame):', message);
+            return;
+          }
+          
+          window.parent.postMessage({
+            type: 'showAiResponse',
+            data: { message }
+          }, '*');
+        }
+
+        // Generate AI explanation for SQL
+        function generateSqlExplanation(sql) {
+          // Mock AI response - in production this would call an actual AI service
+          const truncatedSql = sql.length > 100 ? sql.substring(0, 100) + '...' : sql;
+          return `**SQL Query Explanation**
+
+This query performs the following operations:
+
+1. **Data Selection** - Retrieves specific columns from the source tables
+2. **Join Operations** - Combines data from multiple related tables
+3. **Filtering** - Applies WHERE conditions to limit results
+4. **Aggregation** - Groups and summarizes data as needed
+
+\`\`\`sql
+${truncatedSql}
+\`\`\`
+
+**Performance Notes:**
+- Consider adding indexes on join columns
+- The query may benefit from partitioning on date fields`;
+        }
+
+        // Generate AI explanation for errors
+        function generateErrorExplanation(errorMessage, context) {
+          const contextInfo = context ? `\n\n**Context:** ${context}` : '';
+          return `**Error Analysis**
+
+The error indicates: *${errorMessage}*${contextInfo}
+
+**Possible Causes:**
+- Missing or incorrect permissions on the source object
+- Schema changes in upstream dependencies  
+- Network timeout during data sync
+- Resource constraints during execution
+
+**Recommended Actions:**
+1. Check the access permissions for the affected objects
+2. Verify upstream data sources are available
+3. Review recent schema changes
+4. Check system logs for additional details
+
+**Quick Fix:**
+Try re-running the failed operation after verifying upstream dependencies are healthy.`;
+        }
+
+        // Generate AI explanation for warnings
+        function generateWarningExplanation(warningMessage) {
+          return `**Warning Analysis**
+
+The warning indicates: *${warningMessage}*
+
+**What This Means:**
+- The operation completed but with potential data quality issues
+- Some records may have been skipped or transformed unexpectedly
+
+**Recommendations:**
+- Review the affected records for data quality
+- Consider adding data validation rules
+- Monitor this pipeline for recurring issues`;
+        }
+
+        // Generate AI explanation for upstream issues
+        function generateUpstreamExplanation(infoMessage) {
+          return `**Upstream Issue Impact**
+
+${infoMessage}
+
+**How This Affects Your Data:**
+- Data freshness may be compromised
+- Some calculations may use stale values
+- Downstream reports could show outdated information
+
+**Suggested Actions:**
+1. Check the status of upstream data sources
+2. Review the dependency graph for failed nodes
+3. Consider temporary data workarounds if critical
+4. Set up alerts for upstream pipeline failures`;
+        }
+
+        // Explain SQL button handler
+        if (explainSqlBtn) {
+          explainSqlBtn.addEventListener('click', (e) => {
+            const sqlText = panelSqlQuery.textContent || panelSqlQuery.innerText;
+            const explanation = generateSqlExplanation(sqlText);
+            sendAiRequest(explanation);
+          });
+        }
+
+        // Setup Ask Cortex Code buttons (using event delegation for static and dynamic buttons)
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('.panel-banner-action-btn');
+          if (!btn) return;
+          
+          // Find the parent banner to get context
+          const errorBanner = btn.closest('.panel-error-banner');
+          const warningBanner = btn.closest('.panel-warning-banner');
+          const infoBanner = btn.closest('.panel-info-banner');
+          
+          let message = '';
+          
+          if (errorBanner) {
+            const errorMsg = errorBanner.querySelector('.panel-error-banner-message');
+            const errorText = errorMsg ? errorMsg.textContent : 'Unknown error';
+            message = generateErrorExplanation(errorText);
+          } else if (warningBanner) {
+            const warningMsg = warningBanner.querySelector('.panel-warning-banner-message');
+            const warningText = warningMsg ? warningMsg.textContent : 'Unknown warning';
+            message = generateWarningExplanation(warningText);
+          } else if (infoBanner) {
+            const infoMsg = infoBanner.querySelector('.panel-info-banner-message');
+            const infoText = infoMsg ? infoMsg.textContent : 'Unknown issue';
+            message = generateUpstreamExplanation(infoText);
+          }
+          
+          if (message) {
+            sendAiRequest(message);
+          }
+        });
+
+        // Setup Ask Cortex Code buttons in procedure/task cards (dynamically created)
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('.panel-card-actions .panel-sql-action-btn');
+          if (!btn) return;
+          
+          // Check if it's an AI button (has ai.svg icon)
+          const icon = btn.querySelector('img');
+          if (!icon || !icon.src.includes('ai.svg')) return;
+          
+          // Find the parent card to get context
+          const card = btn.closest('.panel-procedure-item, .panel-task-item');
+          if (!card) return;
+          
+          const cardTitle = card.querySelector('.panel-lineage-column-name');
+          const cardStatus = card.querySelector('.panel-task-status');
+          const errorDetails = card.querySelector('.panel-lineage-item-meta');
+          
+          const name = cardTitle ? cardTitle.textContent : 'Unknown';
+          const status = cardStatus ? cardStatus.textContent : 'failed';
+          const errorText = errorDetails ? errorDetails.textContent : 'Execution failed';
+          
+          const isProcedure = card.classList.contains('panel-procedure-item');
+          const message = `**${isProcedure ? 'Stored Procedure' : 'Task'} Failure Analysis**
+
+The ${isProcedure ? 'procedure' : 'task'} \`${name}\` failed during execution.
+
+**Root Cause:**
+${errorText || 'The procedure encountered an unhandled exception during the ML model training phase. The input dataset contains NULL values in required feature columns that the anomaly detection algorithm cannot process.'}
+
+**Affected Components:**
+- Input table: \`TRANSACTIONS_FACT\`
+- Feature columns: \`amount\`, \`frequency\`, \`recency\`
+- ML model: Isolation Forest
+
+**Recommended Fix:**
+
+\`\`\`sql
+-- Add NULL handling before model training
+SELECT * FROM TRANSACTIONS_FACT
+WHERE amount IS NOT NULL
+  AND frequency IS NOT NULL;
+\`\`\`
+
+**Next Steps:**
+1. Add data validation to filter NULL values
+2. Re-run the procedure after data cleanup
+3. Consider adding default values for missing features`;
+
+          sendAiRequest(message);
+        });
+
         // Helper: Get column type icon path (same logic as graph view)
         function getPanelColumnIcon(type) {
           const normalizedType = (type || '').toUpperCase();
@@ -1049,17 +1238,19 @@
           return 'img/ui/column-single.svg';
         }
 
-        // Helper: SQL syntax highlighter
-        function highlightSQL(sql) {
-          if (!sql) return '';
-          
-          // Escape HTML first
-          const escapeHtml = (str) => str
+        // Helper: Escape HTML special characters
+        function escapeHtml(str) {
+          return str
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+        }
+
+        // Helper: SQL syntax highlighter
+        function highlightSQL(sql) {
+          if (!sql) return '';
           
           // SQL keywords (case-insensitive)
           const keywords = new Set([
@@ -1148,6 +1339,190 @@
             }
           }).join('');
         }
+
+        // Helper function to parse banner messages and wrap object names with clickable links
+        function parseMessageWithObjectLinks(message) {
+          if (!message) return '';
+          
+          // Get the item map to find valid object names
+          const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+          if (itemMap.size === 0) return escapeHtml(message);
+          
+          // Create a lookup of object names (case-insensitive) to their IDs
+          const nameToId = new Map();
+          itemMap.forEach((item, id) => {
+            if (item.name) {
+              // Store both the exact name and uppercase version for matching
+              nameToId.set(item.name.toUpperCase(), { id, name: item.name });
+            }
+          });
+          
+          // Sort names by length (longest first) to match longer names before shorter ones
+          const sortedNames = Array.from(nameToId.keys()).sort((a, b) => b.length - a.length);
+          
+          if (sortedNames.length === 0) return escapeHtml(message);
+          
+          // Build a regex pattern that matches any of the object names (word boundaries)
+          // Match uppercase names surrounded by word boundaries or common patterns
+          const escapedNames = sortedNames.map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+          const pattern = new RegExp(`\\b(${escapedNames.join('|')})\\b`, 'gi');
+          
+          // Track already matched positions to avoid double-wrapping
+          const matches = [];
+          let match;
+          while ((match = pattern.exec(message)) !== null) {
+            const matchedName = match[1].toUpperCase();
+            const itemInfo = nameToId.get(matchedName);
+            if (itemInfo) {
+              matches.push({
+                start: match.index,
+                end: match.index + match[0].length,
+                original: match[0],
+                id: itemInfo.id,
+                name: itemInfo.name
+              });
+            }
+          }
+          
+          if (matches.length === 0) return escapeHtml(message);
+          
+          // Build the result HTML
+          let result = '';
+          let lastIndex = 0;
+          
+          for (const m of matches) {
+            // Add text before this match
+            if (m.start > lastIndex) {
+              result += escapeHtml(message.slice(lastIndex, m.start));
+            }
+            // Add the clickable link
+            result += `<a class="banner-object-link" data-object-id="${m.id}" title="Click to select ${m.name} in graph">${escapeHtml(m.original)}</a>`;
+            lastIndex = m.end;
+          }
+          
+          // Add remaining text
+          if (lastIndex < message.length) {
+            result += escapeHtml(message.slice(lastIndex));
+          }
+          
+          return result;
+        }
+        
+        // Helper function to select an object in the graph from a banner link
+        function selectObjectFromBannerLink(objectId) {
+          if (!objectId) return;
+          
+          const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+          const itemData = itemMap.get(objectId);
+          
+          if (!itemData) return;
+          
+          // Helper to check if a node is currently rendered in the graph
+          const isNodeInGraph = (nodeId) => {
+            if (!window.reactFlowInstance) return false;
+            const allNodes = window.reactFlowInstance.getNodes();
+            return allNodes.some(node => {
+              if (node.data?.item?.id === nodeId) return true;
+              if (node.data?.items?.some(item => item.id === nodeId)) return true;
+              return false;
+            });
+          };
+          
+          // Helper to find expansion path (simplified - just try direct expansion)
+          const selectAndCenterOnTarget = (targetId, data) => {
+            // Update the shared selection to show info panel
+            if (window.sharedSelection) {
+              window.sharedSelection.setSelection(targetId, {
+                id: targetId,
+                name: data.name,
+                icon: data.icon,
+                database: data.database,
+                schemaName: data.schemaName || data.schema,
+                schema: data.schema || data.schemaName,
+                platform: data.platform,
+                sourceIcon: data.sourceIcon,
+                platformIcon: data.platformIcon,
+                objType: data.objType,
+                description: data.description,
+                comment: data.comment,
+                owner: data.owner,
+                createdAt: data.createdAt,
+                created: data.created,
+                dataQuality: data.dataQuality,
+                rowCount: data.rowCount,
+                tags: data.tags,
+                columns: data.columns,
+                features: data.features,
+                downstream: data.downstream,
+                upstream: data.upstream,
+                hasError: data.hasError,
+                errorMessage: data.errorMessage,
+                hasWarning: data.hasWarning,
+                warningMessage: data.warningMessage
+              });
+            }
+            
+            // Center on the node in graph view
+            if (window.centerOnNode) {
+              window.centerOnNode(targetId);
+            }
+          };
+          
+          // Check if the node is already in the graph
+          const nodeInGraph = isNodeInGraph(objectId);
+          
+          if (!nodeInGraph && window.lineageExpansion) {
+            // Node is not in graph, need to expand to show it
+            // First, try to find which direction to expand based on relationships
+            const currentItemId = window.sharedSelection?.selectedItemId;
+            
+            if (currentItemId) {
+              // Check if target is upstream or downstream of current selection
+              const currentItem = itemMap.get(currentItemId);
+              
+              // Check if target is in current item's upstream
+              const isUpstreamOfCurrent = itemData.downstream?.some(
+                d => d.toLowerCase().trim() === currentItem?.name?.toLowerCase().trim()
+              );
+              
+              // Check if target is in current item's downstream
+              const isDownstreamOfCurrent = currentItem?.downstream?.some(
+                d => d.toLowerCase().trim() === itemData.name?.toLowerCase().trim()
+              );
+              
+              if (isUpstreamOfCurrent && window.lineageExpansion.expandUpstream) {
+                // Expand upstream from current item
+                window.lineageExpansion.expandUpstream(currentItemId);
+                setTimeout(() => selectAndCenterOnTarget(objectId, itemData), 250);
+                return;
+              } else if (isDownstreamOfCurrent && window.lineageExpansion.expandDownstream) {
+                // Expand downstream from current item
+                window.lineageExpansion.expandDownstream(currentItemId);
+                setTimeout(() => selectAndCenterOnTarget(objectId, itemData), 250);
+                return;
+              }
+            }
+            
+            // If we can't determine direction, try both directions from focal item
+            // or just select/show info without graph centering
+          }
+          
+          // Node is in graph or no expansion needed, select directly
+          selectAndCenterOnTarget(objectId, itemData);
+        }
+        
+        // Global event listener for banner object links
+        document.addEventListener('click', (e) => {
+          const link = e.target.closest('.banner-object-link');
+          if (link) {
+            e.preventDefault();
+            e.stopPropagation();
+            const objectId = link.dataset.objectId;
+            if (objectId) {
+              selectObjectFromBannerLink(objectId);
+            }
+          }
+        });
 
         // Global shared selection state (accessible by graph view)
         window.sharedSelection = {
@@ -2146,7 +2521,9 @@
             const edgeInfoMessage = document.getElementById('panelEdgeInfoMessage');
             if (sourceItem.hasWarning || sourceItem.hasError) {
               const issueType = sourceItem.hasError ? 'error' : 'warning';
-              edgeInfoMessage.textContent = `The source ${sourceItem.name} has a ${issueType}. Data flowing through this edge may be stale or incomplete.`;
+              // Create message with clickable link to the source item
+              const sourceLink = `<a class="banner-object-link" data-object-id="${sourceItem.id}" title="Click to select ${sourceItem.name} in graph">${escapeHtml(sourceItem.name)}</a>`;
+              edgeInfoMessage.innerHTML = `The source ${sourceLink} has a ${issueType}. Data flowing through this edge may be stale or incomplete.`;
               edgeInfoBanner.classList.remove('hidden');
             } else {
               edgeInfoBanner.classList.add('hidden');
@@ -3402,7 +3779,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               <div class="panel-error-banner-content">
                 <span class="panel-error-banner-title">Error</span>
                 <span class="panel-error-banner-message" id="panelErrorMessage">An error occurred</span>
-                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                <button class="panel-banner-action-btn" >
                   <img src="./img/ui/ai.svg" alt="" width="16" height="16">
                   Ask Cortex Code
                 </button>
@@ -3415,7 +3792,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               <div class="panel-warning-banner-content">
                 <span class="panel-warning-banner-title">Warning</span>
                 <span class="panel-warning-banner-message" id="panelWarningMessage">A warning occurred</span>
-                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                <button class="panel-banner-action-btn" >
                   <img src="./img/ui/ai.svg" alt="" width="16" height="16">
                   Ask Cortex Code
                 </button>
@@ -3428,7 +3805,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               <div class="panel-info-banner-content">
                 <span class="panel-info-banner-title">Upstream issues detected</span>
                 <span class="panel-info-banner-message" id="panelNodeInfoMessage">Some upstream data sources have errors or warnings that may affect this object's data quality.</span>
-                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                <button class="panel-banner-action-btn" >
                   <img src="./img/ui/ai.svg" alt="" width="16" height="16">
                   Ask Cortex Code
                 </button>
@@ -3511,7 +3888,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               <div class="panel-error-banner-content">
                 <span class="panel-error-banner-title">Error</span>
                 <span class="panel-error-banner-message" id="panelEdgeErrorMessage">An error occurred</span>
-                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                <button class="panel-banner-action-btn" >
                   <img src="./img/ui/ai.svg" alt="" width="16" height="16">
                   Ask Cortex Code
                 </button>
@@ -3524,7 +3901,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               <div class="panel-info-banner-content">
                 <span class="panel-info-banner-title">Affected by upstream issue</span>
                 <span class="panel-info-banner-message" id="panelEdgeInfoMessage">This edge may be processing stale data due to an upstream sync failure.</span>
-                <button class="panel-banner-action-btn" onclick="console.log('Ask Cortex Code clicked')">
+                <button class="panel-banner-action-btn" >
                   <img src="./img/ui/ai.svg" alt="" width="16" height="16">
                   Ask Cortex Code
                 </button>
