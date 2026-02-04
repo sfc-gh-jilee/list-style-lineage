@@ -5462,8 +5462,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const allItems = [];
         const itemToHandleMap = new Map(); // Map item id to node id and handle id
         
-        // Compute upstream relationships (items don't have upstream arrays in mockData)
-        const upstreamMap = computeUpstreamMap(data);
+        // Compute upstream relationships from FULL data (not filtered)
+        // This ensures items always know their true upstream connections
+        const upstreamMap = computeUpstreamMap(window.mockLineageData || data);
 
         data.depths.forEach((depth, depthIndex) => {
           depth.groups.forEach((group, groupIndex) => {
