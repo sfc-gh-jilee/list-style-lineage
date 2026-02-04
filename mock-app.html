@@ -742,22 +742,14 @@
         streamingAbortController.abort();
       }
 
-      // Position the bubble from bottom-right corner
+      // Position the bubble from bottom-right corner (fixed position)
       const bubble = aiResponseBubble;
-      const sparkleTab = document.querySelector('.right-edge-tab');
-      const sparkleRect = sparkleTab.getBoundingClientRect();
-      
-      const gap = 12;
-      
-      // Calculate distance from right and bottom edges
-      const right = (window.innerWidth - sparkleRect.left) + gap;
-      const bottom = (window.innerHeight - sparkleRect.bottom) - gap;
 
       // Clear any left/top positioning and use right/bottom
       bubble.style.left = 'auto';
       bubble.style.top = 'auto';
-      bubble.style.right = right + 'px';
-      bubble.style.bottom = bottom + 'px';
+      bubble.style.right = '52px';
+      bubble.style.bottom = '42px';
 
       // Show bubble
       bubble.classList.add('visible');
