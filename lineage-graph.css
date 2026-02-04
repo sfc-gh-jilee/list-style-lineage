@@ -312,6 +312,68 @@
 }
 
 /* ===========================================
+   Edge Icon (for edges with external tools, procedures, tasks)
+   =========================================== */
+
+/* Container for the icon on edges */
+.edge-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10;
+  border: 1px solid transparent;
+}
+
+.edge-icon-container:hover {
+  border-color: #9FABC1;
+  z-index: 99;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+/* Selected state - blue border */
+.edge-icon-container.selected {
+  border-color: #1A6CE7;
+  border-width: 2px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+/* The icon image itself */
+.edge-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+/* Type-specific icon hover states */
+.edge-icon-container.edge-icon-procedure:hover {
+  /* border-color: #7C3AED; */
+}
+
+.edge-icon-container.edge-icon-task:hover {
+  /* border-color: #059669; */
+}
+
+/* Ensure icon container doesn't block edge hover */
+.react-flow__edge:hover .edge-icon-container {
+  /* border-color: #8A94A8; */
+}
+
+.react-flow__edge.selected .edge-icon-container {
+  /* border-color: #1A6CE7; */
+}
+
+/* ===========================================
    Base Node Styles
    =========================================== */
 .react-flow__node {

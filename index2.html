@@ -720,6 +720,8 @@
         const panelQueryId = document.getElementById('panelQueryId');
         const panelRowCount = document.getElementById('panelRowCount');
         const panelSqlQuery = document.getElementById('panelSqlQuery');
+        const copySqlBtn = document.getElementById('copySqlBtn');
+        const openInWorksheetBtn = document.getElementById('openInWorksheetBtn');
         const panelStoredProcsContent = document.getElementById('panelStoredProcsContent');
         const panelTasksContent = document.getElementById('panelTasksContent');
         // Column panel elements
@@ -991,6 +993,41 @@
         if (panelColumnClose) {
           panelColumnClose.addEventListener('click', () => {
             window.sharedSelection.clearSelection();
+          });
+        }
+
+        // Setup SQL toolbar buttons
+        if (copySqlBtn) {
+          copySqlBtn.addEventListener('click', async () => {
+            // Get the plain text SQL (without HTML highlighting)
+            const sqlText = panelSqlQuery.textContent || panelSqlQuery.innerText;
+            try {
+              await navigator.clipboard.writeText(sqlText);
+              // Show feedback
+              const originalText = copySqlBtn.querySelector('span').textContent;
+              copySqlBtn.querySelector('span').textContent = 'Copied!';
+              setTimeout(() => {
+                copySqlBtn.querySelector('span').textContent = originalText;
+              }, 1500);
+            } catch (err) {
+              console.error('Failed to copy SQL:', err);
+            }
+          });
+        }
+
+        if (openInWorksheetBtn) {
+          openInWorksheetBtn.addEventListener('click', () => {
+            // Get the plain text SQL
+            const sqlText = panelSqlQuery.textContent || panelSqlQuery.innerText;
+            // This would typically open the SQL in a worksheet/editor
+            // For now, log it - this can be connected to your worksheet functionality
+            console.log('Open in worksheet:', sqlText);
+            // Placeholder: show feedback that this action would open a worksheet
+            const originalText = openInWorksheetBtn.querySelector('span').textContent;
+            openInWorksheetBtn.querySelector('span').textContent = 'Opening...';
+            setTimeout(() => {
+              openInWorksheetBtn.querySelector('span').textContent = originalText;
+            }, 1000);
           });
         }
 
@@ -1783,6 +1820,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         ${proc.status ? `<span class="panel-lineage-transform panel-task-status ${proc.status}">${proc.status}</span>` : ''}
                         <span class="panel-lineage-item-meta">Last run: ${proc.lastModified}</span>
                       </div>
+                      ${proc.owner ? `
+                      <div class="panel-card-meta">
+                        <span class="panel-card-meta-label">Owner</span>
+                        <span class="panel-card-meta-value">${proc.owner}</span>
+                      </div>
+                      ` : ''}
                     </div>
                   `).join('')}
                 </div>
@@ -1814,6 +1857,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <span class="panel-lineage-transform panel-task-status ${task.status}">${task.status}</span>
                         <span class="panel-lineage-item-meta">Schedule: ${task.schedule}</span>
                       </div>
+                      ${task.owner ? `
+                      <div class="panel-card-meta">
+                        <span class="panel-card-meta-label">Owner</span>
+                        <span class="panel-card-meta-value">${task.owner}</span>
+                      </div>
+                      ` : ''}
                     </div>
                   `).join('')}
                 </div>
@@ -3030,6 +3079,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           
           <!-- SQL Tab Content -->
           <div class="panel-tab-content" data-tab-content="sql" id="panelEdgeSqlContent">
+            <div class="panel-sql-toolbar">
+              <button class="panel-sql-action-btn" id="copySqlBtn" title="Copy SQL">
+                <img src="./img/ui/copy.svg" width="16" height="16" alt="Copy">
+                <span>Copy SQL</span>
+              </button>
+              <button class="panel-sql-action-btn" id="openInWorksheetBtn" title="Open in Worksheet">
+                <img src="./img/ui/open-in-worksheet.svg" width="16" height="16" alt="Open in Worksheet">
+                <span>Open in Worksheet</span>
+              </button>
+            </div>
             <pre class="panel-sql-code" id="panelSqlQuery">SELECT * FROM table;</pre>
           </div>
           
@@ -3143,6 +3202,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         const useUpdateNodeInternals = window.ReactFlow.useUpdateNodeInternals;
         const BackgroundVariant = window.ReactFlow.BackgroundVariant;
         const MarkerType = window.ReactFlow.MarkerType;
+        
+        // Custom Edge components for edges with icons
+        const getBezierPath = window.ReactFlow.getBezierPath;
+        const BaseEdge = window.ReactFlow.BaseEdge;
+        const EdgeLabelRenderer = window.ReactFlow.EdgeLabelRenderer;
         
         // Check if ReactFlow loaded
         if (!ReactFlowComponent) {
@@ -5244,6 +5308,111 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
       };
 
       // =============================================
+      // Custom Edge with Icon
+      // Shows icons for edges with external tools, stored procedures, or tasks
+      // =============================================
+      function EdgeWithIcon({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, style, markerEnd, selected }) {
+        // Get bezier path
+        const [edgePath, labelX, labelY] = getBezierPath({
+          sourceX,
+          sourceY,
+          sourcePosition,
+          targetX,
+          targetY,
+          targetPosition,
+        });
+
+        // Determine what icon to show based on edge metadata
+        const getEdgeIcon = () => {
+          if (!data) return null;
+          
+          // Priority: externalTool > storedProcedures > tasks
+          // Skip dbt icons for now (too common, would clutter the graph)
+          if (data.externalTool && data.externalTool.icon && data.externalTool.name !== 'dbt') {
+            return {
+              src: data.externalTool.icon,
+              alt: data.externalTool.name || 'External Tool',
+              type: 'tool'
+            };
+          }
+          
+          if (data.storedProcedures && data.storedProcedures.length > 0) {
+            return {
+              src: './img/ui/procedure.svg',
+              alt: 'Stored Procedure',
+              type: 'procedure'
+            };
+          }
+          
+          if (data.tasks && data.tasks.length > 0) {
+            return {
+              src: './img/ui/task.svg',
+              alt: 'Task',
+              type: 'task'
+            };
+          }
+          
+          return null;
+        };
+
+        const iconInfo = getEdgeIcon();
+        const hasIcon = iconInfo !== null;
+
+        return createElement(
+          React.Fragment,
+          null,
+          // The edge path
+          createElement(BaseEdge, {
+            id,
+            path: edgePath,
+            style,
+            markerEnd
+          }),
+          // Icon overlay (only if edge has metadata)
+          hasIcon && createElement(
+            EdgeLabelRenderer,
+            null,
+            createElement(
+              'div',
+              {
+                className: `edge-icon-container ${selected ? 'selected' : ''} edge-icon-${iconInfo.type}`,
+                style: {
+                  position: 'absolute',
+                  transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+                  pointerEvents: 'all',
+                }
+              },
+              createElement('img', {
+                src: iconInfo.src,
+                alt: iconInfo.alt,
+                className: 'edge-icon',
+                draggable: false
+              })
+            )
+          )
+        );
+      }
+
+      // =============================================
+      // Edge Types Registry
+      // =============================================
+      const edgeTypes = {
+        iconEdge: EdgeWithIcon,
+      };
+
+      // Helper to determine if an edge should have an icon
+      function edgeHasMetadata(edgeMeta) {
+        if (!edgeMeta) return false;
+        // Skip dbt icons for now (too common, would clutter the graph)
+        const hasNonDbtTool = edgeMeta.externalTool && edgeMeta.externalTool.name && edgeMeta.externalTool.name !== 'dbt';
+        return (
+          hasNonDbtTool ||
+          (edgeMeta.storedProcedures && edgeMeta.storedProcedures.length > 0) ||
+          (edgeMeta.tasks && edgeMeta.tasks.length > 0)
+        );
+      }
+
+      // =============================================
       // ELK Layout Configuration
       // =============================================
       const elk = new ELK();
@@ -5726,13 +5895,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 // Look up edge metadata from objectEdges if available
                 const edgeMeta = window.getEdgeMetadata ? window.getEdgeMetadata(item.id, targetItemId) : null;
                 
+                // Use custom edge type with icon if edge has special metadata
+                const hasSpecialMeta = edgeHasMetadata(edgeMeta);
+                
                 edges.push({
                   id: `edge-${item.id}-${targetItemId}`,
                   source: sourceMapping.nodeId,
                   sourceHandle: sourceMapping.sourceHandle,
                   target: targetMapping.nodeId,
                   targetHandle: targetMapping.targetHandle,
-                  type: 'default',
+                  type: hasSpecialMeta ? 'iconEdge' : 'default',
                   animated: false,
                   markerEnd: {
                     type: MarkerType.ArrowClosed,
@@ -6944,10 +7116,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           setAdjacentItemIds(adjacent);
           
           // Update edges to mark selected edge (bring to top via CSS z-index)
+          // Also reset opacity to 1 for all edges (clears column lineage dimming)
           setEdges(eds => eds.map(e => ({
             ...e,
             selected: e.id === edge.id,
             zIndex: e.id === edge.id ? 1000 : 0,
+            style: { ...e.style, opacity: 1 },
             markerEnd: {
               ...e.markerEnd,
               color: e.id === edge.id ? '#1A6CE7' : '#BDC4D5',
@@ -7909,6 +8083,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           onPaneClick: handlePaneClick,
           onEdgeClick: handleEdgeClick,
           nodeTypes,
+          edgeTypes,
           defaultViewport: { x: 0, y: 0, zoom: defaultZoom },
           minZoom: 0.1,
           maxZoom: 2,

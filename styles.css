@@ -941,6 +941,42 @@ body {
   flex-shrink: 0;
 }
 
+/* Card Metadata (key-value pairs at bottom of cards) */
+.panel-card-meta {
+  display: flex;
+  align-items: flex-start;
+  /* justify-content: space-between; */
+  padding-top: 8px;
+  margin-top: 4px;
+  flex-direction: column;
+  /* border-top: 1px solid #E8ECF1; */
+}
+
+.panel-card-meta-label {
+  font-size: 12px;
+  line-height: 18px;
+  color: #5D6A85;
+}
+
+.panel-card-meta-value {
+  font-size: 14px;
+  line-height: 20px;
+  color: #1E252F;
+}
+
+/* Dark mode for card metadata */
+.dark-mode .panel-card-meta {
+  border-top-color: #334155;
+}
+
+.dark-mode .panel-card-meta-label {
+  color: #94A3B8;
+}
+
+.dark-mode .panel-card-meta-value {
+  color: #E2E8F0;
+}
+
 /* Columns Section */
 .panel-columns-section {
   display: flex;
@@ -1038,6 +1074,74 @@ body {
   color: #94a3b8;
   font-size: 12px;
   padding: 8px;
+}
+
+/* SQL Query Toolbar */
+.panel-sql-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.panel-sql-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #D5DAE4;
+  background: #FBFBFB;
+  color: #5D6A85;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.panel-sql-action-btn:hover {
+  background: #F1F5F9;
+  border-color: #a8b2c4;
+  color: #1E252F;
+}
+
+.panel-sql-action-btn:active {
+  background: #E8ECF1;
+}
+
+.panel-sql-action-btn img {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.panel-sql-action-btn:hover img {
+  opacity: 1;
+}
+
+/* Dark mode for SQL toolbar */
+.dark-mode .panel-sql-toolbar {
+  border-color: #334155;
+}
+
+.dark-mode .panel-sql-action-btn {
+  background: #1E293B;
+  border-color: #334155;
+  color: #94A3B8;
+}
+
+.dark-mode .panel-sql-action-btn:hover {
+  background: #273449;
+  border-color: #475569;
+  color: #E2E8F0;
+}
+
+.dark-mode .panel-sql-action-btn img {
+  filter: brightness(0) invert(1) brightness(0.7);
+}
+
+.dark-mode .panel-sql-action-btn:hover img {
+  filter: brightness(0) invert(1) brightness(0.9);
 }
 
 /* SQL Query Code Block */

@@ -706,6 +706,8 @@
         const panelQueryId = document.getElementById('panelQueryId');
         const panelRowCount = document.getElementById('panelRowCount');
         const panelSqlQuery = document.getElementById('panelSqlQuery');
+        const copySqlBtn = document.getElementById('copySqlBtn');
+        const openInWorksheetBtn = document.getElementById('openInWorksheetBtn');
         const panelStoredProcsSection = document.getElementById('panelStoredProcsSection');
         const panelStoredProcsTitle = document.getElementById('panelStoredProcsTitle');
         const panelStoredProcsContent = document.getElementById('panelStoredProcsContent');
@@ -926,6 +928,41 @@
         if (panelColumnClose) {
           panelColumnClose.addEventListener('click', () => {
             window.sharedSelection.clearSelection();
+          });
+        }
+
+        // Setup SQL toolbar buttons
+        if (copySqlBtn) {
+          copySqlBtn.addEventListener('click', async () => {
+            // Get the plain text SQL (without HTML highlighting)
+            const sqlText = panelSqlQuery.textContent || panelSqlQuery.innerText;
+            try {
+              await navigator.clipboard.writeText(sqlText);
+              // Show feedback
+              const originalText = copySqlBtn.querySelector('span').textContent;
+              copySqlBtn.querySelector('span').textContent = 'Copied!';
+              setTimeout(() => {
+                copySqlBtn.querySelector('span').textContent = originalText;
+              }, 1500);
+            } catch (err) {
+              console.error('Failed to copy SQL:', err);
+            }
+          });
+        }
+
+        if (openInWorksheetBtn) {
+          openInWorksheetBtn.addEventListener('click', () => {
+            // Get the plain text SQL
+            const sqlText = panelSqlQuery.textContent || panelSqlQuery.innerText;
+            // This would typically open the SQL in a worksheet/editor
+            // For now, log it - this can be connected to your worksheet functionality
+            console.log('Open in worksheet:', sqlText);
+            // Placeholder: show feedback that this action would open a worksheet
+            const originalText = openInWorksheetBtn.querySelector('span').textContent;
+            openInWorksheetBtn.querySelector('span').textContent = 'Opening...';
+            setTimeout(() => {
+              openInWorksheetBtn.querySelector('span').textContent = originalText;
+            }, 1000);
           });
         }
 
@@ -1364,9 +1401,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             if (data.storedProcedures && data.storedProcedures.length > 0) {
               panelStoredProcsSection.style.display = 'block';
               panelStoredProcsContent.innerHTML = `
-                <div class="panel-lineage-list">
+                <div class="panel-lineage-list panel-procedures-list">
                   ${data.storedProcedures.map(proc => `
-                    <div class="panel-lineage-item">
+                    <div class="panel-lineage-item panel-procedure-item">
                       <div class="panel-lineage-column-header">
                         <span class="panel-lineage-column-name">
                           ${proc.name}
@@ -1380,6 +1417,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         ${proc.status ? `<span class="panel-lineage-transform panel-task-status ${proc.status}">${proc.status}</span>` : ''}
                         <span class="panel-lineage-item-meta">Last run: ${proc.lastModified}</span>
                       </div>
+                      ${proc.owner ? `
+                      <div class="panel-card-meta">
+                        <span class="panel-card-meta-label">Owner</span>
+                        <span class="panel-card-meta-value">${proc.owner}</span>
+                      </div>
+                      ` : ''}
                     </div>
                   `).join('')}
                 </div>
@@ -1395,9 +1438,9 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             if (data.tasks && data.tasks.length > 0) {
               panelTasksSection.style.display = 'block';
               panelTasksContent.innerHTML = `
-                <div class="panel-lineage-list">
+                <div class="panel-lineage-list panel-tasks-list">
                   ${data.tasks.map(task => `
-                    <div class="panel-lineage-item">
+                    <div class="panel-lineage-item panel-task-item">
                       <div class="panel-lineage-column-header">
                         <span class="panel-lineage-column-name">
                           ${task.name}
@@ -1411,6 +1454,12 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                         <span class="panel-lineage-transform panel-task-status ${task.status}">${task.status}</span>
                         <span class="panel-lineage-item-meta">Schedule: ${task.schedule}</span>
                       </div>
+                      ${task.owner ? `
+                      <div class="panel-card-meta">
+                        <span class="panel-card-meta-label">Owner</span>
+                        <span class="panel-card-meta-value">${task.owner}</span>
+                      </div>
+                      ` : ''}
                     </div>
                   `).join('')}
                 </div>
@@ -2488,6 +2537,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               </button>
             </div>
             <div class="panel-section-content">
+              <div class="panel-sql-toolbar">
+                <button class="panel-sql-action-btn" id="copySqlBtn" title="Copy SQL">
+                  <img src="./img/ui/copy.svg" width="16" height="16" alt="Copy">
+                  <span>Copy SQL</span>
+                </button>
+                <button class="panel-sql-action-btn" id="openInWorksheetBtn" title="Open in Worksheet">
+                  <img src="./img/ui/open-in-worksheet.svg" width="16" height="16" alt="Open in Worksheet">
+                  <span>Open in Worksheet</span>
+                </button>
+              </div>
               <pre class="panel-sql-code" id="panelSqlQuery">SELECT * FROM table;</pre>
             </div>
           </div>
