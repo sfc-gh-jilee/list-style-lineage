@@ -6284,16 +6284,20 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                       
                       // Track if any handles are missing - we'll need to retry
                       if (!sourceHandle || !targetHandle) {
-                        console.log(`  Edge ${edge.id}: handles missing - source: ${!!sourceHandle}, target: ${!!targetHandle}`);
+                        console.log(`  Edge ${edge.id}: handles missing - source: ${!!sourceHandle} (${sourceHandleId}), target: ${!!targetHandle} (${targetHandleId})`);
                         // Mark that we have missing handles
                         if (!window._missingHandles) window._missingHandles = [];
                         window._missingHandles.push({ sourceHandleId, targetHandleId, sourceExists: !!sourceHandle, targetExists: !!targetHandle });
+                        // Skip this edge - don't add edges without handles, React Flow won't render them
+                        return;
                       }
                       
                       // Always use column handles - don't fall back to object handles
                       // Object handles don't connect visually to the column items
                       const actualSourceHandle = sourceHandleId;
                       const actualTargetHandle = targetHandleId;
+                      
+                      console.log(`  Adding edge ${edge.id}: ${sourceNodeId}/${sourceHandleId} -> ${targetNodeId}/${targetHandleId}`);
                       
                       newColumnEdges.push({
                         id: edgeId,
@@ -6370,12 +6374,40 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                 setTimeout(() => {
                   if (!cancelled && lineageVersionRef.current === currentVersion) {
                     console.log('Final edge refresh');
-                    // Force React Flow to recalculate edge paths
+                    
+                    // Debug: Check if handles actually exist in DOM now
+                    newColumnEdges.forEach(edge => {
+                      const srcHandle = document.querySelector(`[data-handleid="${edge.sourceHandle}"]`);
+                      const tgtHandle = document.querySelector(`[data-handleid="${edge.targetHandle}"]`);
+                      console.log(`  Edge ${edge.id}: src handle exists: ${!!srcHandle}, tgt handle exists: ${!!tgtHandle}`);
+                      if (srcHandle) {
+                        const rect = srcHandle.getBoundingClientRect();
+                        console.log(`    Src handle position: ${rect.left}, ${rect.top}, ${rect.width}x${rect.height}`);
+                      }
+                      if (tgtHandle) {
+                        const rect = tgtHandle.getBoundingClientRect();
+                        console.log(`    Tgt handle position: ${rect.left}, ${rect.top}, ${rect.width}x${rect.height}`);
+                      }
+                    });
+                    
+                    // Force React Flow to recalculate edge paths by creating new edge objects
+                    const refreshedEdges = markedEdges.map(e => ({
+                      ...e,
+                      // Add a refresh key to force React to treat these as new edges
+                      id: e.id,
+                    }));
+                    
                     setEdges(currentEdges => {
                       const baseEdges = currentEdges.filter(e => !e.data?.isColumnLineage);
-                      return [...baseEdges, ...markedEdges];
+                      return [...baseEdges, ...refreshedEdges];
                     });
                     setColumnLineageEdges([...newColumnEdges]);
+                    
+                    // Debug: Check DOM for rendered edges
+                    setTimeout(() => {
+                      const columnEdgesInDom = document.querySelectorAll('.column-lineage');
+                      console.log(`Column lineage edges in DOM: ${columnEdgesInDom.length}`);
+                    }, 100);
                   }
                 }, 150);
               }
@@ -6391,19 +6423,27 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Start edge creation with a small initial delay to let React commit changes
           const initialTimeoutId = setTimeout(createEdges, 20);
           
-          // Also schedule a backup edge creation in case the first one fails
+          // Also schedule multiple backup edge creations in case earlier ones fail
           // This helps ensure edges are always created when switching columns
-          const backupTimeoutId = setTimeout(() => {
+          const backupTimeoutId1 = setTimeout(() => {
             if (!cancelled && lineageVersionRef.current === currentVersion) {
-              console.log('Backup edge creation triggered');
+              console.log('Backup edge creation triggered (500ms)');
               createEdges();
             }
           }, 500);
           
+          const backupTimeoutId2 = setTimeout(() => {
+            if (!cancelled && lineageVersionRef.current === currentVersion) {
+              console.log('Backup edge creation triggered (1000ms)');
+              createEdges();
+            }
+          }, 1000);
+          
           return () => {
             cancelled = true;
             clearTimeout(initialTimeoutId);
-            clearTimeout(backupTimeoutId);
+            clearTimeout(backupTimeoutId1);
+            clearTimeout(backupTimeoutId2);
           };
         }, [columnLineageMode, selectedColumnLineage, relatedColumns, expandedItems, reactFlowInstance, setEdges]);
         
