@@ -6355,7 +6355,14 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
               console.log('Setting column lineage edges:', newColumnEdges.map(e => e.id));
               
               // Mark these edges as column lineage edges so we can identify them later
-              const markedEdges = newColumnEdges.map(e => ({ ...e, data: { ...e.data, isColumnLineage: true } }));
+              // Use timestamp in edge ID to force React Flow to treat them as new edges
+              // This prevents React Flow's edge path caching from using stale paths
+              const timestamp = Date.now();
+              const markedEdges = newColumnEdges.map(e => ({ 
+                ...e, 
+                id: `${e.id}-t${timestamp}`,
+                data: { ...e.data, isColumnLineage: true } 
+              }));
               
               // Add column lineage edges directly to React Flow's edge state
               // This ensures React Flow properly manages them internally
@@ -6390,11 +6397,13 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                       }
                     });
                     
-                    // Force React Flow to recalculate edge paths by creating new edge objects
+                    // Force React Flow to recalculate edge paths by creating NEW edge objects with fresh IDs
+                    // This is critical - React Flow caches edge paths and won't recalculate if edge IDs are the same
+                    const timestamp = Date.now();
                     const refreshedEdges = markedEdges.map(e => ({
                       ...e,
-                      // Add a refresh key to force React to treat these as new edges
-                      id: e.id,
+                      // Use timestamp suffix to force React Flow to treat as completely new edges
+                      id: `${e.id}-t${timestamp}`,
                     }));
                     
                     setEdges(currentEdges => {
@@ -6402,6 +6411,16 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
                       return [...baseEdges, ...refreshedEdges];
                     });
                     setColumnLineageEdges([...newColumnEdges]);
+                    
+                    // Also trigger a minor viewport nudge to force React Flow to recalculate
+                    if (reactFlowInstance) {
+                      const viewport = reactFlowInstance.getViewport();
+                      // Nudge viewport by tiny amount and back to force edge recalculation
+                      reactFlowInstance.setViewport({ ...viewport, x: viewport.x + 0.01 }, { duration: 0 });
+                      setTimeout(() => {
+                        reactFlowInstance.setViewport(viewport, { duration: 0 });
+                      }, 10);
+                    }
                     
                     // Debug: Check DOM for rendered edges
                     setTimeout(() => {
