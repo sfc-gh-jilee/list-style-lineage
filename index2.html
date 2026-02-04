@@ -6647,25 +6647,80 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             
             try {
               const layoutedNodes = await calculateLayout(newNodes, newEdges);
-              const nodesWithSelection = layoutedNodes.map(node => ({
-                ...node,
-                data: {
-                  ...node.data,
-                  selectedItemId: currentSelectedId
-                }
-              }));
-              setNodes(nodesWithSelection);
+              const nodesWithState = layoutedNodes.map(node => {
+                const nodeCollapseInfo = collapseState[node.id] || {};
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    selectedItemId: currentSelectedId,
+                    expandedItems: expandedItems,
+                    itemSearchQueries: itemSearchQueries,
+                    selectedChildren: selectedChildren,
+                    onToggleItemExpand: handleToggleItemExpand,
+                    onItemSearchChange: handleItemSearchChange,
+                    onChildClick: handleChildClick,
+                    onChildHover: handleChildHover,
+                    columnLineageMode: columnLineageMode,
+                    sourceColumn: selectedColumnLineage,
+                    relatedColumns: relatedColumns,
+                    showAllColumnsItems: showAllColumnsItems,
+                    onShowAllColumns: handleShowAllColumns,
+                    itemActiveTabs: itemActiveTabs,
+                    onTabChange: handleTabChange,
+                    adjacentItemIds: adjacentItemIds,
+                    dbCollapsed: !!nodeCollapseInfo.dbCollapsed,
+                    schemaCollapsed: !!nodeCollapseInfo.schemaCollapsed,
+                    collapsed: !!nodeCollapseInfo.collapsed,
+                    onToggleDbCollapse: handleToggleDbCollapse,
+                    onToggleSchemaCollapse: handleToggleSchemaCollapse,
+                    onToggleCollapse: handleTogglePlatformCollapse,
+                  }
+                };
+              });
+              setNodes(nodesWithState);
               setEdges(newEdges);
             } catch (error) {
               console.error('Layout error on depth change:', error);
-              setNodes(newNodes);
+              const nodesWithState = newNodes.map(node => {
+                const nodeCollapseInfo = collapseState[node.id] || {};
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    selectedItemId: currentSelectedId,
+                    expandedItems: expandedItems,
+                    itemSearchQueries: itemSearchQueries,
+                    selectedChildren: selectedChildren,
+                    onToggleItemExpand: handleToggleItemExpand,
+                    onItemSearchChange: handleItemSearchChange,
+                    onChildClick: handleChildClick,
+                    onChildHover: handleChildHover,
+                    columnLineageMode: columnLineageMode,
+                    sourceColumn: selectedColumnLineage,
+                    relatedColumns: relatedColumns,
+                    showAllColumnsItems: showAllColumnsItems,
+                    onShowAllColumns: handleShowAllColumns,
+                    itemActiveTabs: itemActiveTabs,
+                    onTabChange: handleTabChange,
+                    adjacentItemIds: adjacentItemIds,
+                    dbCollapsed: !!nodeCollapseInfo.dbCollapsed,
+                    schemaCollapsed: !!nodeCollapseInfo.schemaCollapsed,
+                    collapsed: !!nodeCollapseInfo.collapsed,
+                    onToggleDbCollapse: handleToggleDbCollapse,
+                    onToggleSchemaCollapse: handleToggleSchemaCollapse,
+                    onToggleCollapse: handleTogglePlatformCollapse,
+                  }
+                };
+              });
+              setNodes(nodesWithState);
               setEdges(newEdges);
             }
           }
           
           relayoutOnDepthChange();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [expansionDepth.upstream, expansionDepth.downstream]);
+        }, [expansionDepth.upstream, expansionDepth.downstream, expandedItems, collapseState]);
 
         // Update nodes when selection or expanded state changes
         useEffect(() => {
