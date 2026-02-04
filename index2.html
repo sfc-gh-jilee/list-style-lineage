@@ -6177,6 +6177,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           console.log('Column lineage edge effect triggered. Version:', currentVersion, 
             'Column:', selectedColumnLineage?.itemId + '.' + selectedColumnLineage?.columnName);
           
+          // FORCE CLEAR existing column lineage edges immediately to ensure clean slate
+          // This fixes the issue where switching columns doesn't update edges
+          setEdges(currentEdges => currentEdges.filter(e => !e.data?.isColumnLineage));
+          setColumnLineageEdges([]);
+          
           const createEdges = () => {
             // Skip if cancelled or version changed
             if (cancelled || lineageVersionRef.current !== currentVersion) {
@@ -6386,11 +6391,21 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           // Start edge creation with a small initial delay to let React commit changes
           const initialTimeoutId = setTimeout(createEdges, 20);
           
+          // Also schedule a backup edge creation in case the first one fails
+          // This helps ensure edges are always created when switching columns
+          const backupTimeoutId = setTimeout(() => {
+            if (!cancelled && lineageVersionRef.current === currentVersion) {
+              console.log('Backup edge creation triggered');
+              createEdges();
+            }
+          }, 500);
+          
           return () => {
             cancelled = true;
             clearTimeout(initialTimeoutId);
+            clearTimeout(backupTimeoutId);
           };
-        }, [columnLineageMode, selectedColumnLineage, relatedColumns, expandedItems, reactFlowInstance]);
+        }, [columnLineageMode, selectedColumnLineage, relatedColumns, expandedItems, reactFlowInstance, setEdges]);
         
         // Exit column lineage mode
         const exitColumnLineageMode = useCallback(() => {
