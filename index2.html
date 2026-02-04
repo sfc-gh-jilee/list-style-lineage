@@ -4956,14 +4956,24 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           React.createElement('div', { className: 'node-action-menu-divider' }),
           React.createElement('div', {
             className: 'node-action-menu-item',
-            onClick: () => { console.log('Open All Upstream'); setMenuOpen(false); }
+            onClick: () => { 
+              if (window.lineageExpansion?.openAllUpstream) {
+                window.lineageExpansion.openAllUpstream(itemId);
+              }
+              setMenuOpen(false); 
+            }
           },
             React.createElement('img', { src: './img/ui/arrow-left.svg', alt: '' }),
             'Open All Upstream'
           ),
           React.createElement('div', {
             className: 'node-action-menu-item',
-            onClick: () => { console.log('Close All Upstream'); setMenuOpen(false); }
+            onClick: () => { 
+              if (window.lineageExpansion?.closeAllUpstream) {
+                window.lineageExpansion.closeAllUpstream(itemId);
+              }
+              setMenuOpen(false); 
+            }
           },
             React.createElement('img', { src: './img/ui/clear.svg', alt: '' }),
             'Close All Upstream'
@@ -4971,14 +4981,24 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           React.createElement('div', { className: 'node-action-menu-divider' }),
           React.createElement('div', {
             className: 'node-action-menu-item',
-            onClick: () => { console.log('Open All Downstream'); setMenuOpen(false); }
+            onClick: () => { 
+              if (window.lineageExpansion?.openAllDownstream) {
+                window.lineageExpansion.openAllDownstream(itemId);
+              }
+              setMenuOpen(false); 
+            }
           },
             React.createElement('img', { src: './img/ui/arrow-right.svg', alt: '' }),
             'Open All Downstream'
           ),
           React.createElement('div', {
             className: 'node-action-menu-item',
-            onClick: () => { console.log('Close All Downstream'); setMenuOpen(false); }
+            onClick: () => { 
+              if (window.lineageExpansion?.closeAllDownstream) {
+                window.lineageExpansion.closeAllDownstream(itemId);
+              }
+              setMenuOpen(false); 
+            }
           },
             React.createElement('img', { src: './img/ui/clear.svg', alt: '' }),
             'Close All Downstream'
@@ -9133,6 +9153,132 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         
         // Expose expansion handlers globally (per-node)
         useEffect(() => {
+          // Helper to find all upstream items recursively from a starting item
+          const findAllUpstreamItems = (startItemId) => {
+            const upstreamMap = computeUpstreamMap(window.mockLineageData);
+            const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+            const allItems = new Set();
+            const visited = new Set();
+            const queue = [startItemId];
+            
+            while (queue.length > 0) {
+              const currentId = queue.shift();
+              if (visited.has(currentId)) continue;
+              visited.add(currentId);
+              
+              // Get upstream items of current item
+              const upstreamIds = upstreamMap.get(currentId) || [];
+              upstreamIds.forEach(upId => {
+                allItems.add(currentId); // Add the item that has upstream to expand
+                if (!visited.has(upId)) {
+                  queue.push(upId);
+                }
+              });
+            }
+            
+            return allItems;
+          };
+          
+          // Helper to find all downstream items recursively from a starting item
+          const findAllDownstreamItems = (startItemId) => {
+            const itemMap = window.buildItemMap ? window.buildItemMap(window.mockLineageData) : new Map();
+            const allItems = new Set();
+            const visited = new Set();
+            const queue = [startItemId];
+            
+            while (queue.length > 0) {
+              const currentId = queue.shift();
+              if (visited.has(currentId)) continue;
+              visited.add(currentId);
+              
+              // Get downstream items from the item's downstream array
+              const currentItem = itemMap.get(currentId);
+              const downstreamNames = currentItem?.downstream || [];
+              
+              if (downstreamNames.length > 0) {
+                allItems.add(currentId); // Add the item that has downstream to expand
+                
+                // Find the item IDs for the downstream names
+                downstreamNames.forEach(downName => {
+                  itemMap.forEach((item, id) => {
+                    if (item.name?.toLowerCase().trim() === downName.toLowerCase().trim()) {
+                      if (!visited.has(id)) {
+                        queue.push(id);
+                      }
+                    }
+                  });
+                });
+              }
+            }
+            
+            return allItems;
+          };
+          
+          // Open all upstream: recursively expand all upstream items
+          const openAllUpstream = (startItemId) => {
+            const itemsToExpand = findAllUpstreamItems(startItemId);
+            
+            // Batch expand all items at once
+            setExpandedUpstream(prev => {
+              const next = new Set(prev);
+              itemsToExpand.forEach(id => next.add(id));
+              return next;
+            });
+            
+            // Center on the starting item after expansion
+            if (itemsToExpand.size > 0) {
+              setCenterOnAfterLayout({ itemId: startItemId, direction: 'upstream' });
+            }
+          };
+          
+          // Close all upstream: collapse all upstream expansions
+          const closeAllUpstream = (startItemId) => {
+            const itemsToCollapse = findAllUpstreamItems(startItemId);
+            
+            // Also include already expanded items that are upstream of the start item
+            setExpandedUpstream(prev => {
+              const next = new Set(prev);
+              itemsToCollapse.forEach(id => next.delete(id));
+              // Also remove the starting item itself
+              next.delete(startItemId);
+              return next;
+            });
+            
+            setCenterOnAfterLayout({ itemId: startItemId, direction: 'collapse' });
+          };
+          
+          // Open all downstream: recursively expand all downstream items
+          const openAllDownstream = (startItemId) => {
+            const itemsToExpand = findAllDownstreamItems(startItemId);
+            
+            // Batch expand all items at once
+            setExpandedDownstream(prev => {
+              const next = new Set(prev);
+              itemsToExpand.forEach(id => next.add(id));
+              return next;
+            });
+            
+            // Center on the starting item after expansion
+            if (itemsToExpand.size > 0) {
+              setCenterOnAfterLayout({ itemId: startItemId, direction: 'downstream' });
+            }
+          };
+          
+          // Close all downstream: collapse all downstream expansions
+          const closeAllDownstream = (startItemId) => {
+            const itemsToCollapse = findAllDownstreamItems(startItemId);
+            
+            setExpandedDownstream(prev => {
+              const next = new Set(prev);
+              itemsToCollapse.forEach(id => next.delete(id));
+              // Also remove the starting item itself
+              next.delete(startItemId);
+              return next;
+            });
+            
+            setCenterOnAfterLayout({ itemId: startItemId, direction: 'collapse' });
+          };
+          
           window.lineageExpansion = {
             expandedUpstream: expandedUpstream,
             expandedDownstream: expandedDownstream,
@@ -9145,6 +9291,11 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             canCollapseUpstream: (itemId) => expandedUpstream.has(itemId),
             canExpandDownstream: (itemId) => !expandedDownstream.has(itemId),
             canCollapseDownstream: (itemId) => expandedDownstream.has(itemId),
+            // Open/close all methods
+            openAllUpstream,
+            closeAllUpstream,
+            openAllDownstream,
+            closeAllDownstream,
           };
           
           return () => {
