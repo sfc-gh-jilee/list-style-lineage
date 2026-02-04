@@ -3552,10 +3552,17 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
         
         // Listen for hover on parent node
         React.useEffect(() => {
-          if (!markerRef.current) return;
+          if (!markerRef.current) {
+            console.log(`[NodeHoverActions] No markerRef for ${itemId} [${position}]`);
+            return;
+          }
           
           const parentNode = markerRef.current.closest('.graph-group-item, .graph-platform-item, .graph-expanded-card, .graph-child-item');
-          if (!parentNode) return;
+          if (!parentNode) {
+            console.log(`[NodeHoverActions] No parent node found for ${itemId} [${position}]`);
+            return;
+          }
+          console.log(`[NodeHoverActions] Setup hover listener for ${itemId} [${position}] on`, parentNode.className);
           
           const isExpandedCard = parentNode.classList.contains('graph-expanded-card');
           
@@ -3598,8 +3605,10 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
           };
           
           const showButtons = (e) => {
+            console.log(`[NodeHoverActions] mouseenter detected for ${itemId} [${position}]`);
             // For expanded cards, don't show if hovering on a child item inside
             if (isExpandedCard && e.target.closest('.graph-child-item')) {
+              console.log(`[NodeHoverActions] Ignoring - hovering on child item`);
               return;
             }
             // Clear any pending show timeout
@@ -3608,6 +3617,7 @@ ${sourceItem.database || 'DATABASE'}.${sourceItem.schemaName || 'SCHEMA'}.${sour
             }
             // Delay showing by 400ms
             showTimeoutRef.current = setTimeout(() => {
+              console.log(`[NodeHoverActions] 400ms delay completed, setting isVisible=true for ${itemId} [${position}]`);
               updateButtonPosition();
               setIsVisible(true);
             }, 400);
